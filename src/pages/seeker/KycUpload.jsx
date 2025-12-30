@@ -494,6 +494,11 @@ const KycUpload = () => {
     }, 200);
 
     try {
+      const formData = new FormData();
+      formData.append('frontImage', frontImage);
+      formData.append('idType', selectedIdType);
+      formData.append('idNumber', ''); // Will be extracted by OCR
+
       const response = await apiClient.post('/user/upload-kyc', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
