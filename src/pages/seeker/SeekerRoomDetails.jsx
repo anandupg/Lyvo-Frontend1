@@ -81,15 +81,8 @@ const SeekerRoomDetails = () => {
     const fetchRoomDetails = async () => {
         try {
             setLoading(true);
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-            const response = await fetch(`${baseUrl}/property/public/rooms/${roomId}`);
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch room details (${response.status})`);
-            }
-
-            const data = await response.json();
+            const response = await apiClient.get(`/property/public/rooms/${roomId}`);
+            const data = response.data;
             if (data.success && data.data) {
                 console.log('Room Data Fetched Support:', data.data);
                 setRoom(data.data.room);
@@ -122,17 +115,12 @@ const SeekerRoomDetails = () => {
         if (!userId || !roomId || !property || !token) return;
 
         try {
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-            // Correct Endpoint: /property/favorites/check
-            const response = await fetch(`${baseUrl}/property/favorites/check?propertyId=${property._id}&roomId=${roomId}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            const response = await apiClient.get(`/property/favorites/check`, {
+                params: { propertyId: property._id, roomId }
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                setIsFavorited(data.isFavorite);
+            if (response.status === 200) {
+                setIsFavorited(response.data.isFavorite);
             }
         } catch (error) {
             console.error('Error checking favorite:', error);
@@ -149,17 +137,12 @@ const SeekerRoomDetails = () => {
         if (!userId || !roomId || !property || !token) return;
 
         try {
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-            // Correct Endpoint: /property/user/check-booking
-            const response = await fetch(`${baseUrl}/property/user/check-booking?propertyId=${property._id}&roomId=${roomId}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            const response = await apiClient.get(`/property/user/check-booking`, {
+                params: { propertyId: property._id, roomId }
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                setBookingStatus(data);
+            if (response.status === 200) {
+                setBookingStatus(response.data);
             }
         } catch (error) {
             console.error('Error checking booking status:', error);
@@ -171,10 +154,9 @@ const SeekerRoomDetails = () => {
         if (!roomId) return;
         try {
             setLoadingTenants(true);
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-            const response = await fetch(`${baseUrl}/property/public/rooms/${roomId}/tenants`);
-            if (response.ok) {
-                const data = await response.json();
+            const response = await apiClient.get(`/property/public/rooms/${roomId}/tenants`);
+            if (response.status === 200) {
+                const data = response.data;
                 setTenants(data.tenants || []);
             }
         } catch (error) {
@@ -211,19 +193,11 @@ const SeekerRoomDetails = () => {
         }
 
         try {
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
             const endpoint = isFavorited ? '/property/favorites/remove' : '/property/favorites';
 
-            const response = await fetch(`${baseUrl}${endpoint}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ userId, propertyId: property._id, roomId })
-            });
+            const response = await apiClient.post(endpoint, { userId, propertyId: property._id, roomId });
 
-            if (response.ok) {
+            if (response.status === 200) {
                 setIsFavorited(!isFavorited);
                 toast({
                     title: isFavorited ? "Removed from Favorites" : "Added to Favorites",
@@ -272,13 +246,10 @@ const SeekerRoomDetails = () => {
         // 2. Refresh User Profile and Check KYC Status
         try {
             setBookingLoading(true);
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-            const profileResponse = await fetch(`${baseUrl}/user/profile/${userId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const profileResponse = await apiClient.get(`/user/profile/${userId}`);
 
-            if (profileResponse.ok) {
-                const profileData = await profileResponse.json();
+            if (profileResponse.status === 200) {
+                const profileData = profileResponse.data;
                 if (profileData.kycStatus !== 'approved' && profileData.user?.kycStatus !== 'approved') {
                     const status = profileData.kycStatus || profileData.user?.kycStatus;
                     toast({
@@ -316,23 +287,13 @@ const SeekerRoomDetails = () => {
 
         try {
             setBookingLoading(true);
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
             // A. Create Order
-            const orderResponse = await fetch(`${baseUrl}/property/payments/create-order`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    amount: bookingFee,
-                    receipt_id: `rcpt_${Date.now().toString().slice(-10)}`
-                })
+            const orderResponse = await apiClient.post('/property/payments/create-order', {
+                amount: bookingFee,
+                receipt_id: `rcpt_${Date.now().toString().slice(-10)}`
             });
 
-            if (!orderResponse.ok) throw new Error('Failed to initiate payment');
-            const orderData = await orderResponse.json();
+            const orderData = orderResponse.data;
 
             // B. Open Razorpay
             const options = {
@@ -344,28 +305,21 @@ const SeekerRoomDetails = () => {
                 order_id: orderData.order_id,
                 handler: async function (response) {
                     try {
-                        const verifyResponse = await fetch(`${baseUrl}/property/payments/verify`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${token}`
-                            },
-                            body: JSON.stringify({
-                                razorpay_order_id: response.razorpay_order_id,
-                                razorpay_payment_id: response.razorpay_payment_id,
-                                razorpay_signature: response.razorpay_signature,
-                                bookingDetails: {
-                                    propertyId: property._id,
-                                    roomId: roomId,
-                                    userId: userId,
-                                    amount: bookingFee,
-                                    securityDeposit: deposit,
-                                    monthlyRent: rent
-                                }
-                            })
+                        const verifyResponse = await apiClient.post('/property/payments/verify', {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                            bookingDetails: {
+                                propertyId: property._id,
+                                roomId: roomId,
+                                userId: userId,
+                                amount: bookingFee,
+                                securityDeposit: deposit,
+                                monthlyRent: rent
+                            }
                         });
 
-                        const verifyData = await verifyResponse.json();
+                        const verifyData = verifyResponse.data;
                         if (verifyData.success) {
                             setBookingStatus({ status: 'pending_approval', bookingId: verifyData.bookingId });
                             setShowConfirmationModal(false);
@@ -404,20 +358,13 @@ const SeekerRoomDetails = () => {
         try {
             setBookingLoading(true);
             const token = localStorage.getItem('authToken');
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            const response = await apiClient.delete(`/property/bookings/${bookingStatus.bookingId}`);
 
-            const response = await fetch(`${baseUrl}/property/bookings/${bookingStatus.bookingId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (response.ok) {
+            if (response.status === 200) {
                 setBookingStatus(null);
                 toast({ title: "Booking Cancelled", description: "Your booking request has been cancelled." });
             } else {
-                const err = await response.json();
+                const err = response.data || {};
                 toast({ title: "Cancellation Failed", description: err.message || "Failed to cancel booking", variant: "destructive" });
             }
         } catch (error) {
