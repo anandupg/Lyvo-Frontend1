@@ -5,13 +5,13 @@ import { getAuth } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyDzhAKzSVS-Y-s8s4yIufbGufzIWGg-hK0",
-    authDomain: "lyvo-ce4ce.firebaseapp.com",
-    projectId: "lyvo-ce4ce",
-    storageBucket: "lyvo-ce4ce.firebasestorage.app",
-    messagingSenderId: "369723896940",
-    appId: "1:369723896940:web:110502102b415be5f59449",
-    measurementId: "G-RW4WQDGN7R"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase

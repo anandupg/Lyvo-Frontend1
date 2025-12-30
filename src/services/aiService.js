@@ -67,17 +67,17 @@ class AIService {
   async initialize() {
     try {
       console.log("Initializing Google Gemini Pro AI Service...");
-      
+
       // Use the provided API key from AI Studio
-      this.apiKey = "AIzaSyBctLbHMKEWiFsmnrTPJUVaLe3OMkHLtaM";
-      
+      this.apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
       if (!this.apiKey) {
         throw new Error("Google Gemini API key not found");
       }
 
       // Test the API connection with retry logic
       await this.testConnectionWithRetry();
-      
+
       this.isInitialized = true;
       console.log("Google Gemini Pro AI Service initialized successfully");
     } catch (error) {
@@ -91,11 +91,11 @@ class AIService {
   async testConnectionWithRetry() {
     const maxRetries = 2; // Reduced retries
     const baseDelay = 5000; // 5 seconds base delay
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`🔄 Testing Gemini API connection (attempt ${attempt}/${maxRetries})`);
-        
+
         const testResponse = await fetch(`${this.apiUrl}?key=${this.apiKey}`, {
           method: 'POST',
           headers: {
@@ -122,16 +122,16 @@ class AIService {
             continue;
           }
         }
-        
+
         throw new Error(`API test failed: ${testResponse.status}`);
       } catch (error) {
         console.error(`❌ Gemini API connection test failed (attempt ${attempt}):`, error);
-        
+
         if (attempt === maxRetries) {
           console.warn("🚫 All retry attempts failed. AI service will use fallback responses.");
           throw error;
         }
-        
+
         if (error.message.includes('429')) {
           const waitTime = baseDelay * attempt;
           console.log(`⏳ Rate limit detected. Waiting ${waitTime}ms before retry...`);
@@ -190,9 +190,9 @@ class AIService {
 
     try {
       console.log("🚀 Processing message with Google Gemini 2.5 Flash:", { model, messageCount: messages.length });
-      
+
       const response = await this.callGeminiAPI(messages);
-      
+
       console.log("✅ Gemini 2.5 Flash Response generated");
       return response;
     } catch (error) {
@@ -209,7 +209,7 @@ class AIService {
   async fetchProjectData() {
     try {
       console.log("📊 Fetching project data from database...");
-      
+
       // Fetch properties data from your property service API
       const response = await fetch('http://localhost:3003/api/public/properties', {
         method: 'GET',
@@ -225,7 +225,7 @@ class AIService {
 
       const data = await response.json();
       console.log("✅ Project data fetched:", data);
-      
+
       // Transform the data to a more useful format for the AI
       const transformedData = this.transformPropertyData(data);
       return transformedData;
@@ -251,7 +251,7 @@ class AIService {
       }).filter(Boolean);
 
       const allPrices = priceRanges.flatMap(range => [range.min, range.max]);
-      const averagePrice = allPrices.length > 0 
+      const averagePrice = allPrices.length > 0
         ? `₹${Math.min(...allPrices).toLocaleString()}-${Math.max(...allPrices).toLocaleString()}`
         : 'Flexible pricing';
 
@@ -341,10 +341,10 @@ class AIService {
   async callGeminiAPI(messages) {
     try {
       console.log("🌐 Calling Gemini API...");
-      
+
       // Fetch real project data
       const projectData = await this.fetchProjectData();
-      
+
       const systemPrompt = `You are Lyvo+ Assistant, a helpful AI assistant for a co-living platform called Lyvo+. 
 
 About Lyvo+:
@@ -365,9 +365,9 @@ Current Project Data:
 - Property Types: Single rooms, Shared rooms, Premium suites
 
 Sample Properties:
-${projectData.properties?.slice(0, 3).map(prop => 
-  `- ${prop.name} (${prop.type}): ${prop.price} in ${prop.location}`
-).join('\n') || '- Various properties available'}
+${projectData.properties?.slice(0, 3).map(prop =>
+        `- ${prop.name} (${prop.type}): ${prop.price} in ${prop.location}`
+      ).join('\n') || '- Various properties available'}
 
 Guidelines:
 - Be friendly, helpful, and professional
@@ -412,7 +412,7 @@ Guidelines:
 
       const data = await response.json();
       console.log("📋 Gemini API response data:", data);
-      
+
       if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
         throw new Error("Invalid response format from Gemini API");
       }
@@ -428,7 +428,7 @@ Guidelines:
 
   getFallbackResponse(userMessage) {
     const message = userMessage.toLowerCase();
-    
+
     // Enhanced keyword matching with context awareness
     if (message.includes('price') || message.includes('cost') || message.includes('rent') || message.includes('fee') || message.includes('expensive') || message.includes('cheap')) {
       return this.getRandomResponse('pricing');
