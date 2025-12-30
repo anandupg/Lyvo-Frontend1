@@ -285,8 +285,10 @@ const SeekerRoomDetails = () => {
                         title: "KYC Verification Required",
                         description: `Your KYC status is '${status || 'Not Verified'}'. You must be Approved to book this room.`,
                         variant: "destructive",
-                        action: <button onClick={() => navigate('/seeker-dashboard')} className="bg-white text-destructive px-2 py-1 rounded text-xs">Verify Now</button>
+                        action: <button onClick={() => navigate('/seeker-kyc')} className="bg-white text-destructive px-2 py-1 rounded text-xs">Verify Now</button>
                     });
+                    // Optional: Automatically redirect after a short delay
+                    setTimeout(() => navigate('/seeker-kyc'), 2000);
                     setBookingLoading(false);
                     return;
                 }
