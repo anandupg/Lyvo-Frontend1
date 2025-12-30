@@ -6,6 +6,7 @@ import {
   Bed, Square, Users, CheckCircle, Wifi, Car, Tv, Utensils,
   Shield, Calendar, Clock, DollarSign, Star, Info, MessageCircle, ChevronDown, X, Grid
 } from 'lucide-react';
+import apiClient from '../../utils/apiClient';
 import SeekerLayout from '../../components/seeker/SeekerLayout';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
@@ -62,16 +63,14 @@ const SeekerPropertyDetails = () => {
   // Fetch Property Details
   useEffect(() => {
     const fetchPropertyDetails = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-        const response = await fetch(`${baseUrl}/property/public/properties/${id}`);
+        const response = await apiClient.get(`/property/public/properties/${id}`);
+        // apiClient throws on non-2xx status code by default if using axios, but let's be safe if checking response.
+        // wait, axios response structure is { data: ... }. fetch response is stream.
+        // apiClient is axios instance.
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch property details (${response.status})`);
-        }
-
-        const data = await response.json();
+        const data = response.data;
         if (data.success && data.data) {
           setProperty(data.data);
           if (data.data.latitude && data.data.longitude) {

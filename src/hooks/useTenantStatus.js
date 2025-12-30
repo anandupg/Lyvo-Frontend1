@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import apiClient from '../utils/apiClient';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -14,17 +14,8 @@ export const useTenantStatus = () => {
             setLoading(true);
             setError(null);
 
-            const token = localStorage.getItem('authToken');
-            if (!token) {
-                setIsTenant(false);
-                setTenantData(null);
-                setLoading(false);
-                return;
-            }
-
-            const response = await axios.get(`${API_URL}/property/user/tenant-status`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            // Use apiClient for consistent base URL handling
+            const response = await apiClient.get('/property/user/tenant-status');
 
             setIsTenant(response.data.isTenant);
             setTenantData(response.data.tenantData);

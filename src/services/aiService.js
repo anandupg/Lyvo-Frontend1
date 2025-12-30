@@ -1,5 +1,6 @@
 // Google Gemini Pro AI service integration
 // This service provides real AI responses using Google's Gemini Pro model
+import apiClient from '../utils/apiClient';
 
 class AIService {
   constructor() {
@@ -211,19 +212,10 @@ class AIService {
       console.log("📊 Fetching project data from database...");
 
       // Fetch properties data from your property service API
-      const response = await fetch('http://localhost:3003/api/public/properties', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
+      const response = await apiClient.get('/property/public/properties');
 
-      if (!response.ok) {
-        console.warn("⚠️ Could not fetch project data, using fallback");
-        return this.getFallbackProjectData();
-      }
+      const data = response.data;
 
-      const data = await response.json();
       console.log("✅ Project data fetched:", data);
 
       // Transform the data to a more useful format for the AI

@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   Layers
 } from 'lucide-react';
+import apiClient from '../../utils/apiClient';
 
 const SeekerDashboard = () => {
   const [user, setUser] = useState({});
@@ -121,27 +122,10 @@ const SeekerDashboard = () => {
 
   const searchNearbyPGs = async (lat, lng, radiusKm = radius) => {
     try {
-      // Fetch real properties from the database
-      const response = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:5000/api/property'}/public/properties`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      // Fetch real properties from the database using apiClient
+      const response = await apiClient.get('/property/public/properties');
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('Non-JSON response:', text);
-        throw new Error('Server returned non-JSON response');
-      }
-
-      const data = await response.json();
-      const properties = data.data || [];
+      const properties = response.data.data || [];
 
       // Transform properties to match the expected format and filter by radius
       const nearbyProperties = properties
@@ -201,29 +185,12 @@ const SeekerDashboard = () => {
     return R * c;
   };
 
-  // Load all properties on map initialization
   const loadAllPropertiesOnMap = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:5000/api/property'}/public/properties`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      // Use apiClient to fetch properties
+      const response = await apiClient.get('/property/public/properties');
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('Non-JSON response:', text);
-        throw new Error('Server returned non-JSON response');
-      }
-
-      const data = await response.json();
-      const properties = data.data || [];
+      const properties = response.data.data || [];
 
       // Transform properties to match the expected format
       const allProperties = properties
@@ -288,20 +255,15 @@ const SeekerDashboard = () => {
       };
 
       // 1. Check for Active Tenancy (Higher Priority)
-      const tenantBaseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:5000/api/property';
+      // 1. Check for Active Tenancy (Higher Priority)
       try {
-        const tenantResponse = await fetch(`${tenantBaseUrl}/user/tenant-status`, {
-          method: 'GET',
-          headers
-        });
+        const tenantResponse = await apiClient.get('/property/user/tenant-status');
 
-        if (tenantResponse.ok) {
-          const tenantData = await tenantResponse.json();
-          if (tenantData.success && tenantData.isTenant) {
-            console.log('User has active tenancy, redirecting to TenantDashboard');
-            navigate('/tenant-dashboard');
-            return true;
-          }
+        const tenantData = tenantResponse.data;
+        if (tenantData.success && tenantData.isTenant) {
+          console.log('User has active tenancy, redirecting to TenantDashboard');
+          navigate('/tenant-dashboard');
+          return true;
         }
       } catch (err) {
         console.error('Error checking tenant status:', err);
@@ -379,26 +341,9 @@ const SeekerDashboard = () => {
   // Fetch property recommendations from the database
   const fetchPropertyRecommendations = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:5000/api/property'}/public/properties`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiClient.get('/property/public/properties');
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('Non-JSON response:', text);
-        throw new Error('Server returned non-JSON response');
-      }
-
-      const data = await response.json();
-      const properties = data.data || [];
+      const properties = response.data.data || [];
 
       console.log('=== RAW PROPERTIES DATA ===');
       console.log('Total properties from API:', properties.length);
@@ -474,29 +419,18 @@ const SeekerDashboard = () => {
         return;
       }
 
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:5000/api/property';
-      const url = `${baseUrl}/favorites`;
+      const url = `/property/favorites`;
       console.log('Favorites API URL:', url);
-      const token = localStorage.getItem('authToken');
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-      });
+      const response = await apiClient.get(url);
 
       console.log('Favorites API response status:', response.status);
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
         console.log('Favorites data received:', data);
         setFavoritePGs(data.favorites || []);
         console.log('Favorites count:', (data.favorites || []).length);
-      } else {
-        const errorText = await response.text();
-        console.error('Favorites API error:', response.status, response.statusText, errorText);
       }
     } catch (error) {
       console.error('Error fetching favorites count:', error);
@@ -516,29 +450,18 @@ const SeekerDashboard = () => {
         return;
       }
 
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:5000/api/property';
-      const url = `${baseUrl}/user/bookings`;
+      const url = `/property/user/bookings`;
       console.log('Bookings API URL:', url);
-      const token = localStorage.getItem('authToken');
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-      });
+      const response = await apiClient.get(url);
 
       console.log('Bookings API response status:', response.status);
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
         console.log('Bookings data received:', data);
         setUpcomingBookings(data.bookings || []);
         console.log('Bookings count:', (data.bookings || []).length);
-      } else {
-        const errorText = await response.text();
-        console.error('Bookings API error:', response.status, response.statusText, errorText);
       }
     } catch (error) {
       console.error('Error fetching bookings count:', error);
