@@ -1,4 +1,3 @@
-```javascript
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -109,7 +108,7 @@ const SeekerProfile = () => {
           try {
             console.log('SeekerProfile: Fetching fresh user data from API...');
             // Replace fetch with apiClient.get
-            const response = await apiClient.get(`/ user / profile / ${ parsedUser._id } `);
+            const response = await apiClient.get(`/user/profile/${parsedUser._id}`);
             const freshData = response.data; // Assuming apiClient returns data directly or in a 'data' field
 
             if (freshData) { // Check if freshData is valid
@@ -272,7 +271,7 @@ const SeekerProfile = () => {
         // Note: Profile completion check will be done after fresh data fetch if needed
       } catch (error) {
         console.error('SeekerProfile: Error in fetchUserData:', error);
-        setError(`An error occurred: ${ error.message } `);
+        setError(`An error occurred: ${error.message}`);
         setUser(null);
         setTimeout(() => navigate("/login"), 2000);
       } finally {
@@ -339,8 +338,8 @@ const SeekerProfile = () => {
 
       console.log('SeekerProfile: Sending update payload:', updatePayload);
       console.log('SeekerProfile: User ID being used:', user._id);
-      
-      const response = await apiClient.put(`/ user / profile / ${ user._id } `, updatePayload);
+
+      const response = await apiClient.put(`/user/profile/${user._id}`, updatePayload);
       const result = response.data;
       console.log('SeekerProfile: API response:', result);
 
@@ -408,7 +407,7 @@ const SeekerProfile = () => {
 
       setSaveStatus({ type: "loading", message: "Updating password..." });
 
-      await apiClient.post(`/ user / change - password`, {
+      await apiClient.post(`/user/change-password`, {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword
       });
@@ -547,7 +546,7 @@ const SeekerProfile = () => {
                           <select
                             value={profileData.gender}
                             onChange={(e) => handleInputChange("gender", e.target.value)}
-                            className={`w - full px - 4 py - 3 border rounded - xl focus: outline - none focus: ring - 2 transition - all duration - 300 ${ fieldErrors.gender ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500' } `}
+                            className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 ${fieldErrors.gender ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500'}`}
                           >
                             <option value="">Select gender</option>
                             <option value="male">Male</option>
@@ -577,7 +576,7 @@ const SeekerProfile = () => {
                             type="tel"
                             value={profileData.phone}
                             onChange={(e) => handleInputChange("phone", e.target.value)}
-                            className={`w - full px - 4 py - 3 border rounded - xl focus: outline - none focus: ring - 2 transition - all duration - 300 ${ fieldErrors.phone ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500' } `}
+                            className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 ${fieldErrors.phone ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500'}`}
                           />
                         ) : (
                           <p className="text-gray-900 py-3 font-medium flex items-center">
@@ -601,7 +600,7 @@ const SeekerProfile = () => {
                             max={120}
                             value={profileData.age}
                             onChange={(e) => handleInputChange("age", e.target.value)}
-                            className={`w - full px - 4 py - 3 border rounded - xl focus: outline - none focus: ring - 2 transition - all duration - 300 ${ fieldErrors.age ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500' } `}
+                            className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 ${fieldErrors.age ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500'}`}
                             placeholder="Your age"
                           />
                         ) : (
@@ -619,7 +618,7 @@ const SeekerProfile = () => {
                             type="text"
                             value={profileData.occupation}
                             onChange={(e) => handleInputChange("occupation", e.target.value)}
-                            className={`w - full px - 4 py - 3 border rounded - xl focus: outline - none focus: ring - 2 transition - all duration - 300 ${ fieldErrors.occupation ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500' } `}
+                            className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 ${fieldErrors.occupation ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500'}`}
                             placeholder="e.g., Student, Software Engineer"
                           />
                         ) : (
@@ -701,13 +700,12 @@ const SeekerProfile = () => {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`fixed top - 20 right - 4 z - 50 px - 6 py - 3 rounded - xl shadow - lg ${
-  saveStatus.type === 'success'
-    ? 'bg-green-100 border border-green-300 text-green-800'
-    : saveStatus.type === 'error'
-      ? 'bg-red-100 border border-red-300 text-red-800'
-      : 'bg-blue-100 border border-blue-300 text-blue-800'
-} `}
+                className={`fixed top-20 right-4 z-50 px-6 py-3 rounded-xl shadow-lg ${saveStatus.type === 'success'
+                  ? 'bg-green-100 border border-green-300 text-green-800'
+                  : saveStatus.type === 'error'
+                    ? 'bg-red-100 border border-red-300 text-red-800'
+                    : 'bg-blue-100 border border-blue-300 text-blue-800'
+                  }`}
               >
                 {saveStatus.message}
               </motion.div>
@@ -749,7 +747,7 @@ const SeekerProfile = () => {
                     <button
                       disabled={!isProfileComplete(profileData)}
                       onClick={() => setShowCompletionModal(false)}
-                      className={`flex - 1 px - 4 py - 2 rounded - lg ${ isProfileComplete(profileData) ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed' } `}
+                      className={`flex-1 px-4 py-2 rounded-lg ${isProfileComplete(profileData) ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
                     >
                       Continue
                     </button>
@@ -836,5 +834,3 @@ const SeekerProfile = () => {
 };
 
 export default SeekerProfile;
-
-
