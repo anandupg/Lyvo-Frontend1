@@ -786,8 +786,12 @@ const SeekerRoomDetails = () => {
                                                 <div className="flex items-center gap-4">
                                                     <div className="relative">
                                                         <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
-                                                            {tenant.profilePicture ? (
-                                                                <img src={tenant.profilePicture} alt={tenant.name} className="w-full h-full object-cover" />
+                                                            {(tenant.profilePicture || tenant.userId?.profilePicture) ? (
+                                                                <img
+                                                                    src={tenant.profilePicture || tenant.userId?.profilePicture}
+                                                                    alt={tenant.userName || 'Resident'}
+                                                                    className="w-full h-full object-cover"
+                                                                />
                                                             ) : (
                                                                 <User className="w-6 h-6 text-blue-400" />
                                                             )}
@@ -799,30 +803,24 @@ const SeekerRoomDetails = () => {
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center justify-between">
                                                             <h3 className="font-bold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
-                                                                {tenant.name || 'Resident'}
+                                                                {tenant.userName || 'Resident'}
                                                             </h3>
-                                                            {/* Placeholder Match Score */}
-                                                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                                                                {(85 + (idx * 2))}% Match
-                                                            </span>
                                                         </div>
-                                                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
-                                                            <p className="text-xs text-gray-500 flex items-center gap-1 capitalize">
-                                                                <User className="w-3 h-3" /> {tenant.occupation || 'Professional'}
-                                                            </p>
+                                                        <div className="flex flex-col gap-1 mt-1">
                                                             <p className="text-xs text-gray-500 flex items-center gap-1">
-                                                                <Calendar className="w-3 h-3" /> Since {tenant.moveInDate ? new Date(tenant.moveInDate).getFullYear() : '2024'}
+                                                                <Mail className="w-3 h-3 text-blue-500" /> {tenant.userEmail}
+                                                            </p>
+                                                            {tenant.userPhone && (
+                                                                <p className="text-xs text-gray-500 flex items-center gap-1">
+                                                                    <Phone className="w-3 h-3 text-green-500" /> {tenant.userPhone}
+                                                                </p>
+                                                            )}
+                                                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                                                                <Calendar className="w-3 h-3 text-purple-500" /> Member since {tenant.actualCheckInDate ? new Date(tenant.actualCheckInDate).getFullYear() : new Date().getFullYear()}
                                                             </p>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                {tenant.bio && (
-                                                    <div className="mt-3 pt-3 border-t border-gray-100">
-                                                        <p className="text-xs text-gray-600 italic line-clamp-2">
-                                                            "{tenant.bio}"
-                                                        </p>
-                                                    </div>
-                                                )}
                                             </motion.div>
                                         ))}
                                     </div>
