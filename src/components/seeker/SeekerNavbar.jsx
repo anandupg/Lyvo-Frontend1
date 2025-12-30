@@ -60,14 +60,14 @@ const SeekerNavbar = ({ onMenuToggle }) => {
   const fetchNotifications = async () => {
     try {
       setNotificationsLoading(true);
-      if (!userData._id) {
+      if (!user._id) {
         return;
       }
 
       // Use apiClient which handles base URL and Authorization automatically
       const response = await apiClient.get('/notifications', {
         headers: {
-          'x-user-id': userData._id
+          'x-user-id': user._id
         }
       });
 
@@ -90,13 +90,13 @@ const SeekerNavbar = ({ onMenuToggle }) => {
     try {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
 
-      if (!userData._id) {
+      if (!userData._id && !user._id) {
         return;
       }
 
       const response = await apiClient.patch(`/notifications/${notificationId}/read`, {}, {
         headers: {
-          'x-user-id': userData._id
+          'x-user-id': userData._id || user._id
         }
       });
 
@@ -114,13 +114,13 @@ const SeekerNavbar = ({ onMenuToggle }) => {
     try {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
 
-      if (!userData._id) {
+      if (!userData._id && !user._id) {
         return;
       }
 
       const response = await apiClient.patch('/notifications/mark-all-read', {}, {
         headers: {
-          'x-user-id': userData._id
+          'x-user-id': userData._id || user._id
         }
       });
 
@@ -138,13 +138,13 @@ const SeekerNavbar = ({ onMenuToggle }) => {
     try {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
 
-      if (!userData._id) {
+      if (!userData._id && !user._id) {
         return;
       }
 
       const response = await apiClient.delete(`/notifications/${notificationId}`, {
         headers: {
-          'x-user-id': userData._id
+          'x-user-id': userData._id || user._id
         }
       });
 

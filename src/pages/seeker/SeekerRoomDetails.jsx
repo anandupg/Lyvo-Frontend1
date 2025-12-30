@@ -11,6 +11,7 @@ import SeekerLayout from '../../components/seeker/SeekerLayout';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import apiClient from '../../utils/apiClient';
 
 // Fix Leaflet default marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
