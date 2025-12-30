@@ -30,6 +30,7 @@ import {
   LogIn
 } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
+import apiClient from '../../utils/apiClient';
 import ContactOwnerModal from '../../components/ContactOwnerModal';
 
 const SeekerBookings = () => {
@@ -76,21 +77,11 @@ const SeekerBookings = () => {
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        console.error('No auth token found');
-        setLoading(false);
-        return;
-      }
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${baseUrl}/property/user/bookings`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      setLoading(true);
+      const response = await apiClient.get('/property/user/bookings');
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
         console.log('Bookings data received:', data);
 
         // Map backend snapshots to frontend expectations
@@ -169,18 +160,9 @@ const SeekerBookings = () => {
 
     try {
       setCancelling(true);
-      const token = localStorage.getItem('authToken');
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await apiClient.delete(`/property/bookings/${bookingToCancel._id}`);
 
-      const response = await fetch(`${baseUrl}/property/bookings/${bookingToCancel._id}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
+      if (response.status === 200) {
         toast({
           title: "Success",
           description: bookingToCancel?.status === 'rejected'
@@ -195,7 +177,8 @@ const SeekerBookings = () => {
         // Close modal
         closeCancelModal();
       } else {
-        const error = await response.json();
+
+        const error = response.data || {};
         toast({
           title: "Error",
           description: error.message || "Failed to cancel booking",
@@ -220,21 +203,12 @@ const SeekerBookings = () => {
 
     try {
       setCheckingIn(true);
-      const token = localStorage.getItem('authToken');
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-      const response = await fetch(`${baseUrl}/property/user/check-in/${bookingToCheckIn._id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          checkInDate: checkInDate
-        })
+      const response = await apiClient.post(`/property/user/check-in/${bookingToCheckIn._id}`, {
+        checkInDate: checkInDate
       });
 
-      if (response.ok) {
+      if (response.status === 200) {
         toast({
           title: "Success",
           description: "Check-in date marked successfully",
@@ -245,7 +219,8 @@ const SeekerBookings = () => {
         // Close modal
         closeCheckInModal();
       } else {
-        const error = await response.json();
+
+        const error = response.data || {};
         toast({
           title: "Error",
           description: error.message || "Failed to mark check-in date",

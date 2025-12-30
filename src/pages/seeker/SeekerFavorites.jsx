@@ -24,6 +24,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
+import apiClient from '../../utils/apiClient';
 import ContactOwnerModal from '../../components/ContactOwnerModal';
 
 const SeekerFavorites = () => {
@@ -62,21 +63,10 @@ const SeekerFavorites = () => {
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        console.error('No auth token found');
-        setLoading(false);
-        return;
-      }
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${baseUrl}/property/favorites`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await apiClient.get('/property/favorites');
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
         console.log('Favorites data received:', data);
 
         // Map backend fields to frontend expectations
@@ -113,23 +103,14 @@ const SeekerFavorites = () => {
     if (!userId) return;
 
     try {
-      const token = localStorage.getItem('authToken');
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${baseUrl}/property/favorites/remove`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          userId: userId,
-          propertyId: propertyId,
-          roomId: roomId
-        })
+      const response = await apiClient.post('/property/favorites/remove', {
+        userId: userId,
+        propertyId: propertyId,
+        roomId: roomId
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
         if (data.success) {
           // Remove from local state
           setFavorites(prev => prev.filter(fav => fav._id !== favoriteId));
