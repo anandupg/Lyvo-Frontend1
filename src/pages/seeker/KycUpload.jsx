@@ -31,6 +31,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
 import { useToast } from '../../hooks/use-toast';
+import apiClient from '../../utils/apiClient';
 
 const KycUpload = () => {
   const navigate = useNavigate();
@@ -296,21 +297,10 @@ const KycUpload = () => {
   const checkAadharApprovalStatus = async () => {
     try {
       setCheckingApprovalStatus(true);
-      const authToken = localStorage.getItem('authToken');
-      if (!authToken) {
-        console.error('No auth token found');
-        return;
-      }
+      const response = await apiClient.get('/user/aadhar-status');
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/user/aadhar-status`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
         console.log('[FRONTEND DEBUG] Aadhar approval status response:', data);
         setAadharApprovalStatus(data.aadharStatus);
         console.log('[FRONTEND DEBUG] Set aadharApprovalStatus to:', data.aadharStatus);
@@ -326,7 +316,6 @@ const KycUpload = () => {
   const checkKycStatus = async () => {
     try {
       setLoading(true);
-      const authToken = localStorage.getItem('authToken');
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       const userId = userData.id || userData._id;
 
@@ -335,15 +324,10 @@ const KycUpload = () => {
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/user/profile/${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await apiClient.get(`/user/profile/${userId}`);
 
-      if (response.ok) {
-        const userData = await response.json();
+      if (response.status === 200) {
+        const userData = response.data;
         setKycStatus(userData.kycStatus || 'not_verified');
         setVerificationStatus(userData.kycStatus || 'not_verified');
       }
@@ -510,24 +494,14 @@ const KycUpload = () => {
     }, 200);
 
     try {
-      const authToken = localStorage.getItem('authToken');
-      const formData = new FormData();
-
-      formData.append('frontImage', frontImage);
-      formData.append('idType', selectedIdType);
-      formData.append('idNumber', ''); // Will be extracted by OCR
-
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/user/upload-kyc`, {
-        method: 'POST',
+      const response = await apiClient.post('/user/upload-kyc', formData, {
         headers: {
-          'Authorization': `Bearer ${authToken}`
-        },
-        body: formData
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
-      const result = await response.json();
-
-      if (response.ok) {
+      const result = response.data;
+      if (response.status === 200) {
         clearInterval(progressInterval);
         setVerificationProgress(100);
 

@@ -49,6 +49,7 @@ import {
   Printer
 } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
+import apiClient from '../../utils/apiClient';
 
 const BasicRoomDashboard = () => {
   const navigate = useNavigate();
@@ -74,31 +75,24 @@ const BasicRoomDashboard = () => {
       setLoading(true);
       const authToken = localStorage.getItem('authToken');
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      
+
       if (!authToken) {
         navigate('/login');
         return;
       }
 
       // Fetch user's bookings to find confirmed one
-      const response = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002'}/api/bookings/user?userId=${user.id || user._id || user.userId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
-        },
-      });
+      const response = await apiClient.get('/property/user/bookings');
 
-      if (response.ok) {
-        const data = await response.json();
-        const bookings = data.bookings || [];
-        
+      if (response.status === 200) {
+        const bookings = response.data.bookings || [];
+
         // Find confirmed booking
-        const confirmedBooking = bookings.find(booking => 
-          booking.status === 'confirmed' && 
+        const confirmedBooking = bookings.find(booking =>
+          booking.status === 'confirmed' &&
           booking.payment?.paymentStatus === 'completed'
         );
-        
+
         if (confirmedBooking) {
           await fetchBookingDetails(confirmedBooking._id);
         } else {
@@ -118,53 +112,51 @@ const BasicRoomDashboard = () => {
   const fetchBookingDetails = async (bookingId) => {
     try {
       const authToken = localStorage.getItem('authToken');
-      
+
       if (!authToken) {
         navigate('/login');
         return;
       }
 
       // Fetch booking details
-      const bookingResponse = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002'}/api/bookings/${bookingId}`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const bookingResponse = await apiClient.get(`/property/bookings/${bookingId}`);
 
-      if (!bookingResponse.ok) {
+      if (bookingResponse.status !== 200) {
         throw new Error('Failed to fetch booking details');
       }
 
-      const bookingData = await bookingResponse.json();
+      const bookingData = bookingResponse.data;
       setBooking(bookingData.booking);
 
       // Fetch property details
       if (bookingData.booking.propertyId) {
-        const propertyResponse = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002'}/api/public/properties/${bookingData.booking.propertyId}`);
-        if (propertyResponse.ok) {
-          const propertyData = await propertyResponse.json();
-          setProperty(propertyData.property);
-          
-          // Find the specific room
-          if (propertyData.property.rooms) {
-            const roomData = propertyData.property.rooms.find(r => r._id === bookingData.booking.roomId);
-            setRoom(roomData);
+        try {
+          const propertyResponse = await apiClient.get(`/property/public/properties/${bookingData.booking.propertyId}`);
+          if (propertyResponse.status === 200) {
+            const propertyData = propertyResponse.data;
+            setProperty(propertyData.property);
+
+            // Find the specific room
+            if (propertyData.property.rooms) {
+              const roomData = propertyData.property.rooms.find(r => r._id === bookingData.booking.roomId);
+              setRoom(roomData);
+            }
           }
+        } catch (propError) {
+          console.error('Error fetching property details:', propError);
         }
       }
 
       // Fetch owner details (if available)
       if (bookingData.booking.ownerId) {
-        const ownerResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4002/api'}/user/profile/${bookingData.booking.ownerId}`, {
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'application/json'
+        try {
+          const ownerResponse = await apiClient.get(`/user/profile/${bookingData.booking.ownerId}`);
+          if (ownerResponse.status === 200) {
+            const ownerData = ownerResponse.data;
+            setOwner(ownerData);
           }
-        });
-        if (ownerResponse.ok) {
-          const ownerData = await ownerResponse.json();
-          setOwner(ownerData);
+        } catch (ownerError) {
+          console.error('Error fetching owner details:', ownerError);
         }
       }
 
@@ -302,7 +294,7 @@ const BasicRoomDashboard = () => {
 
   // Check if booking is confirmed
   const isBookingConfirmed = booking.status === 'confirmed' || booking.status === 'approved';
-  
+
   if (!isBookingConfirmed) {
     return (
       <SeekerLayout>
@@ -340,8 +332,8 @@ const BasicRoomDashboard = () => {
             {/* Property Image */}
             {property?.images && property.images.length > 0 && (
               <div className="relative h-64 sm:h-80 lg:h-96">
-                <img 
-                  src={property.images[0]} 
+                <img
+                  src={property.images[0]}
                   alt={property.propertyName}
                   className="w-full h-full object-cover"
                 />
@@ -391,7 +383,7 @@ const BasicRoomDashboard = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="mt-4 lg:mt-0 lg:ml-6">
                   <div className="text-right">
                     <div className="text-3xl font-bold text-gray-900">
@@ -510,7 +502,7 @@ const BasicRoomDashboard = () => {
                       <span className="ml-1">View All</span>
                     </button>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {Object.entries(property.amenities).slice(0, expandedSections.amenities ? undefined : 6).map(([amenity, available]) => {
                       if (available) {
@@ -564,9 +556,9 @@ const BasicRoomDashboard = () => {
                     <p className="font-semibold text-gray-900">{owner.name || 'Host Name'}</p>
                     <p className="text-sm text-gray-600">{owner.email}</p>
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <button 
+                    <button
                       onClick={contactOwner}
                       className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
                     >
