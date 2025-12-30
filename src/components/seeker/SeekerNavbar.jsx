@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import apiClient from '../../utils/apiClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu,
@@ -59,23 +60,19 @@ const SeekerNavbar = ({ onMenuToggle }) => {
   const fetchNotifications = async () => {
     try {
       setNotificationsLoading(true);
-      const authToken = localStorage.getItem('authToken');
-      const userData = JSON.parse(localStorage.getItem('user') || '{}');
-
-      if (!authToken || !userData._id) {
+      if (!userData._id) {
         return;
       }
 
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${baseUrl}/notifications`, {
+      // Use apiClient which handles base URL and Authorization automatically
+      const response = await apiClient.get('/notifications', {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
           'x-user-id': userData._id
         }
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
         if (data.success) {
           setNotifications(data.data || []);
           setUnreadCount(data.unread_count || 0);
@@ -91,23 +88,19 @@ const SeekerNavbar = ({ onMenuToggle }) => {
   // Mark notification as read
   const markAsRead = async (notificationId) => {
     try {
-      const authToken = localStorage.getItem('authToken');
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
 
-      if (!authToken || !userData._id) {
+      if (!userData._id) {
         return;
       }
 
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${baseUrl}/notifications/${notificationId}/read`, {
-        method: 'PATCH',
+      const response = await apiClient.patch(`/notifications/${notificationId}/read`, {}, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
           'x-user-id': userData._id
         }
       });
 
-      if (response.ok) {
+      if (response.status === 200) {
         // Refresh notifications
         fetchNotifications();
       }
@@ -119,23 +112,19 @@ const SeekerNavbar = ({ onMenuToggle }) => {
   // Mark all notifications as read
   const markAllAsRead = async () => {
     try {
-      const authToken = localStorage.getItem('authToken');
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
 
-      if (!authToken || !userData._id) {
+      if (!userData._id) {
         return;
       }
 
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${baseUrl}/notifications/mark-all-read`, {
-        method: 'PATCH',
+      const response = await apiClient.patch('/notifications/mark-all-read', {}, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
           'x-user-id': userData._id
         }
       });
 
-      if (response.ok) {
+      if (response.status === 200) {
         // Refresh notifications
         fetchNotifications();
       }
@@ -147,23 +136,19 @@ const SeekerNavbar = ({ onMenuToggle }) => {
   // Delete notification
   const deleteNotification = async (notificationId) => {
     try {
-      const authToken = localStorage.getItem('authToken');
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
 
-      if (!authToken || !userData._id) {
+      if (!userData._id) {
         return;
       }
 
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${baseUrl}/notifications/${notificationId}`, {
-        method: 'DELETE',
+      const response = await apiClient.delete(`/notifications/${notificationId}`, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
           'x-user-id': userData._id
         }
       });
 
-      if (response.ok) {
+      if (response.status === 200) {
         // Refresh notifications
         fetchNotifications();
       }

@@ -30,6 +30,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import axios from 'axios';
+import apiClient from '../../utils/apiClient';
 import ProfilePictureUpload from '../../components/ProfilePictureUpload';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select.jsx';
 import { Button } from '../../components/ui/button';
@@ -98,8 +99,9 @@ const Settings = () => {
       const token = localStorage.getItem('authToken');
       const current = JSON.parse(localStorage.getItem('user') || 'null');
       if (!token || !current?._id) return;
-      const base = import.meta.env.VITE_API_URL || 'http://localhost:4002/api';
-      const { data } = await axios.get(`${base}/user/profile/${current._id}`, { headers: { Authorization: `Bearer ${token}` } });
+
+      const response = await apiClient.get(`/user/profile/${current._id}`);
+      const data = response.data;
       if (data?._id) {
         localStorage.setItem('user', JSON.stringify(data));
         setUser(data);
@@ -281,12 +283,7 @@ const Settings = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:4002/api/user/aadhar-status', {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await apiClient.get('/user/aadhar-status');
 
       if (response.ok) {
         const data = await response.json();
@@ -312,12 +309,7 @@ const Settings = () => {
         return;
       }
 
-      const response = await fetch(`http://localhost:4002/api/user/profile/${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await apiClient.get(`/user/profile/${userId}`);
 
       if (response.ok) {
         const userData = await response.json();
@@ -480,12 +472,10 @@ const Settings = () => {
       formData.append('idType', selectedIdType);
       formData.append('idNumber', '');
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/user/upload-kyc`, {
-        method: 'POST',
+      const response = await apiClient.post('/user/upload-kyc', formData, {
         headers: {
-          'Authorization': `Bearer ${authToken}`
-        },
-        body: formData
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
       const result = await response.json();
@@ -604,10 +594,7 @@ const Settings = () => {
     try {
       setProfileUpdating(true);
       const token = localStorage.getItem('authToken');
-      await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:4002/api'}/user/profile/${user._id}`,
-        { profilePicture: null },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await apiClient.put(`/user/profile/${user._id}`, { profilePicture: null });
       const updated = { ...user, profilePicture: null };
       localStorage.setItem('user', JSON.stringify(updated));
       setUser(updated);
@@ -647,12 +634,7 @@ const Settings = () => {
       };
 
       // Call update API
-      const base = import.meta.env.VITE_API_URL || 'http://localhost:4002/api';
-      const { data } = await axios.put(
-        `${base}/user/profile/${user._id}`,
-        updateData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const { data } = await apiClient.put(`/user/profile/${user._id}`, updateData);
 
       // Update local storage and state
       if (data?.user) {
@@ -779,12 +761,7 @@ const Settings = () => {
       }
 
       // Call change password API
-      const base = import.meta.env.VITE_API_URL || 'http://localhost:4002/api';
-      await axios.post(
-        `${base}/user/change-password`,
-        { currentPassword, newPassword },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await apiClient.post('/user/change-password', { currentPassword, newPassword });
 
       // Reset form and validation states
       document.getElementById('current-password').value = '';
@@ -881,8 +858,8 @@ const Settings = () => {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors duration-200 ${activeTab === tab.id
-                      ? 'border-red-500 text-red-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-red-500 text-red-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -1182,7 +1159,7 @@ const Settings = () => {
                                   </div>
                                   <div className="text-center">
                                     <div className={`text-2xl font-bold ${ocrResults.confidence > 70 ? 'text-green-600' :
-                                        ocrResults.confidence > 40 ? 'text-yellow-600' : 'text-red-600'
+                                      ocrResults.confidence > 40 ? 'text-yellow-600' : 'text-red-600'
                                       }`}>
                                       {Math.round(ocrResults.confidence || 0)}%
                                     </div>
@@ -1417,8 +1394,8 @@ const Settings = () => {
                           type={showPassword ? "text" : "password"}
                           id="current-password"
                           className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${passwordErrors.currentPassword
-                              ? 'border-red-500 bg-red-50'
-                              : 'border-gray-300'
+                            ? 'border-red-500 bg-red-50'
+                            : 'border-gray-300'
                             }`}
                           required
                         />
@@ -1447,8 +1424,8 @@ const Settings = () => {
                           type={showNewPassword ? "text" : "password"}
                           id="new-password"
                           className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${passwordErrors.newPassword
-                              ? 'border-red-500 bg-red-50'
-                              : 'border-gray-300'
+                            ? 'border-red-500 bg-red-50'
+                            : 'border-gray-300'
                             }`}
                           required
                           onChange={(e) => {
@@ -1482,8 +1459,8 @@ const Settings = () => {
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-xs text-gray-600">Password Strength:</span>
                             <span className={`text-xs font-medium ${passwordStrength < 40 ? 'text-red-600' :
-                                passwordStrength < 60 ? 'text-orange-600' :
-                                  passwordStrength < 80 ? 'text-yellow-600' : 'text-green-600'
+                              passwordStrength < 60 ? 'text-orange-600' :
+                                passwordStrength < 80 ? 'text-yellow-600' : 'text-green-600'
                               }`}>
                               {getPasswordStrengthText(passwordStrength)}
                             </span>
@@ -1556,8 +1533,8 @@ const Settings = () => {
                           type={showConfirmPassword ? "text" : "password"}
                           id="confirm-password"
                           className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${passwordErrors.confirmPassword
-                              ? 'border-red-500 bg-red-50'
-                              : 'border-gray-300'
+                            ? 'border-red-500 bg-red-50'
+                            : 'border-gray-300'
                             }`}
                           required
                           onChange={(e) => {

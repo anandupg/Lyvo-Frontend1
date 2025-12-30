@@ -1,10 +1,9 @@
+```javascript
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import {
-  Edit, Save, X, User, Mail, Phone, MapPin, Calendar, Shield,
-  Lock, Eye, EyeOff, AlertCircle
-} from "lucide-react";
+import { Edit, Save, X, User, MapPin, Phone, Mail, Calendar, Shield, AlertCircle, Camera, Lock, Eye, EyeOff } from "lucide-react";
+import apiClient from "../../utils/apiClient";
 import ProfilePictureUpload from "../../components/ProfilePictureUpload";
 import SeekerLayout from "../../components/seeker/SeekerLayout";
 
@@ -84,7 +83,7 @@ const SeekerProfile = () => {
         }
 
         setUser(parsedUser);
-        
+
         // Debug logging
         console.log('SeekerProfile: Loading user data from localStorage:', {
           id: parsedUser._id,
@@ -94,7 +93,7 @@ const SeekerProfile = () => {
           phone: parsedUser.phone,
           occupation: parsedUser.occupation
         });
-        
+
         // Check if we need to fetch fresh data from API
         const shouldFetchFreshData = !parsedUser.age || !parsedUser.gender || !parsedUser.phone || !parsedUser.occupation;
         console.log('SeekerProfile: Should fetch fresh data from API:', shouldFetchFreshData);
@@ -104,31 +103,23 @@ const SeekerProfile = () => {
           phone: !parsedUser.phone,
           occupation: !parsedUser.occupation
         });
-        
+
         // If localStorage data is incomplete, fetch fresh data from API
         if (shouldFetchFreshData) {
           try {
             console.log('SeekerProfile: Fetching fresh user data from API...');
-            const freshResponse = await fetch(
-              `${import.meta.env.VITE_API_URL || "http://localhost:4002/api"}/user/profile/${parsedUser._id}`,
-              {
-                method: "GET",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`
-                }
-              }
-            );
-            
-            if (freshResponse.ok) {
-              const freshData = await freshResponse.json();
+            // Replace fetch with apiClient.get
+            const response = await apiClient.get(`/ user / profile / ${ parsedUser._id } `);
+            const freshData = response.data; // Assuming apiClient returns data directly or in a 'data' field
+
+            if (freshData) { // Check if freshData is valid
               console.log('SeekerProfile: Fresh data from API:', freshData);
-              
+
               // Update localStorage with fresh data
               const updatedUser = { ...parsedUser, ...freshData };
               localStorage.setItem("user", JSON.stringify(updatedUser));
               setUser(updatedUser);
-              
+
               // Use fresh data for profileData
               setProfileData(prev => ({
                 ...prev,
@@ -147,7 +138,7 @@ const SeekerProfile = () => {
                   ? new Date(freshData.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })
                   : "Recently"
               }));
-              
+
               // Check profile completion with fresh data
               const needsCompletion = [
                 !freshData.phone,
@@ -155,7 +146,7 @@ const SeekerProfile = () => {
                 !freshData.occupation,
                 !freshData.gender,
               ].some(Boolean);
-              
+
               console.log('SeekerProfile: Profile completion check with fresh data:', {
                 phone: freshData.phone,
                 age: freshData.age,
@@ -163,7 +154,7 @@ const SeekerProfile = () => {
                 gender: freshData.gender,
                 needsCompletion
               });
-              
+
               if (needsCompletion) {
                 setIsEditing(true);
                 setShowCompletionModal(true);
@@ -188,7 +179,7 @@ const SeekerProfile = () => {
                   ? new Date(parsedUser.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })
                   : "Recently"
               }));
-              
+
               // Check profile completion with localStorage data
               const needsCompletion = [
                 !parsedUser.phone,
@@ -196,7 +187,7 @@ const SeekerProfile = () => {
                 !parsedUser.occupation,
                 !parsedUser.gender,
               ].some(Boolean);
-              
+
               if (needsCompletion) {
                 setIsEditing(true);
                 setShowCompletionModal(true);
@@ -222,7 +213,7 @@ const SeekerProfile = () => {
                 ? new Date(parsedUser.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })
                 : "Recently"
             }));
-            
+
             // Check profile completion with localStorage data
             const needsCompletion = [
               !parsedUser.phone,
@@ -230,7 +221,7 @@ const SeekerProfile = () => {
               !parsedUser.occupation,
               !parsedUser.gender,
             ].some(Boolean);
-            
+
             if (needsCompletion) {
               setIsEditing(true);
               setShowCompletionModal(true);
@@ -255,7 +246,7 @@ const SeekerProfile = () => {
               ? new Date(parsedUser.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })
               : "Recently"
           }));
-          
+
           // Check profile completion with localStorage data
           const needsCompletion = [
             !parsedUser.phone,
@@ -263,7 +254,7 @@ const SeekerProfile = () => {
             !parsedUser.occupation,
             !parsedUser.gender,
           ].some(Boolean);
-          
+
           console.log('SeekerProfile: Profile completion check with localStorage data:', {
             phone: parsedUser.phone,
             age: parsedUser.age,
@@ -271,7 +262,7 @@ const SeekerProfile = () => {
             gender: parsedUser.gender,
             needsCompletion
           });
-          
+
           if (needsCompletion) {
             setIsEditing(true);
             setShowCompletionModal(true);
@@ -281,7 +272,7 @@ const SeekerProfile = () => {
         // Note: Profile completion check will be done after fresh data fetch if needed
       } catch (error) {
         console.error('SeekerProfile: Error in fetchUserData:', error);
-        setError(`An error occurred: ${error.message}`);
+        setError(`An error occurred: ${ error.message } `);
         setUser(null);
         setTimeout(() => navigate("/login"), 2000);
       } finally {
@@ -321,7 +312,7 @@ const SeekerProfile = () => {
       if (!profileData.occupation || String(profileData.occupation).trim().length < 2) {
         errors.occupation = 'Occupation is required.';
       }
-      if (!profileData.gender || !['male','female','other'].includes(String(profileData.gender))) {
+      if (!profileData.gender || !['male', 'female', 'other'].includes(String(profileData.gender))) {
         errors.gender = 'Select a gender option.';
       }
 
@@ -345,36 +336,19 @@ const SeekerProfile = () => {
         gender: profileData.gender || null,
         bio: profileData.bio
       };
-      
+
       console.log('SeekerProfile: Sending update payload:', updatePayload);
       console.log('SeekerProfile: User ID being used:', user._id);
-      console.log('SeekerProfile: API URL:', `${import.meta.env.VITE_API_URL || "http://localhost:4002/api"}/user/profile/${user._id}`);
       
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:4002/api"}/user/profile/${user._id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify(updatePayload)
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update profile");
-      }
-
-      const result = await response.json();
+      const response = await apiClient.put(`/ user / profile / ${ user._id } `, updatePayload);
+      const result = response.data;
       console.log('SeekerProfile: API response:', result);
-      
+
       const currentUser = JSON.parse(localStorage.getItem("user"));
       const updatedUser = { ...currentUser, ...result.user };
       localStorage.setItem("user", JSON.stringify(updatedUser));
       setUser(updatedUser);
-      
+
       // Update profileData state with the new values
       setProfileData(prev => ({
         ...prev,
@@ -389,14 +363,14 @@ const SeekerProfile = () => {
         bio: result.user.bio || "",
         isVerified: result.user.isVerified || false
       }));
-      
+
       console.log('SeekerProfile: Updated profileData:', {
         age: result.user.age,
         gender: result.user.gender,
         phone: result.user.phone,
         occupation: result.user.occupation
       });
-      
+
       setIsEditing(false);
       setSaveStatus({ type: "success", message: "Profile updated successfully!" });
       window.dispatchEvent(new Event("lyvo-profile-update"));
@@ -433,30 +407,11 @@ const SeekerProfile = () => {
       }
 
       setSaveStatus({ type: "loading", message: "Updating password..." });
-      const token = localStorage.getItem("authToken");
-      if (!token) {
-        throw new Error("No authentication token found");
-      }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:4002/api"}/user/change-password`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            currentPassword: passwordData.currentPassword,
-            newPassword: passwordData.newPassword
-          })
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update password");
-      }
+      await apiClient.post(`/ user / change - password`, {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      });
 
       setSaveStatus({ type: "success", message: "Password updated successfully!" });
       setShowPasswordModal(false);
@@ -502,379 +457,379 @@ const SeekerProfile = () => {
           </div>
         </div>
       ) : (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="pt-4 min-h-screen bg-gradient-to-br from-gray-50 to-white"
-      >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-          >
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-              <div className="relative h-48 bg-gradient-to-r from-red-500/10 via-red-600/10 to-red-700/10">
-                <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent" />
-                <div className="absolute bottom-6 left-8 flex items-end space-x-6">
-                  <div className="relative group">
-                    <ProfilePictureUpload
-                      currentImage={profileData.profilePicture}
-                      onImageUpdate={handleProfilePictureUpdate}
-                      className="w-24 h-24"
-                    />
-                    {profileData.isVerified && (
-                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
-                        <Shield className="w-3 h-3 text-white" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-gray-900 pb-2">
-                    <h1 className="text-3xl font-bold mb-1">{profileData.name || 'User'}</h1>
-                    <p className="text-gray-600 flex items-center space-x-2">
-                      <Calendar className="w-4 h-4" />
-                      <span>Joined {profileData.joinDate || 'Recently'}</span>
-                    </p>
-                  </div>
-                </div>
-                <div className="absolute top-6 right-8">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setIsEditing(!isEditing)}
-                    className="bg-white/90 backdrop-blur-sm text-gray-700 px-4 py-2 rounded-xl font-medium flex items-center space-x-2 shadow-lg hover:bg-white transition-all duration-300"
-                  >
-                    {isEditing ? <X className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
-                    <span>{isEditing ? "Cancel" : "Edit"}</span>
-                  </motion.button>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">Personal Information</h2>
-                    <div className="flex items-center space-x-2">
-                      <div className="flex items-center space-x-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
-                        <Shield className="w-4 h-4" />
-                        <span>Verified</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={profileData.name}
-                          onChange={(e) => handleInputChange("name", e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all duration-300"
-                        />
-                      ) : (
-                        <p className="text-gray-900 py-3 font-medium">{profileData.name}</p>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="pt-4 min-h-screen bg-gradient-to-br from-gray-50 to-white"
+        >
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+                <div className="relative h-48 bg-gradient-to-r from-red-500/10 via-red-600/10 to-red-700/10">
+                  <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent" />
+                  <div className="absolute bottom-6 left-8 flex items-end space-x-6">
+                    <div className="relative group">
+                      <ProfilePictureUpload
+                        currentImage={profileData.profilePicture}
+                        onImageUpdate={handleProfilePictureUpdate}
+                        className="w-24 h-24"
+                      />
+                      {profileData.isVerified && (
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
+                          <Shield className="w-3 h-3 text-white" />
+                        </div>
                       )}
                     </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Gender</label>
-                      {isEditing ? (
-                        <select
-                          value={profileData.gender}
-                          onChange={(e) => handleInputChange("gender", e.target.value)}
-                          className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 ${fieldErrors.gender ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500'}`}
-                        >
-                          <option value="">Select gender</option>
-                          <option value="male">Male</option>
-                          <option value="female">Female</option>
-                          <option value="other">Other</option>
-                        </select>
-                      ) : (
-                        <p className="text-gray-900 py-3 font-medium">{profileData.gender ? profileData.gender.charAt(0).toUpperCase() + profileData.gender.slice(1) : "Not provided"}</p>
-                      )}
-                      {isEditing && fieldErrors.gender && (
-                        <p className="mt-1 text-xs text-red-600">{fieldErrors.gender}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
-                      <p className="text-gray-900 py-3 font-medium flex items-center">
-                        <Mail className="w-4 h-4 mr-2 text-gray-400" />
-                        {profileData.email}
+                    <div className="text-gray-900 pb-2">
+                      <h1 className="text-3xl font-bold mb-1">{profileData.name || 'User'}</h1>
+                      <p className="text-gray-600 flex items-center space-x-2">
+                        <Calendar className="w-4 h-4" />
+                        <span>Joined {profileData.joinDate || 'Recently'}</span>
                       </p>
                     </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
-                      {isEditing ? (
-                        <input
-                          type="tel"
-                          value={profileData.phone}
-                          onChange={(e) => handleInputChange("phone", e.target.value)}
-                          className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 ${fieldErrors.phone ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500'}`}
-                        />
-                      ) : (
-                        <p className="text-gray-900 py-3 font-medium flex items-center">
-                          <Phone className="w-4 h-4 mr-2 text-gray-400" />
-                          {profileData.phone || "Not provided"}
-                        </p>
-                      )}
-                      {isEditing && fieldErrors.phone && (
-                        <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>
-                      )}
-                    </div>
-
-                    {/* Location field removed per requirement */}
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Age</label>
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          min={0}
-                          max={120}
-                          value={profileData.age}
-                          onChange={(e) => handleInputChange("age", e.target.value)}
-                          className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 ${fieldErrors.age ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500'}`}
-                          placeholder="Your age"
-                        />
-                      ) : (
-                        <p className="text-gray-900 py-3 font-medium">{profileData.age || "Not provided"}</p>
-                      )}
-                      {isEditing && fieldErrors.age && (
-                        <p className="mt-1 text-xs text-red-600">{fieldErrors.age}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Occupation</label>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={profileData.occupation}
-                          onChange={(e) => handleInputChange("occupation", e.target.value)}
-                          className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 ${fieldErrors.occupation ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500'}`}
-                          placeholder="e.g., Student, Software Engineer"
-                        />
-                      ) : (
-                        <p className="text-gray-900 py-3 font-medium">{profileData.occupation || "Not provided"}</p>
-                      )}
-                      {isEditing && fieldErrors.occupation && (
-                        <p className="mt-1 text-xs text-red-600">{fieldErrors.occupation}</p>
-                      )}
-                    </div>
                   </div>
-
-                  {/* Bio field removed per requirement */}
-                </div>
-              </motion.div>
-
-            </div>
-
-            <div className="space-y-6">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-              >
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">Trust Score</h3>
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <span className="text-xl font-bold text-white">{profileData.trustScore}</span>
-                    </div>
-                    <p className="text-sm text-gray-600">Excellent Profile</p>
-                  </div>
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-              >
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => setShowPasswordModal(true)}
-                      className="w-full px-4 py-3 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all duration-300 flex items-center justify-center space-x-2"
+                  <div className="absolute top-6 right-8">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setIsEditing(!isEditing)}
+                      className="bg-white/90 backdrop-blur-sm text-gray-700 px-4 py-2 rounded-xl font-medium flex items-center space-x-2 shadow-lg hover:bg-white transition-all duration-300"
                     >
-                      <Lock className="w-4 h-4" />
-                      <span>Change Password</span>
-                    </button>
+                      {isEditing ? <X className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
+                      <span>{isEditing ? "Cancel" : "Edit"}</span>
+                    </motion.button>
                   </div>
                 </div>
-              </motion.div>
-
-            </div>
-          </div>
-
-          {isEditing && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-            >
-              <div className="text-center mt-8">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleSave}
-                  disabled={saveStatus.type === 'loading'}
-                  className="bg-gradient-to-r from-red-500 to-red-600 text-white px-8 py-3 rounded-xl font-semibold flex items-center space-x-2 shadow-lg hover:shadow-xl transition-all duration-300 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Save className="w-5 h-5" />
-                  <span>{saveStatus.type === 'loading' ? 'Saving...' : 'Save Changes'}</span>
-                </motion.button>
               </div>
             </motion.div>
-          )}
 
-          {saveStatus.message && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`fixed top-20 right-4 z-50 px-6 py-3 rounded-xl shadow-lg ${
-                saveStatus.type === 'success'
-                  ? 'bg-green-100 border border-green-300 text-green-800'
-                  : saveStatus.type === 'error'
-                  ? 'bg-red-100 border border-red-300 text-red-800'
-                  : 'bg-blue-100 border border-blue-300 text-blue-800'
-              }`}
-            >
-              {saveStatus.message}
-            </motion.div>
-          )}
+            <div className="grid lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                >
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-2xl font-bold text-gray-900">Personal Information</h2>
+                      <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
+                          <Shield className="w-4 h-4" />
+                          <span>Verified</span>
+                        </div>
+                      </div>
+                    </div>
 
-          {showCompletionModal && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={profileData.name}
+                            onChange={(e) => handleInputChange("name", e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all duration-300"
+                          />
+                        ) : (
+                          <p className="text-gray-900 py-3 font-medium">{profileData.name}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Gender</label>
+                        {isEditing ? (
+                          <select
+                            value={profileData.gender}
+                            onChange={(e) => handleInputChange("gender", e.target.value)}
+                            className={`w - full px - 4 py - 3 border rounded - xl focus: outline - none focus: ring - 2 transition - all duration - 300 ${ fieldErrors.gender ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500' } `}
+                          >
+                            <option value="">Select gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                          </select>
+                        ) : (
+                          <p className="text-gray-900 py-3 font-medium">{profileData.gender ? profileData.gender.charAt(0).toUpperCase() + profileData.gender.slice(1) : "Not provided"}</p>
+                        )}
+                        {isEditing && fieldErrors.gender && (
+                          <p className="mt-1 text-xs text-red-600">{fieldErrors.gender}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                        <p className="text-gray-900 py-3 font-medium flex items-center">
+                          <Mail className="w-4 h-4 mr-2 text-gray-400" />
+                          {profileData.email}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+                        {isEditing ? (
+                          <input
+                            type="tel"
+                            value={profileData.phone}
+                            onChange={(e) => handleInputChange("phone", e.target.value)}
+                            className={`w - full px - 4 py - 3 border rounded - xl focus: outline - none focus: ring - 2 transition - all duration - 300 ${ fieldErrors.phone ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500' } `}
+                          />
+                        ) : (
+                          <p className="text-gray-900 py-3 font-medium flex items-center">
+                            <Phone className="w-4 h-4 mr-2 text-gray-400" />
+                            {profileData.phone || "Not provided"}
+                          </p>
+                        )}
+                        {isEditing && fieldErrors.phone && (
+                          <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>
+                        )}
+                      </div>
+
+                      {/* Location field removed per requirement */}
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Age</label>
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            min={0}
+                            max={120}
+                            value={profileData.age}
+                            onChange={(e) => handleInputChange("age", e.target.value)}
+                            className={`w - full px - 4 py - 3 border rounded - xl focus: outline - none focus: ring - 2 transition - all duration - 300 ${ fieldErrors.age ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500' } `}
+                            placeholder="Your age"
+                          />
+                        ) : (
+                          <p className="text-gray-900 py-3 font-medium">{profileData.age || "Not provided"}</p>
+                        )}
+                        {isEditing && fieldErrors.age && (
+                          <p className="mt-1 text-xs text-red-600">{fieldErrors.age}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Occupation</label>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={profileData.occupation}
+                            onChange={(e) => handleInputChange("occupation", e.target.value)}
+                            className={`w - full px - 4 py - 3 border rounded - xl focus: outline - none focus: ring - 2 transition - all duration - 300 ${ fieldErrors.occupation ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500' } `}
+                            placeholder="e.g., Student, Software Engineer"
+                          />
+                        ) : (
+                          <p className="text-gray-900 py-3 font-medium">{profileData.occupation || "Not provided"}</p>
+                        )}
+                        {isEditing && fieldErrors.occupation && (
+                          <p className="mt-1 text-xs text-red-600">{fieldErrors.occupation}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Bio field removed per requirement */}
+                  </div>
+                </motion.div>
+
+              </div>
+
+              <div className="space-y-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                >
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">Trust Score</h3>
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <span className="text-xl font-bold text-white">{profileData.trustScore}</span>
+                      </div>
+                      <p className="text-sm text-gray-600">Excellent Profile</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.4 }}
+                >
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
+                    <div className="space-y-3">
+                      <button
+                        onClick={() => setShowPasswordModal(true)}
+                        className="w-full px-4 py-3 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all duration-300 flex items-center justify-center space-x-2"
+                      >
+                        <Lock className="w-4 h-4" />
+                        <span>Change Password</span>
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+
+              </div>
+            </div>
+
+            {isEditing && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-white rounded-xl p-6 max-w-md w-full border border-blue-200"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.5 }}
               >
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900">Complete your profile to continue</h3>
-                    <p className="text-sm text-gray-600 mt-1">Phone, Age, Occupation, and Gender are required.</p>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <ul className="text-sm text-gray-700 list-disc list-inside space-y-1">
-                    {!profileData.phone && (<li>Phone Number is missing</li>)}
-                    {(profileData.age === undefined || profileData.age === null || profileData.age === "") && (<li>Age is missing</li>)}
-                    {!profileData.occupation && (<li>Occupation is missing</li>)}
-                    {!profileData.gender && (<li>Gender is missing</li>)}
-                  </ul>
-                </div>
-
-                <div className="mt-6 flex gap-3">
-                  <button
-                    onClick={() => { setIsEditing(true); setShowCompletionModal(false); }}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                <div className="text-center mt-8">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleSave}
+                    disabled={saveStatus.type === 'loading'}
+                    className="bg-gradient-to-r from-red-500 to-red-600 text-white px-8 py-3 rounded-xl font-semibold flex items-center space-x-2 shadow-lg hover:shadow-xl transition-all duration-300 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Edit Now
-                  </button>
-                  <button
-                    disabled={!isProfileComplete(profileData)}
-                    onClick={() => setShowCompletionModal(false)}
-                    className={`flex-1 px-4 py-2 rounded-lg ${isProfileComplete(profileData) ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
-                  >
-                    Continue
-                  </button>
+                    <Save className="w-5 h-5" />
+                    <span>{saveStatus.type === 'loading' ? 'Saving...' : 'Save Changes'}</span>
+                  </motion.button>
                 </div>
               </motion.div>
-            </div>
-          )}
+            )}
 
-          {showPasswordModal && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            {saveStatus.message && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-white rounded-xl p-8 max-w-md w-full"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`fixed top - 20 right - 4 z - 50 px - 6 py - 3 rounded - xl shadow - lg ${
+  saveStatus.type === 'success'
+    ? 'bg-green-100 border border-green-300 text-green-800'
+    : saveStatus.type === 'error'
+      ? 'bg-red-100 border border-red-300 text-red-800'
+      : 'bg-blue-100 border border-blue-300 text-blue-800'
+} `}
               >
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">Change Password</h3>
-                  <button onClick={() => setShowPasswordModal(false)} className="text-gray-400 hover:text-gray-600">
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
+                {saveStatus.message}
+              </motion.div>
+            )}
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Current Password</label>
-                    <div className="relative">
-                      <input
-                        type={showPassword.current ? "text" : "password"}
-                        value={passwordData.currentPassword}
-                        onChange={(e) => handlePasswordChange("currentPassword", e.target.value)}
-                        className="w-full pl-4 pr-12 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all duration-300"
-                        placeholder="Enter current password"
-                      />
-                      <button type="button" onClick={() => togglePasswordVisibility('current')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                        {showPassword.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
+            {showCompletionModal && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-white rounded-xl p-6 max-w-md w-full border border-blue-200"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                      <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900">Complete your profile to continue</h3>
+                      <p className="text-sm text-gray-600 mt-1">Phone, Age, Occupation, and Gender are required.</p>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">New Password</label>
-                    <div className="relative">
-                      <input
-                        type={showPassword.new ? "text" : "password"}
-                        value={passwordData.newPassword}
-                        onChange={(e) => handlePasswordChange("newPassword", e.target.value)}
-                        className="w-full pl-4 pr-12 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all duration-300"
-                        placeholder="Enter new password"
-                      />
-                      <button type="button" onClick={() => togglePasswordVisibility('new')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                        {showPassword.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
+
+                  <div className="mt-4">
+                    <ul className="text-sm text-gray-700 list-disc list-inside space-y-1">
+                      {!profileData.phone && (<li>Phone Number is missing</li>)}
+                      {(profileData.age === undefined || profileData.age === null || profileData.age === "") && (<li>Age is missing</li>)}
+                      {!profileData.occupation && (<li>Occupation is missing</li>)}
+                      {!profileData.gender && (<li>Gender is missing</li>)}
+                    </ul>
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm New Password</label>
-                    <div className="relative">
-                      <input
-                        type={showPassword.confirm ? "text" : "password"}
-                        value={passwordData.confirmPassword}
-                        onChange={(e) => handlePasswordChange("confirmPassword", e.target.value)}
-                        className="w-full pl-4 pr-12 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all duration-300"
-                        placeholder="Confirm new password"
-                      />
-                      <button type="button" onClick={() => togglePasswordVisibility('confirm')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                        {showPassword.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex space-x-3 pt-4">
-                    <button onClick={() => setShowPasswordModal(false)} className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-300">Cancel</button>
-                    <button onClick={handlePasswordUpdate} disabled={saveStatus.type === 'loading'} className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50">
-                      {saveStatus.type === 'loading' ? 'Updating...' : 'Update Password'}
+
+                  <div className="mt-6 flex gap-3">
+                    <button
+                      onClick={() => { setIsEditing(true); setShowCompletionModal(false); }}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      Edit Now
+                    </button>
+                    <button
+                      disabled={!isProfileComplete(profileData)}
+                      onClick={() => setShowCompletionModal(false)}
+                      className={`flex - 1 px - 4 py - 2 rounded - lg ${ isProfileComplete(profileData) ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed' } `}
+                    >
+                      Continue
                     </button>
                   </div>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </div>
-      </motion.div>
+                </motion.div>
+              </div>
+            )}
+
+            {showPasswordModal && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-white rounded-xl p-8 max-w-md w-full"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-2xl font-bold text-gray-900">Change Password</h3>
+                    <button onClick={() => setShowPasswordModal(false)} className="text-gray-400 hover:text-gray-600">
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Current Password</label>
+                      <div className="relative">
+                        <input
+                          type={showPassword.current ? "text" : "password"}
+                          value={passwordData.currentPassword}
+                          onChange={(e) => handlePasswordChange("currentPassword", e.target.value)}
+                          className="w-full pl-4 pr-12 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all duration-300"
+                          placeholder="Enter current password"
+                        />
+                        <button type="button" onClick={() => togglePasswordVisibility('current')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                          {showPassword.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">New Password</label>
+                      <div className="relative">
+                        <input
+                          type={showPassword.new ? "text" : "password"}
+                          value={passwordData.newPassword}
+                          onChange={(e) => handlePasswordChange("newPassword", e.target.value)}
+                          className="w-full pl-4 pr-12 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all duration-300"
+                          placeholder="Enter new password"
+                        />
+                        <button type="button" onClick={() => togglePasswordVisibility('new')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                          {showPassword.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm New Password</label>
+                      <div className="relative">
+                        <input
+                          type={showPassword.confirm ? "text" : "password"}
+                          value={passwordData.confirmPassword}
+                          onChange={(e) => handlePasswordChange("confirmPassword", e.target.value)}
+                          className="w-full pl-4 pr-12 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all duration-300"
+                          placeholder="Confirm new password"
+                        />
+                        <button type="button" onClick={() => togglePasswordVisibility('confirm')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                          {showPassword.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex space-x-3 pt-4">
+                      <button onClick={() => setShowPasswordModal(false)} className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-300">Cancel</button>
+                      <button onClick={handlePasswordUpdate} disabled={saveStatus.type === 'loading'} className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50">
+                        {saveStatus.type === 'loading' ? 'Updating...' : 'Update Password'}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </div>
+        </motion.div>
       )}
     </SeekerLayout>
   );

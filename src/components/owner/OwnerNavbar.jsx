@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import apiClient from '../../utils/apiClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bell,
@@ -79,29 +80,27 @@ const OwnerNavbar = ({ onMenuToggle }) => {
 
     try {
       if (!force) setNotificationsLoading(true);
-      const authToken = localStorage.getItem('authToken');
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
 
-      if (!authToken || !userData._id) {
+      if (!userData._id) {
         console.log('Skipping fetch: Not authenticated');
         return;
       }
 
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      console.log('Fetching notifications from:', `${baseUrl}/notifications`);
+      console.log('Fetching notifications for user:', userData._id);
 
-      const response = await fetch(`${baseUrl}/notifications`, {
+      const response = await apiClient.get('/notifications', {
         headers: {
-          'Authorization': `Bearer ${authToken}`
+          'x-user-id': userData._id
         }
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
         if (data.success && isMountedRef.current) {
           console.log('Notifications fetched:', data.data.length);
           setNotifications(data.data || []);
-          setUnreadCount(data.unreadCount || 0); // Fixed key name unreadCount vs unread_count
+          setUnreadCount(data.unreadCount || 0);
         }
       } else {
         console.error('Fetch failed:', response.status);
@@ -116,21 +115,17 @@ const OwnerNavbar = ({ onMenuToggle }) => {
   // Delete notification
   const deleteNotification = async (notificationId) => {
     try {
-      const authToken = localStorage.getItem('authToken');
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
 
-      if (!authToken || !userData._id) return;
+      if (!userData._id) return;
 
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${baseUrl}/notifications/${notificationId}`, {
-        method: 'DELETE',
+      const response = await apiClient.delete(`/notifications/${notificationId}`, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
           'x-user-id': userData._id
         }
       });
 
-      if (response.ok) {
+      if (response.status === 200) {
         // Optimistic update
         setNotifications(prev => prev.filter(n => n._id !== notificationId));
         setUnreadCount(prev => Math.max(0, prev - 1));
