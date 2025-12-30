@@ -197,10 +197,19 @@ const Login = () => {
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
       const firebaseUser = userCredential.user;
 
+      /* 
+      // STRICT VERIFICATION CHECK DISABLED TO ALLOW SYNC
       if (!firebaseUser.emailVerified) {
         setError('Please verify your email address before logging in.');
         setLoading(false);
         return;
+      }
+      */
+      // Force reload user to get latest status if possible
+      await firebaseUser.reload().catch(e => console.log('Reload user failed', e));
+
+      if (!firebaseUser.emailVerified) {
+        console.warn("User email verified status is FALSE. Proceeding to backend to update status if changed.");
       }
 
       // 2. Get ID Token

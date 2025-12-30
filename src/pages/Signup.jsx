@@ -327,7 +327,7 @@ const Signup = () => {
 
     try {
       setEmailChecking(true);
-      const base = import.meta.env.VITE_API_URL || 'http://localhost:4002/api';
+      const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       console.log('Checking email:', email, 'at URL:', `${base}/user/check-email?email=${encodeURIComponent(email)}`);
 
       const response = await fetch(`${base}/user/check-email?email=${encodeURIComponent(email)}`);
@@ -504,6 +504,16 @@ const Signup = () => {
 
       // Send Verification Email
       await sendEmailVerification(user);
+
+      // Sync with MongoDB Immediately
+      const idToken = await user.getIdToken(true);
+      await apiClient.post(`/user/auth/firebase`, {
+        name: formData.name
+      }, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
 
       // Show success message
       setSuccess("Account created successfully! Please check your email to verify your account.");

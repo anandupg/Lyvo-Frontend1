@@ -2,9 +2,8 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, ArrowLeft, AlertCircle, CheckCircle, Home, Shield } from "lucide-react";
-import axios from "axios";
-
-const API_URL = 'http://localhost:4002/api/user';
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "../firebase";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -19,10 +18,18 @@ const ForgotPassword = () => {
     setSuccess(false);
 
     try {
-      const response = await axios.post(`${API_URL}/forgot-password`, { email });
+      await sendPasswordResetEmail(auth, email);
       setSuccess(true);
     } catch (err) {
-      setError(err.response?.data?.message || 'An unexpected error occurred.');
+      console.error("Password reset error:", err);
+      if (err.code === 'auth/user-not-found') {
+        // [DEBUGGING] Show actual error to user during dev
+        setError("No account found with this email in Firebase.");
+      } else if (err.code === 'auth/invalid-email') {
+        setError("Invalid email address format.");
+      } else {
+        setError("Failed to send reset email. Please try again later.");
+      }
     } finally {
       setLoading(false);
     }
