@@ -21,4 +21,18 @@ const apiClient = axios.create({
   timeout: 10000,
 });
 
+// Add a request interceptor to attach the auth token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 export default apiClient;
