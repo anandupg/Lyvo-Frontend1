@@ -327,15 +327,16 @@ const Signup = () => {
 
     try {
       setEmailChecking(true);
-      const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      console.log('Checking email:', email, 'at URL:', `${base}/user/check-email?email=${encodeURIComponent(email)}`);
+      console.log('Checking email:', email);
 
-      const response = await fetch(`${base}/user/check-email?email=${encodeURIComponent(email)}`);
-      const data = await response.json();
+      const response = await apiClient.get(`/user/check-email`, {
+        params: { email }
+      });
+      const data = response.data;
 
       console.log('Email check response:', data);
 
-      if (response.ok) {
+      if (response.status === 200) {
         if (data.exists === true) {
           // User exists and is verified - show error
           setEmailExists(true);
