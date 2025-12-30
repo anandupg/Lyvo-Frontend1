@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, AlertCircle, User, CheckCircle, Shield, X, Check } from "lucide-react";
 import apiClient from "../utils/apiClient";
+import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from "firebase/auth";
+import { auth } from "../firebase";
 
 const API_URL = 'http://localhost:4002/api/user';
 
@@ -97,10 +99,10 @@ const Signup = () => {
       // Store user data and token
       localStorage.setItem('authToken', result.data.token);
       localStorage.setItem('user', JSON.stringify(result.data.user));
-      
+
       // Dispatch login event to update navbar
       window.dispatchEvent(new Event('lyvo-login'));
-      
+
       // Role-based redirect for seeker
       const user = result.data.user;
       if (user.isNewUser && !user.hasCompletedBehaviorQuestions) {
@@ -108,7 +110,7 @@ const Signup = () => {
       } else {
         navigate('/seeker-dashboard');
       }
-      
+
     } catch (err) {
       if (err.response?.data?.errorCode === 'ROLE_CONFLICT') {
         setError(err.response.data.message);
@@ -288,13 +290,13 @@ const Signup = () => {
   const canAccessField = (fieldName) => {
     const fieldOrder = ['name', 'email', 'password', 'confirmPassword'];
     const currentIndex = fieldOrder.indexOf(fieldName);
-    
+
     if (currentIndex === 0) return true; // First field is always accessible
-    
+
     // Check if previous field is completed
     const previousField = fieldOrder[currentIndex - 1];
     const isPreviousFieldCompleted = completedFields[previousField];
-    
+
     // Special case for password field - email must be completed AND either:
     // 1. Email doesn't exist in DB, OR
     // 2. Email exists but user is not verified (unverified users can re-register)
@@ -302,10 +304,10 @@ const Signup = () => {
       // Always allow if email field is completed and no blocking conditions
       const isEmailCompleted = completedFields.email;
       const isEmailBlocked = emailExists && emailInfo && emailInfo.isVerified;
-      
+
       return isEmailCompleted && !isEmailBlocked;
     }
-    
+
     return isPreviousFieldCompleted;
   };
 
@@ -327,28 +329,28 @@ const Signup = () => {
       setEmailChecking(true);
       const base = import.meta.env.VITE_API_URL || 'http://localhost:4002/api';
       console.log('Checking email:', email, 'at URL:', `${base}/user/check-email?email=${encodeURIComponent(email)}`);
-      
+
       const response = await fetch(`${base}/user/check-email?email=${encodeURIComponent(email)}`);
       const data = await response.json();
-      
+
       console.log('Email check response:', data);
-      
+
       if (response.ok) {
         if (data.exists === true) {
           // User exists and is verified - show error
           setEmailExists(true);
-          setEmailInfo({ 
-            isVerified: true, 
-            note: 'This email is already registered. Please use a different email or try logging in.' 
+          setEmailInfo({
+            isVerified: true,
+            note: 'This email is already registered. Please use a different email or try logging in.'
           });
           setErrors(prev => ({ ...prev, email: 'Email already registered. Please use a different email.' }));
           setCompletedFields(prev => ({ ...prev, email: false }));
         } else if (data.isUnverified === true) {
           // User exists but not verified - allow registration
           setEmailExists(true);
-          setEmailInfo({ 
-            isUnverified: true, 
-            note: 'This email was previously registered but not verified. You can register again.' 
+          setEmailInfo({
+            isUnverified: true,
+            note: 'This email was previously registered but not verified. You can register again.'
           });
           setErrors(prev => ({ ...prev, email: '' }));
           // Allow unverified users to proceed regardless of email format
@@ -394,9 +396,9 @@ const Signup = () => {
 
   const handleBlur = (field) => {
     setTouched(prev => ({ ...prev, [field]: true }));
-    
+
     let error;
-    
+
     switch (field) {
       case 'name':
         error = validateFullName(formData.name);
@@ -411,9 +413,9 @@ const Signup = () => {
         error = validateConfirmPassword(formData.confirmPassword, formData.password);
         break;
     }
-    
+
     setErrors(prev => ({ ...prev, [field]: error }));
-    
+
     // Mark field as completed if no error
     setCompletedFields(prev => ({ ...prev, [field]: !error }));
   };
@@ -421,17 +423,17 @@ const Signup = () => {
   const handleChange = (e) => {
     const { id, value } = e.target;
     setFormData({ ...formData, [id]: value });
-    
+
     // Clear error when user starts typing
     if (errors[id]) {
       setErrors(prev => ({ ...prev, [id]: '' }));
     }
-    
+
     // Show password validation when user starts typing password
     if (id === 'password' && value && !showPasswordValidation) {
       setShowPasswordValidation(true);
     }
-    
+
     // Real-time validation and completion status
     let currentError = '';
     switch (id) {
@@ -448,11 +450,11 @@ const Signup = () => {
         currentError = validateConfirmPassword(value, formData.password);
         break;
     }
-    
+
     // Update errors and completion status
     setErrors(prev => ({ ...prev, [id]: currentError || '' }));
     setCompletedFields(prev => ({ ...prev, [id]: !currentError }));
-    
+
     // If password changes, also re-validate confirm password if it's been touched
     if (id === 'password' && touched.confirmPassword) {
       const confirmPasswordError = validateConfirmPassword(formData.confirmPassword, value);
@@ -461,40 +463,51 @@ const Signup = () => {
     }
   };
 
+
   const handleSignup = async (e) => {
     e.preventDefault();
-    
+
     // Validate all fields
     const nameError = validateFullName(formData.name);
     const emailError = validateEmail(formData.email);
     const passwordError = validatePassword(formData.password);
     const confirmPasswordError = validateConfirmPassword(formData.confirmPassword, formData.password);
-    
+
     setErrors({
       name: nameError || '',
       email: emailError || '',
       password: passwordError || '',
       confirmPassword: confirmPasswordError || ''
     });
-    
+
     setTouched({ name: true, email: true, password: true, confirmPassword: true });
-    
+
     // Check if there are any errors
     if (nameError || emailError || passwordError || confirmPasswordError) {
       setError("Please fix the errors above before submitting.");
       return;
     }
-    
+
     setLoading(true);
     setError(null);
     setSuccess(null);
-    
+
     try {
-      const response = await apiClient.post(`/user/register`, formData);
-      
-      // Show success message instead of automatically logging in
-      setSuccess(response.data.message);
-      
+      // Firebase Signup
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      const user = userCredential.user;
+
+      // Update Profile (Name)
+      await updateProfile(user, {
+        displayName: formData.name
+      });
+
+      // Send Verification Email
+      await sendEmailVerification(user);
+
+      // Show success message
+      setSuccess("Account created successfully! Please check your email to verify your account.");
+
       // Clear form data
       setFormData({ name: '', email: '', password: '', confirmPassword: '' });
       setPasswordStrength(PasswordStrength);
@@ -505,9 +518,16 @@ const Signup = () => {
       setCompletedFields({ name: false, email: false, password: false, confirmPassword: false });
       setEmailChecking(false);
       setEmailExists(false);
-      
+
     } catch (err) {
-      setError(err.response?.data?.message || 'An unexpected error occurred.');
+      console.error('Signup Error:', err);
+      if (err.code === 'auth/email-already-in-use') {
+        setError('This email is already registered. Please login instead.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password should be at least 6 characters.');
+      } else {
+        setError(err.message || 'An unexpected error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -528,9 +548,9 @@ const Signup = () => {
               <div className="flex items-center space-x-3 group">
                 <div className="relative">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300 overflow-hidden">
-                    <img 
-                      src="/Lyvo_no_bg.png" 
-                      alt="Lyvo Logo" 
+                    <img
+                      src="/Lyvo_no_bg.png"
+                      alt="Lyvo Logo"
                       className="w-full h-full object-contain"
                     />
                   </div>
@@ -542,14 +562,14 @@ const Signup = () => {
                 </div>
               </div>
             </div>
-            
+
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
               Join <span className="text-red-600">Lyvo</span><span className="text-black">+</span> as a Room Seeker
             </h2>
             <p className="text-sm text-gray-600 mb-4">
               Find your perfect co-living space and connect with roommates
             </p>
-            
+
 
           </div>
 
@@ -566,7 +586,7 @@ const Signup = () => {
                 <span className="text-sm font-medium">{error}</span>
               </motion.div>
             )}
-            
+
             {success && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -628,15 +648,14 @@ const Signup = () => {
                   type="text"
                   required
                   disabled={!canAccessField('name')}
-                  className={`w-full pl-10 pr-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 ${
-                    !canAccessField('name')
-                      ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
-                      : touched.name && errors.name 
-                      ? 'border-red-300 bg-red-50' 
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 ${!canAccessField('name')
+                    ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                    : touched.name && errors.name
+                      ? 'border-red-300 bg-red-50'
                       : completedFields.name
-                      ? 'border-green-300 bg-green-50'
-                      : 'border-gray-300'
-                  }`}
+                        ? 'border-green-300 bg-green-50'
+                        : 'border-gray-300'
+                    }`}
                   placeholder="Enter your full name"
                   value={formData.name}
                   onChange={handleChange}
@@ -666,15 +685,14 @@ const Signup = () => {
                   type="email"
                   required
                   disabled={!canAccessField('email')}
-                  className={`w-full pl-10 pr-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 ${
-                    !canAccessField('email')
-                      ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
-                      : formData.email && (errors.email || emailExists)
-                      ? 'border-red-300 bg-red-50' 
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 ${!canAccessField('email')
+                    ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                    : formData.email && (errors.email || emailExists)
+                      ? 'border-red-300 bg-red-50'
                       : formData.email && completedFields.email && !emailExists
-                      ? 'border-green-300 bg-green-50'
-                      : 'border-gray-300'
-                  }`}
+                        ? 'border-green-300 bg-green-50'
+                        : 'border-gray-300'
+                    }`}
                   placeholder="Enter your email"
                   value={formData.email}
                   onChange={handleChange}
@@ -735,15 +753,14 @@ const Signup = () => {
                   type={showPassword ? "text" : "password"}
                   required
                   disabled={!canAccessField('password')}
-                  className={`w-full pl-10 pr-12 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 ${
-                    !canAccessField('password')
-                      ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
-                      : touched.password && errors.password 
-                      ? 'border-red-300 bg-red-50' 
+                  className={`w-full pl-10 pr-12 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 ${!canAccessField('password')
+                    ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                    : touched.password && errors.password
+                      ? 'border-red-300 bg-red-50'
                       : completedFields.password
-                      ? 'border-green-300 bg-green-50'
-                      : 'border-gray-300'
-                  }`}
+                        ? 'border-green-300 bg-green-50'
+                        : 'border-gray-300'
+                    }`}
                   placeholder="Enter your password"
                   value={formData.password}
                   onChange={handleChange}
@@ -758,7 +775,7 @@ const Signup = () => {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
-              
+
               {/* Password Strength Bar */}
               {formData.password && (
                 <motion.div
@@ -783,7 +800,7 @@ const Signup = () => {
                       />
                     </div>
                   </div>
-                  
+
                   {/* Password Feedback */}
                   {passwordFeedback && (
                     <motion.p
@@ -794,7 +811,7 @@ const Signup = () => {
                       {passwordFeedback}
                     </motion.p>
                   )}
-                  
+
                   {/* Password Requirements */}
                   <AnimatePresence>
                     {showPasswordValidation && !allPasswordValid && (
@@ -809,33 +826,28 @@ const Signup = () => {
                           <span className="text-xs font-medium text-gray-700">Password requirements</span>
                         </div>
                         <div className="space-y-1">
-                          <div className={`flex items-center gap-2 text-xs ${
-                            passwordValidation.length ? 'text-green-600' : 'text-gray-500'
-                          }`}>
+                          <div className={`flex items-center gap-2 text-xs ${passwordValidation.length ? 'text-green-600' : 'text-gray-500'
+                            }`}>
                             {passwordValidation.length ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
                             <span>At least 8 characters</span>
                           </div>
-                          <div className={`flex items-center gap-2 text-xs ${
-                            passwordValidation.uppercase ? 'text-green-600' : 'text-gray-500'
-                          }`}>
+                          <div className={`flex items-center gap-2 text-xs ${passwordValidation.uppercase ? 'text-green-600' : 'text-gray-500'
+                            }`}>
                             {passwordValidation.uppercase ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
                             <span>One uppercase letter</span>
                           </div>
-                          <div className={`flex items-center gap-2 text-xs ${
-                            passwordValidation.lowercase ? 'text-green-600' : 'text-gray-500'
-                          }`}>
+                          <div className={`flex items-center gap-2 text-xs ${passwordValidation.lowercase ? 'text-green-600' : 'text-gray-500'
+                            }`}>
                             {passwordValidation.lowercase ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
                             <span>One lowercase letter</span>
                           </div>
-                          <div className={`flex items-center gap-2 text-xs ${
-                            passwordValidation.number ? 'text-green-600' : 'text-gray-500'
-                          }`}>
+                          <div className={`flex items-center gap-2 text-xs ${passwordValidation.number ? 'text-green-600' : 'text-gray-500'
+                            }`}>
                             {passwordValidation.number ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
                             <span>One number</span>
                           </div>
-                          <div className={`flex items-center gap-2 text-xs ${
-                            passwordValidation.special ? 'text-green-600' : 'text-gray-500'
-                          }`}>
+                          <div className={`flex items-center gap-2 text-xs ${passwordValidation.special ? 'text-green-600' : 'text-gray-500'
+                            }`}>
                             {passwordValidation.special ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
                             <span>One special character (@$!%*?&)</span>
                           </div>
@@ -845,7 +857,7 @@ const Signup = () => {
                   </AnimatePresence>
                 </motion.div>
               )}
-              
+
               {touched.password && errors.password && (
                 <motion.p
                   initial={{ opacity: 0, y: -10 }}
@@ -869,15 +881,14 @@ const Signup = () => {
                   type={showConfirmPassword ? "text" : "password"}
                   required
                   disabled={!canAccessField('confirmPassword')}
-                  className={`w-full pl-10 pr-12 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 ${
-                    !canAccessField('confirmPassword')
-                      ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
-                      : touched.confirmPassword && errors.confirmPassword 
-                      ? 'border-red-300 bg-red-50' 
+                  className={`w-full pl-10 pr-12 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 ${!canAccessField('confirmPassword')
+                    ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                    : touched.confirmPassword && errors.confirmPassword
+                      ? 'border-red-300 bg-red-50'
                       : touched.confirmPassword && formData.confirmPassword && formData.confirmPassword === formData.password
-                      ? 'border-green-300 bg-green-50'
-                      : 'border-gray-300'
-                  }`}
+                        ? 'border-green-300 bg-green-50'
+                        : 'border-gray-300'
+                    }`}
                   placeholder="Confirm your password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
@@ -920,11 +931,10 @@ const Signup = () => {
               whileTap={isFormReady() ? { scale: 0.98 } : {}}
               type="submit"
               disabled={loading || !isFormReady()}
-              className={`w-full py-3 px-4 rounded-lg font-semibold shadow-sm transition-all duration-200 ${
-                isFormReady() 
-                  ? 'bg-red-600 text-white hover:bg-red-700' 
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              className={`w-full py-3 px-4 rounded-lg font-semibold shadow-sm transition-all duration-200 ${isFormReady()
+                ? 'bg-red-600 text-white hover:bg-red-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {loading ? "Creating account..." : !isFormReady() ? "Complete all fields to continue" : "Create account"}
             </motion.button>
@@ -941,7 +951,7 @@ const Signup = () => {
                 Sign in
               </Link>
             </p>
-            
+
             {/* Owner Signup Link */}
             <div className="pt-3 border-t border-gray-200">
               <p className="text-xs text-gray-500 mb-2">Are you a property owner?</p>

@@ -20,7 +20,7 @@ import { Loader2 } from "lucide-react";
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Real data states
   const [users, setUsers] = useState([]);
   const [properties, setProperties] = useState([]);
@@ -33,14 +33,14 @@ const Dashboard = () => {
   });
 
   const userServiceUrl = import.meta.env.VITE_API_URL || 'http://localhost:4002/api';
-  const propertyServiceUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3003';
+  const propertyServiceUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   // Helper function to format time ago (defined early to avoid hoisting issues)
   const getTimeAgo = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
     const seconds = Math.floor((now - date) / 1000);
-    
+
     if (seconds < 60) return `${seconds} seconds ago`;
     if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
@@ -70,8 +70,8 @@ const Dashboard = () => {
         // Fetch users, properties, and bookings in parallel
         const [usersRes, propertiesRes, bookingsRes] = await Promise.all([
           fetch(`${userServiceUrl}/user/all`, { headers }),
-          fetch(`${propertyServiceUrl}/api/admin/properties?limit=1000`, { headers }), // Fetch all properties
-          fetch(`${propertyServiceUrl}/api/debug/bookings`, { headers })
+          fetch(`${propertyServiceUrl}/property/admin/properties?limit=1000`, { headers }), // Fetch all properties
+          fetch(`${propertyServiceUrl}/property/debug/bookings`, { headers })
         ]);
 
         const usersData = await usersRes.json();
@@ -97,15 +97,15 @@ const Dashboard = () => {
   const calculatedStats = useMemo(() => {
     const totalUsers = users.filter(u => u.role !== 2).length; // Exclude admins
     const totalProperties = properties.length;
-    
+
     // Active listings: match the logic from Properties page
     // Properties with approval_status = 'approved' OR status = 'active', but NOT inactive
-    const activeProperties = properties.filter(p => 
+    const activeProperties = properties.filter(p =>
       (p.approval_status === 'approved' || p.status === 'active') && p.status !== 'inactive'
     ).length;
-    
+
     const pendingApprovals = properties.filter(p => p.approval_status === 'pending').length;
-    
+
     // Debug logging with detailed property info
     console.log('Dashboard Stats:', {
       totalProperties: properties.length,
@@ -118,18 +118,18 @@ const Dashboard = () => {
         isActive: (p.approval_status === 'approved' || p.status === 'active') && p.status !== 'inactive'
       }))
     });
-    
+
     // Calculate monthly revenue from bookings
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     const monthlyBookings = bookings.filter(b => {
       const bookingDate = new Date(b.createdAt);
-      return bookingDate.getMonth() === currentMonth && 
-             bookingDate.getFullYear() === currentYear &&
-             b.status === 'confirmed' &&
-             b.payment?.paymentStatus === 'completed';
+      return bookingDate.getMonth() === currentMonth &&
+        bookingDate.getFullYear() === currentYear &&
+        b.status === 'confirmed' &&
+        b.payment?.paymentStatus === 'completed';
     });
-    
+
     const monthlyRevenue = monthlyBookings.reduce((sum, booking) => {
       return sum + (booking.payment?.amount || 0);
     }, 0);
@@ -148,25 +148,25 @@ const Dashboard = () => {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const last6Months = [];
     const today = new Date();
-    
+
     for (let i = 5; i >= 0; i--) {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
       const monthIndex = date.getMonth();
       const year = date.getFullYear();
-      
+
       const usersInMonth = users.filter(u => {
         if (u.role === 2) return false; // Exclude admins
         const userDate = new Date(u.createdAt);
         return userDate.getMonth() === monthIndex && userDate.getFullYear() === year;
       }).length;
-      
+
       last6Months.push({
         month: monthNames[monthIndex],
         users: usersInMonth,
         growth: usersInMonth
       });
     }
-    
+
     // Calculate cumulative users
     let cumulative = 0;
     return last6Months.map(month => {
@@ -183,29 +183,29 @@ const Dashboard = () => {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const last6Months = [];
     const today = new Date();
-    
+
     for (let i = 5; i >= 0; i--) {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
       const monthIndex = date.getMonth();
       const year = date.getFullYear();
-      
+
       const monthBookings = bookings.filter(b => {
         const bookingDate = new Date(b.createdAt);
-        return bookingDate.getMonth() === monthIndex && 
-               bookingDate.getFullYear() === year &&
-               b.status === 'confirmed' &&
-               b.payment?.paymentStatus === 'completed';
+        return bookingDate.getMonth() === monthIndex &&
+          bookingDate.getFullYear() === year &&
+          b.status === 'confirmed' &&
+          b.payment?.paymentStatus === 'completed';
       });
-      
+
       const revenue = monthBookings.reduce((sum, b) => sum + (b.payment?.amount || 0), 0);
-      
+
       last6Months.push({
         month: monthNames[monthIndex],
         revenue,
         bookings: monthBookings.length
       });
     }
-    
+
     return last6Months;
   }, [bookings]);
 
@@ -259,56 +259,56 @@ const Dashboard = () => {
   // Calculate recent activities from real data
   const recentActivities = useMemo(() => {
     const activities = [];
-    
+
     // Recent users (last 5)
     const recentUsers = users
       .filter(u => u.role !== 2)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 3);
-    
+
     recentUsers.forEach(user => {
       activities.push({
         id: `user-${user._id}`,
-      type: "user_registration",
+        type: "user_registration",
         message: `New user registered: ${user.name}`,
         time: getTimeAgo(user.createdAt),
         status: "success"
       });
     });
-    
+
     // Recent properties (last 3)
     const recentProperties = properties
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 2);
-    
+
     recentProperties.forEach(prop => {
       if (prop.approval_status === 'approved') {
         activities.push({
           id: `prop-${prop._id}`,
-      type: "property_approval",
+          type: "property_approval",
           message: `Property approved: ${prop.property_name}`,
           time: getTimeAgo(prop.updatedAt || prop.createdAt),
           status: "success"
         });
       }
     });
-    
+
     // Recent bookings (last 2)
     const recentBookings = bookings
       .filter(b => b.status === 'confirmed' && b.payment?.paymentStatus === 'completed')
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 2);
-    
+
     recentBookings.forEach(booking => {
       activities.push({
         id: `booking-${booking._id}`,
-      type: "payment_received",
+        type: "payment_received",
         message: `Payment received: ${formatRevenue(booking.payment?.amount || 0)}`,
         time: getTimeAgo(booking.createdAt),
         status: "success"
       });
     });
-    
+
     // Sort by time and return last 5
     return activities
       .sort((a, b) => {
@@ -379,9 +379,8 @@ const Dashboard = () => {
                   <p className="text-xl lg:text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
                   <div className="flex items-center mt-2">
                     <span
-                      className={`text-xs lg:text-sm font-medium ${
-                        card.changeType === "positive" ? "text-green-600" : "text-red-600"
-                      }`}
+                      className={`text-xs lg:text-sm font-medium ${card.changeType === "positive" ? "text-green-600" : "text-red-600"
+                        }`}
                     >
                       {card.change}
                     </span>
@@ -404,11 +403,10 @@ const Dashboard = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`py-3 lg:py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors duration-200 ${
-                    activeTab === tab.id
+                  className={`py-3 lg:py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors duration-200 ${activeTab === tab.id
                       ? "border-red-500 text-red-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
+                    }`}
                 >
                   <span className="mr-2">{tab.icon}</span>
                   {tab.label}
@@ -505,9 +503,8 @@ const Dashboard = () => {
                       >
                         <div className="flex items-center flex-1 min-w-0">
                           <div
-                            className={`w-2 h-2 lg:w-3 lg:h-3 rounded-full mr-3 flex-shrink-0 ${
-                              activity.status === "success" ? "bg-green-500" : "bg-yellow-500"
-                            }`}
+                            className={`w-2 h-2 lg:w-3 lg:h-3 rounded-full mr-3 flex-shrink-0 ${activity.status === "success" ? "bg-green-500" : "bg-yellow-500"
+                              }`}
                           ></div>
                           <span className="text-gray-700 text-sm lg:text-base truncate">{activity.message}</span>
                         </div>

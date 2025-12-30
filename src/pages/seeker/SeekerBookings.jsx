@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import SeekerLayout from '../../components/seeker/SeekerLayout';
-import { 
-  Calendar, 
-  MapPin, 
-  Star, 
+import {
+  Calendar,
+  MapPin,
+  Star,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -76,15 +76,55 @@ const SeekerBookings = () => {
 
     try {
       setLoading(true);
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3003';
-      const response = await fetch(`${baseUrl}/api/bookings/user?userId=${userId}`);
-      
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        console.error('No auth token found');
+        setLoading(false);
+        return;
+      }
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${baseUrl}/property/user/bookings`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
       if (response.ok) {
         const data = await response.json();
         console.log('Bookings data received:', data);
-        console.log('First booking room data:', data.bookings?.[0]?.room);
-        setBookings(data.bookings || []);
-        setFilteredBookings(data.bookings || []);
+
+        // Map backend snapshots to frontend expectations
+        const mappedBookings = (data.bookings || []).map(booking => {
+          const mapped = {
+            ...booking,
+            property: {
+              ...booking.propertySnapshot,
+              _id: booking.propertyId?._id || booking.propertyId,
+              propertyName: booking.propertyId?.property_name || booking.propertyId?.propertyName || booking.propertySnapshot?.name,
+              images: booking.propertyId?.images || booking.propertySnapshot?.images || [booking.propertySnapshot?.image],
+              address: booking.propertyId?.address || booking.propertySnapshot?.address,
+              security_deposit: booking.propertyId?.security_deposit || booking.propertyId?.securityDeposit || booking.propertySnapshot?.security_deposit
+            },
+            room: {
+              ...booking.roomSnapshot,
+              _id: booking.roomId?._id || booking.roomId,
+              roomNumber: booking.roomId?.room_number || booking.roomId?.roomNumber || booking.roomSnapshot?.roomNumber,
+              roomImage: booking.roomId?.room_image || booking.roomId?.roomImage || booking.roomSnapshot?.images?.room || booking.roomSnapshot?.roomImage || booking.roomSnapshot?.images?.[0],
+              toiletImage: booking.roomId?.toilet_image || booking.roomId?.toiletImage || booking.roomSnapshot?.images?.toilet || booking.roomSnapshot?.toiletImage,
+              rent: booking.roomId?.rent || booking.roomSnapshot?.rent,
+              roomType: booking.roomId?.room_type || booking.roomId?.roomType || booking.roomSnapshot?.roomType
+            }
+          };
+          console.log('[DEBUG] Final Mapped booking:', mapped._id, {
+            propertyImage: mapped.property?.images,
+            roomImage: mapped.room?.roomImage,
+            payment: mapped.payment
+          });
+          return mapped;
+        });
+
+        setBookings(mappedBookings);
+        setFilteredBookings(mappedBookings);
       } else {
         console.error('Failed to fetch bookings');
       }
@@ -130,9 +170,9 @@ const SeekerBookings = () => {
     try {
       setCancelling(true);
       const token = localStorage.getItem('authToken');
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3003';
-      
-      const response = await fetch(`${baseUrl}/api/bookings/${bookingToCancel._id}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+      const response = await fetch(`${baseUrl}/property/bookings/${bookingToCancel._id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -143,8 +183,8 @@ const SeekerBookings = () => {
       if (response.ok) {
         toast({
           title: "Success",
-          description: bookingToCancel?.status === 'rejected' 
-            ? "Rejected booking removed successfully" 
+          description: bookingToCancel?.status === 'rejected'
+            ? "Rejected booking removed successfully"
             : "Booking cancelled and removed successfully",
           variant: "default"
         });
@@ -181,9 +221,9 @@ const SeekerBookings = () => {
     try {
       setCheckingIn(true);
       const token = localStorage.getItem('authToken');
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3003';
-      
-      const response = await fetch(`${baseUrl}/api/bookings/${bookingToCheckIn._id}/check-in`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+      const response = await fetch(`${baseUrl}/property/user/check-in/${bookingToCheckIn._id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -238,7 +278,7 @@ const SeekerBookings = () => {
       filtered = filtered.filter(booking => {
         const propertyName = booking.property?.propertyName?.toLowerCase() || '';
         const roomNumber = booking.room?.roomNumber?.toLowerCase() || '';
-        
+
         // Handle address object or string
         let address = '';
         if (booking.property?.address) {
@@ -248,7 +288,7 @@ const SeekerBookings = () => {
             address = `${booking.property.address.street || ''} ${booking.property.address.city || ''} ${booking.property.address.state || ''} ${booking.property.address.pincode || ''}`.toLowerCase();
           }
         }
-        
+
         const query = searchQuery.toLowerCase();
         return propertyName.includes(query) || roomNumber.includes(query) || address.includes(query);
       });
@@ -266,10 +306,17 @@ const SeekerBookings = () => {
   const getStatusInfo = (status, cancelledBy = null) => {
     switch (status) {
       case 'confirmed':
+      case 'approved':
         return {
           color: 'text-green-600 bg-green-100',
           icon: <CheckCircle className="w-4 h-4" />,
-          text: 'Confirmed'
+          text: 'Approved'
+        };
+      case 'checked_in':
+        return {
+          color: 'text-blue-600 bg-blue-100',
+          icon: <CheckCircle className="w-4 h-4" />,
+          text: 'Checked In'
         };
       case 'pending_approval':
         return {
@@ -324,13 +371,20 @@ const SeekerBookings = () => {
   };
 
   // Open contact modal
+  // Open contact modal
   const openContactModal = (booking) => {
-    setSelectedOwner({
-      name: booking.property?.ownerName,
-      phone: booking.property?.ownerPhone,
-      email: booking.property?.ownerEmail,
-      ownerName: booking.property?.ownerName
-    });
+    // Check if ownerId is populated object (from .populate('ownerId'))
+    // Or fall back to ownerSnapshot
+    const ownerData = (booking.ownerId && typeof booking.ownerId === 'object')
+      ? booking.ownerId
+      : (booking.ownerSnapshot || {
+        name: booking.property?.ownerName,
+        phone: booking.property?.ownerPhone,
+        email: booking.property?.ownerEmail
+      });
+
+    console.log('[DEBUG] Opening contact modal with owner:', ownerData);
+    setSelectedOwner(ownerData);
     setContactModalOpen(true);
   };
 
@@ -447,7 +501,7 @@ const SeekerBookings = () => {
             <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No Bookings Found</h3>
             <p className="text-gray-600 mb-6">
-              {bookings.length === 0 
+              {bookings.length === 0
                 ? "You haven't made any bookings yet. Start exploring properties to book your perfect room!"
                 : "No bookings match your current filters. Try adjusting your search criteria."
               }
@@ -466,8 +520,8 @@ const SeekerBookings = () => {
             {filteredBookings.map((booking, index) => {
               const statusInfo = getStatusInfo(booking.status, booking.cancelledBy);
               console.log('Booking status:', booking.status, 'Booking ID:', booking._id); // Debug log
-              
-              
+
+
               return (
                 <motion.div
                   key={booking._id}
@@ -502,7 +556,7 @@ const SeekerBookings = () => {
                           <div className="relative">
                             {/* Room Image (Primary) */}
                             <img
-                              src={booking.room?.roomImage || booking.room?.images?.[0] || booking.property?.images?.[0] || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop'}
+                              src={booking.room?.roomImage || booking.room?.room_image || booking.room?.toilet_image || booking.room?.toiletImage || booking.room?.images?.room || booking.room?.images?.toilet || (Array.isArray(booking.property?.images) ? booking.property.images[0] : (booking.property?.images?.front || booking.property?.images?.gallery?.[0])) || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop'}
                               alt={`Room ${booking.room?.roomNumber || 'N/A'} - ${booking.property?.propertyName || 'Property'}`}
                               className="w-full h-48 object-cover rounded-lg"
                               onError={(e) => {
@@ -523,22 +577,22 @@ const SeekerBookings = () => {
                             </div>
                           </div>
                         )}
-                        
+
                         {/* Property Image (Secondary) - Smaller - Only show if not rejected */}
-                        {booking.status !== 'rejected' && booking.property?.images?.[0] && booking.room?.images?.[0] && (
+                        {booking.status !== 'rejected' && (booking.property?.images?.[0] || booking.property?.images?.front) && (
                           <div className="mt-2">
                             <div className="flex items-center gap-2 text-xs text-gray-600 mb-1">
                               <Building className="w-3 h-3" />
                               <span>Property View</span>
                             </div>
                             <img
-                              src={booking.property.images[0]}
+                              src={Array.isArray(booking.property?.images) ? booking.property.images[0] : (booking.property?.images?.front || booking.property?.images?.gallery?.[0])}
                               alt={booking.property.propertyName || 'Property'}
                               className="w-full h-20 object-cover rounded-lg"
                             />
                           </div>
                         )}
-                        
+
                         {/* Room Image Gallery - If multiple room images - Only show if not rejected */}
                         {booking.status !== 'rejected' && ((booking.room?.images && booking.room.images.length > 1) || (booking.room?.roomImage && booking.room?.toiletImage)) && (
                           <div className="mt-2">
@@ -597,20 +651,20 @@ const SeekerBookings = () => {
                                 {booking.property?.propertyName || 'Unnamed Property'}
                               </h3>
                             </div>
-                            
+
                             {/* Address */}
                             <div className="flex items-center text-gray-600 mb-3">
                               <MapPin className="w-4 h-4 mr-1" />
                               <span className="text-sm">
-                                {booking.property?.address 
-                                  ? (typeof booking.property.address === 'string' 
-                                      ? booking.property.address 
-                                      : `${booking.property.address.street || ''}, ${booking.property.address.city || ''}, ${booking.property.address.state || ''} ${booking.property.address.pincode || ''}`.trim().replace(/^,\s*|,\s*$/g, ''))
+                                {booking.property?.address
+                                  ? (typeof booking.property.address === 'string'
+                                    ? booking.property.address
+                                    : `${booking.property.address.street || ''}, ${booking.property.address.city || ''}, ${booking.property.address.state || ''} ${booking.property.address.pincode || ''}`.trim().replace(/^,\s*|,\s*$/g, ''))
                                   : 'Address not available'
                                 }
                               </span>
                             </div>
-                            
+
                             {/* Room Details */}
                             {booking.status !== 'rejected' && (
                               <div className="flex items-center text-gray-600 mb-2">
@@ -626,7 +680,7 @@ const SeekerBookings = () => {
                                 )}
                               </div>
                             )}
-                            
+
                             {/* Additional Room Info */}
                             {booking.status !== 'rejected' && (
                               <div className="flex items-center gap-4 text-xs text-gray-500 mb-2">
@@ -644,7 +698,7 @@ const SeekerBookings = () => {
                                 )}
                               </div>
                             )}
-                            
+
                             {/* Property Type Badge */}
                             {booking.property?.propertyType && (
                               <div className="inline-block">
@@ -654,7 +708,7 @@ const SeekerBookings = () => {
                               </div>
                             )}
                           </div>
-                          
+
                           <div className="mt-4 lg:mt-0 lg:text-right">
                             {booking.status === 'rejected' ? (
                               <div className="text-center">
@@ -690,11 +744,20 @@ const SeekerBookings = () => {
                               </div>
                               <div className="flex justify-between">
                                 <span>Security Deposit:</span>
-                                <span>{formatCurrency(booking.securityDeposit || 0)}</span>
+                                <span>{formatCurrency(
+                                  booking.payment?.securityDeposit ||
+                                  booking.property?.security_deposit ||
+                                  booking.property?.securityDeposit ||
+                                  booking.securityDeposit || 0
+                                )}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span>Total Amount:</span>
-                                <span className="font-medium">{formatCurrency(booking.totalAmount || 0)}</span>
+                                <span className="font-medium">{formatCurrency(
+                                  booking.payment?.totalAmount ||
+                                  booking.totalAmount ||
+                                  ((booking.room?.rent || 0) + (booking.payment?.securityDeposit || booking.property?.security_deposit || 0)) || 0
+                                )}</span>
                               </div>
                             </div>
                           </div>
@@ -704,11 +767,10 @@ const SeekerBookings = () => {
                             <div className="space-y-1 text-sm text-gray-600">
                               <div className="flex justify-between">
                                 <span>Payment Status:</span>
-                                <span className={`px-2 py-1 rounded text-xs ${
-                                  booking.payment?.paymentStatus === 'completed' 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-yellow-100 text-yellow-800'
-                                }`}>
+                                <span className={`px-2 py-1 rounded text-xs ${booking.payment?.paymentStatus === 'completed'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                                  }`}>
                                   {booking.payment?.paymentStatus || 'Pending'}
                                 </span>
                               </div>
@@ -774,7 +836,7 @@ const SeekerBookings = () => {
                             <Calendar className="w-4 h-4" />
                             <span>View Details</span>
                           </button>
-                          
+
                           <button
                             onClick={() => navigate(`/seeker/property/${booking.property?._id}`)}
                             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
@@ -782,11 +844,11 @@ const SeekerBookings = () => {
                             <Eye className="w-4 h-4" />
                             <span>View Property</span>
                           </button>
-                          
+
                           {/* Only show room-related actions if booking is not rejected */}
                           {booking.status !== 'rejected' && (
                             <button
-                              onClick={() => navigate(`/room/${booking.room?._id}`)}
+                              onClick={() => navigate(`/seeker/room/${booking.room?._id}`)}
                               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-lg hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
                             >
                               <Bed className="w-4 h-4" />
@@ -794,7 +856,7 @@ const SeekerBookings = () => {
                             </button>
                           )}
 
-                          <button 
+                          <button
                             onClick={() => openContactModal(booking)}
                             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
                           >
@@ -802,16 +864,17 @@ const SeekerBookings = () => {
                             <span>Contact Owner</span>
                           </button>
 
-                          {/* Check-in button for confirmed bookings */}
-                          {booking.status === 'confirmed' && (
-                            <button 
+                          {/* Set Check-in Button */}
+                          {booking.status !== 'checked_in' && booking.status !== 'rejected' && (
+                            <button
                               onClick={() => openCheckInModal(booking)}
                               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
                             >
                               <LogIn className="w-4 h-4" />
-                              <span>Mark Check-in</span>
+                              <span>{booking.checkInDate ? 'Update Check-in' : 'Set Check-in'}</span>
                             </button>
                           )}
+
 
 
                           {/* Different actions based on booking status */}
@@ -820,9 +883,14 @@ const SeekerBookings = () => {
                             <div className="text-center text-gray-500 text-sm py-2">
                               Booking was rejected by owner
                             </div>
+                          ) : booking.status === 'checked_in' ? (
+                            /* No cancel for checked-in */
+                            <div className="text-center text-blue-600 text-sm py-2 font-medium">
+                              Successfully Checked In
+                            </div>
                           ) : (
-                            /* Cancel Booking Button for non-rejected bookings */
-                            <button 
+                            /* Cancel Booking Button for non-rejected, non-checked-in bookings */
+                            <button
                               onClick={() => openCancelModal(booking)}
                               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-200 shadow-md hover:shadow-lg font-medium border-2 border-red-800"
                             >
@@ -896,7 +964,7 @@ const SeekerBookings = () => {
                       <div>
                         <p className="text-red-800 font-medium mb-1">Warning</p>
                         <p className="text-red-700 text-sm">
-                          {bookingToCancel?.status === 'rejected' 
+                          {bookingToCancel?.status === 'rejected'
                             ? 'Are you sure you want to remove this rejected booking from your list? This action cannot be undone and the booking will be permanently removed.'
                             : 'Are you sure you want to cancel this booking? This action cannot be undone and the booking will be permanently removed.'
                           }
@@ -920,11 +988,10 @@ const SeekerBookings = () => {
                         </div>
                         <div className="flex justify-between">
                           <span>Status:</span>
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            bookingToCancel.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                          <span className={`px-2 py-1 rounded text-xs ${bookingToCancel.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                             bookingToCancel.status === 'pending_approval' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
+                              'bg-gray-100 text-gray-800'
+                            }`}>
                             {bookingToCancel.status?.replace('_', ' ').toUpperCase() || 'N/A'}
                           </span>
                         </div>

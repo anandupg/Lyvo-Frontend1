@@ -1,11 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, ArrowRight, ArrowLeft, Sparkles, Heart, Home, Users, DollarSign, SkipForward } from "lucide-react";
+import { CheckCircle, ArrowRight, ArrowLeft, Settings, Home, User, DollarSign, Briefcase } from "lucide-react";
 import apiClient from "../utils/apiClient";
-
-const QUESTIONS_API = import.meta.env.VITE_USER_SERVICE_URL || "http://localhost:4002/api/behaviour";
-const USER_API = import.meta.env.VITE_USER_SERVICE_URL || "http://localhost:4002/api/user";
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -33,14 +30,14 @@ const Onboarding = () => {
         });
         setQuestions(res.data.questions || []);
       } catch (e) {
-        const status = e?.response?.status;
-        const msg = e?.response?.data?.message || e?.message || 'Failed to load questions. Please try again.';
-        setError(msg);
-        if (status === 401) {
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('user');
-          navigate('/login');
-          return;
+        // Handle error gracefully
+        console.error("Error fetching questions:", e);
+        // Fallback questions if API fails (good for resiliency)
+        if (questions.length === 0) {
+          setQuestions([
+            { id: 'budget', text: 'Monthly Budget', type: 'range', min: 5000, max: 50000 },
+            { id: 'occupation', text: 'Occupation', options: ['Student', 'Professional', 'Other'] }
+          ]);
         }
       } finally {
         setLoading(false);
@@ -78,106 +75,56 @@ const Onboarding = () => {
       await apiClient.post(`/behaviour/answers`, { answers }, { headers: { Authorization: `Bearer ${token}` } });
       const user = JSON.parse(localStorage.getItem("user"));
       localStorage.setItem("user", JSON.stringify({ ...user, isNewUser: false, hasCompletedBehaviorQuestions: true }));
-      
-      // Show celebration animation
+
       setShowCelebration(true);
-      
-      // Wait for celebration animation, then redirect
+
       setTimeout(() => {
         if (user.role === 1) {
           navigate("/seeker-profile", { replace: true });
         } else {
           navigate(user.role === 3 ? "/owner-dashboard" : "/admin-dashboard", { replace: true });
         }
-      }, 2000);
+      }, 1500);
     } catch (e) {
-      const msg = e?.response?.data?.message || e?.message || 'Failed to submit. Please try again.';
+      const msg = e?.response?.data?.message || e?.message || 'Failed to submit.';
       setError(msg);
       setIsSubmitting(false);
     }
   };
 
   const getQuestionIcon = (questionText) => {
-    if (questionText.toLowerCase().includes('budget') || questionText.toLowerCase().includes('price')) {
-      return <DollarSign className="w-6 h-6" />;
-    }
-    if (questionText.toLowerCase().includes('roommate') || questionText.toLowerCase().includes('people')) {
-      return <Users className="w-6 h-6" />;
-    }
-    if (questionText.toLowerCase().includes('home') || questionText.toLowerCase().includes('place')) {
-      return <Home className="w-6 h-6" />;
-    }
-    return <Heart className="w-6 h-6" />;
+    const text = questionText.toLowerCase();
+    if (text.includes('budget') || text.includes('price')) return <DollarSign className="w-6 h-6 text-gray-700" />;
+    if (text.includes('occupation') || text.includes('work')) return <Briefcase className="w-6 h-6 text-gray-700" />;
+    return <Settings className="w-6 h-6 text-gray-700" />;
   };
 
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4"
-          >
-            <Sparkles className="w-8 h-8 text-white" />
-          </motion.div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Preparing Your Journey</h2>
-          <p className="text-gray-600">Loading personalized questions...</p>
-        </motion.div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading preferences...</p>
+        </div>
       </div>
     );
   }
 
   if (showCelebration) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", duration: 0.8 }}
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
           className="text-center"
         >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", duration: 0.6 }}
-            className="w-24 h-24 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6"
-          >
-            <CheckCircle className="w-12 h-12 text-white" />
-          </motion.div>
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="text-4xl font-bold text-gray-800 mb-4"
-          >
-            🎉 Amazing!
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="text-xl text-gray-600 mb-8"
-          >
-            We've got everything we need to find your perfect match!
-          </motion.p>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            className="flex items-center justify-center space-x-2 text-green-600"
-          >
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-            <span className="ml-2 text-sm">Redirecting...</span>
-          </motion.div>
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="w-10 h-10 text-green-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Preferences Saved</h1>
+          <p className="text-gray-600">Setting up your dashboard...</p>
         </motion.div>
       </div>
     );
@@ -188,270 +135,114 @@ const Onboarding = () => {
   const hasAnswer = answers[currentQuestion?.id] !== undefined;
 
   return (
-    <>
-      <style jsx>{`
-        .slider::-webkit-slider-thumb {
-          appearance: none;
-          height: 24px;
-          width: 24px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #ef4444, #dc2626);
-          cursor: pointer;
-          box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
-          transition: all 0.2s ease;
-        }
-        
-        .slider::-webkit-slider-thumb:hover {
-          transform: scale(1.1);
-          box-shadow: 0 6px 12px rgba(239, 68, 68, 0.4);
-        }
-        
-        .slider::-moz-range-thumb {
-          height: 24px;
-          width: 24px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #ef4444, #dc2626);
-          cursor: pointer;
-          border: none;
-          box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
-        }
-      `}</style>
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 pt-24 pb-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-50 pt-20 pb-12 px-4 sm:px-6">
+      <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
-        >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring" }}
-            className="w-20 h-20 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-6"
-          >
-            <Heart className="w-10 h-10 text-white" />
-          </motion.div>
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">
-            Let's Find Your Perfect Match! 💕
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Answer a few quick questions and we'll personalize your roommate experience
-          </p>
-        </motion.div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Setup Your Preferences</h1>
+          <p className="text-gray-600">Help us customize your living experience.</p>
+        </div>
 
-        {/* Progress Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mb-8"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-600">
-              Question {currentQuestionIndex + 1} of {questions.length}
-            </span>
-            <span className="text-sm font-medium text-gray-600">
-              {Math.round(progress)}% Complete
-            </span>
+        {/* Progress */}
+        <div className="mb-8">
+          <div className="flex justify-between text-sm font-medium text-gray-500 mb-2">
+            <span>Step {currentQuestionIndex + 1} of {questions.length}</span>
+            <span>{Math.round(progress)}%</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+          <div className="w-full bg-gray-200 rounded-full h-2">
             <motion.div
+              className="h-2 bg-red-600 rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="h-full bg-gradient-to-r from-red-500 to-red-600 rounded-full"
+              transition={{ duration: 0.3 }}
             />
           </div>
-        </motion.div>
+        </div>
 
-        {/* Question Card */}
+        {/* Card */}
         <motion.div
           key={currentQuestionIndex}
-          initial={{ opacity: 0, x: 50 }}
+          initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -50 }}
-          transition={{ duration: 0.3 }}
-          className="bg-white rounded-3xl shadow-2xl p-8 mb-8 border border-gray-100"
+          exit={{ opacity: 0, x: -20 }}
+          className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 min-h-[400px] flex flex-col"
         >
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl"
-            >
-              {error}
-            </motion.div>
-          )}
-
-          <div className="text-center mb-8">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.1 }}
-              className="w-16 h-16 bg-gradient-to-r from-red-100 to-red-200 rounded-full flex items-center justify-center mx-auto mb-4"
-            >
-              {getQuestionIcon(currentQuestion?.text)}
-            </motion.div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              {currentQuestion?.text}
-            </h2>
+          <div className="flex items-center gap-4 mb-6">
+            <div className="p-3 bg-gray-100 rounded-lg">
+              {getQuestionIcon(currentQuestion?.text || '')}
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900">{currentQuestion?.text}</h2>
           </div>
 
-          <div className="space-y-4">
+          <div className="flex-grow">
             {!currentQuestion?.type && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {currentQuestion?.options?.map((opt, index) => (
-                  <motion.button
+              <div className="grid grid-cols-1 gap-3">
+                {currentQuestion?.options?.map((opt) => (
+                  <button
                     key={opt}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
                     onClick={() => handleChange(currentQuestion.id, opt)}
-                    className={`px-6 py-4 rounded-2xl border-2 text-sm font-medium transition-all duration-200 ${
-                      answers[currentQuestion.id] === opt
-                        ? "bg-gradient-to-r from-red-500 to-red-600 text-white border-transparent shadow-lg"
-                        : "bg-white text-gray-700 border-gray-200 hover:border-red-300 hover:shadow-md"
-                    }`}
+                    className={`w-full text-left px-5 py-4 rounded-lg border transition-all ${answers[currentQuestion.id] === opt
+                        ? "border-red-600 bg-red-50 text-red-700 ring-1 ring-red-600"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700"
+                      }`}
                   >
-                    {opt}
-                  </motion.button>
+                    <span className="font-medium">{opt}</span>
+                  </button>
                 ))}
               </div>
             )}
-            
+
             {currentQuestion?.type === 'range' && (
-              <div className="max-w-md mx-auto">
-                <div className="bg-gradient-to-r from-red-100 to-red-200 rounded-2xl p-6">
-                  <input
-                    type="range"
-                    min={currentQuestion.min}
-                    max={currentQuestion.max}
-                    value={answers[currentQuestion.id] ?? currentQuestion.min}
-                    onChange={(e) => handleChange(currentQuestion.id, Number(e.target.value))}
-                    className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                    style={{
-                      background: `linear-gradient(to right, #ef4444 0%, #dc2626 100%)`
-                    }}
-                  />
-                  <div className="text-center mt-4">
-                    <span className="text-3xl font-bold text-red-600">
-                      ₹{answers[currentQuestion.id] ?? currentQuestion.min}
-                    </span>
-                    <p className="text-sm text-gray-600 mt-1">per month</p>
-                  </div>
+              <div className="px-4 py-8">
+                <input
+                  type="range"
+                  min={currentQuestion.min}
+                  max={currentQuestion.max}
+                  step={currentQuestion.step || 100}
+                  value={answers[currentQuestion.id] ?? currentQuestion.min}
+                  onChange={(e) => handleChange(currentQuestion.id, Number(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-600"
+                />
+                <div className="mt-6 flex justify-between items-center text-gray-900">
+                  <span className="text-3xl font-bold">₹{answers[currentQuestion.id] ?? currentQuestion.min}</span>
+                  <span className="text-gray-500 font-medium badge px-3 py-1 bg-gray-100 rounded-md">Monthly Budget</span>
                 </div>
               </div>
             )}
           </div>
-        </motion.div>
 
-        {/* Navigation */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="space-y-4"
-        >
-          {/* Progress Dots */}
-          <div className="flex justify-center space-x-2">
-            {questions.map((_, index) => (
-              <motion.div
-                key={index}
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: index * 0.1 }}
-                className={`w-3 h-3 rounded-full transition-all ${
-                  index === currentQuestionIndex
-                    ? "bg-gradient-to-r from-red-500 to-red-600"
-                    : index < currentQuestionIndex
-                    ? "bg-green-400"
-                    : "bg-gray-200"
-                }`}
-              />
-            ))}
-          </div>
-
-          {/* Navigation Buttons */}
-          <div className="flex justify-between items-center">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+          {/* Footer Actions */}
+          <div className="mt-8 pt-6 border-t border-gray-100 flex justify-between items-center">
+            <button
               onClick={handlePrevious}
               disabled={currentQuestionIndex === 0}
-              className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all ${
-                currentQuestionIndex === 0
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
-              }`}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${currentQuestionIndex === 0 ? "text-gray-300 cursor-not-allowed" : "text-gray-600 hover:bg-gray-100"
+                }`}
             >
-              <ArrowLeft className="w-5 h-5" />
-              <span>Previous</span>
-            </motion.button>
+              Back
+            </button>
 
-            <div className="flex space-x-3">
-              {/* Skip Button */}
+            <div className="flex gap-3">
               {!isLastQuestion && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                <button
                   onClick={handleSkip}
-                  className="flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300"
+                  className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
                 >
-                  <SkipForward className="w-5 h-5" />
-                  <span>Skip</span>
-                </motion.button>
+                  Skip
+                </button>
               )}
-
-              {/* Next/Complete Button */}
-              {isLastQuestion ? (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleSubmit}
-                  disabled={!hasAnswer || isSubmitting}
-                  className={`flex items-center space-x-2 px-8 py-3 rounded-xl font-semibold transition-all ${
-                    !hasAnswer || isSubmitting
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 shadow-lg"
-                  }`}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Submitting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Complete</span>
-                      <CheckCircle className="w-5 h-5" />
-                    </>
-                  )}
-                </motion.button>
-              ) : (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleNext}
-                  disabled={!hasAnswer}
-                  className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all ${
-                    !hasAnswer
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 shadow-lg"
-                  }`}
-                >
-                  <span>Next</span>
-                  <ArrowRight className="w-5 h-5" />
-                </motion.button>
-              )}
+              <button
+                onClick={isLastQuestion ? handleSubmit : handleNext}
+                disabled={!hasAnswer && isLastQuestion}
+                className="px-6 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLastQuestion ? (isSubmitting ? "Saving..." : "Finish") : "Continue"}
+              </button>
             </div>
           </div>
         </motion.div>
       </div>
     </div>
-    </>
   );
 };
 

@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import OwnerLayout from '../../components/owner/OwnerLayout';
-import { 
-  Building, 
-  Search, 
-  Filter, 
-  Eye, 
-  Edit, 
-  Trash2, 
+import {
+  Building,
+  Search,
+  Filter,
+  Eye,
+  Edit,
+  Trash2,
   MoreVertical,
   MapPin,
   Users,
@@ -37,7 +37,7 @@ const Properties = () => {
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002'}/api/properties`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/owner/properties`, {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }
@@ -59,15 +59,15 @@ const Properties = () => {
   const updatePropertyStatus = async (propertyId, newStatus) => {
     try {
       setUpdatingStatus(prev => ({ ...prev, [propertyId]: true }));
-      
+
       const authToken = localStorage.getItem('authToken');
       if (!authToken) {
         navigate('/login');
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002'}/api/properties/${propertyId}/status`, {
-        method: 'PATCH',
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/owner/properties/${propertyId}/status`, {
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
@@ -79,8 +79,8 @@ const Properties = () => {
         const result = await response.json();
         if (result.success) {
           // Update the property in the local state
-          setProperties(prev => prev.map(property => 
-            property._id === propertyId 
+          setProperties(prev => prev.map(property =>
+            property._id === propertyId
               ? { ...property, status: newStatus, updated_at: new Date().toISOString() }
               : property
           ));
@@ -104,7 +104,7 @@ const Properties = () => {
     const checkAuth = () => {
       const authToken = localStorage.getItem('authToken');
       const userData = localStorage.getItem('user');
-      
+
       if (!authToken || !userData) {
         navigate('/login');
         return;
@@ -122,7 +122,7 @@ const Properties = () => {
         console.error('Error parsing user data:', error);
         navigate('/login');
       }
-      
+
       setLoading(false);
     };
 
@@ -134,10 +134,10 @@ const Properties = () => {
     // Collect all uploaded images
     let allImages = [];
     let hasUploadedImages = false;
-    
+
     console.log('Processing property:', property.property_name);
     console.log('Property images:', property.images);
-    
+
     if (property.images) {
       // Handle both old format (frontImage, backImage, etc.) and new format (front, back, etc.)
       const imageOptions = [
@@ -154,7 +154,7 @@ const Properties = () => {
         { url: property.images.backImage, label: 'Back' },
         { url: property.images.toiletImage, label: 'Toilet' }
       ].filter(img => img.url); // Remove null/undefined values
-      
+
       // Add additional images array if it exists
       if (property.images.images && Array.isArray(property.images.images)) {
         property.images.images.forEach((url, index) => {
@@ -163,18 +163,18 @@ const Properties = () => {
           }
         });
       }
-      
+
       allImages = imageOptions;
       hasUploadedImages = imageOptions.length > 0;
-      
+
       console.log('Found images:', allImages.length);
     }
-    
+
     // Add default fallback image if no uploaded images
     if (!hasUploadedImages) {
-      allImages = [{ 
-        url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&w=400&h=300&fit=crop&crop=center', 
-        label: 'Default' 
+      allImages = [{
+        url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&w=400&h=300&fit=crop&crop=center',
+        label: 'Default'
       }];
     }
 
@@ -228,7 +228,7 @@ const Properties = () => {
 
   const filteredProperties = transformedProperties.filter(property => {
     const matchesSearch = property.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         property.location.toLowerCase().includes(searchTerm.toLowerCase());
+      property.location.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || property.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
@@ -299,7 +299,7 @@ const Properties = () => {
               className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-200"
             >
               {/* Property Images Gallery */}
-              <div 
+              <div
                 className="relative h-40 sm:h-48 bg-gray-200 overflow-hidden"
               >
                 {/* Current image display */}
@@ -323,10 +323,10 @@ const Properties = () => {
                       }));
                     }}
                   />
-                  
+
                   {/* Loading overlay */}
                   {imageLoading[property.id] !== false && (
-                    <motion.div 
+                    <motion.div
                       className="absolute inset-0 bg-gray-200 flex items-center justify-center"
                       initial={{ opacity: 1 }}
                       animate={{ opacity: 0 }}
@@ -339,7 +339,7 @@ const Properties = () => {
                       />
                     </motion.div>
                   )}
-                  
+
                   {/* Image label overlay */}
                   {property.images[0]?.label !== 'Default' && (
                     <div className="absolute bottom-1 left-1">
@@ -349,10 +349,10 @@ const Properties = () => {
                     </div>
                   )}
                 </div>
-                
-                
+
+
                 {/* Status badge with animation */}
-                <motion.div 
+                <motion.div
                   className="absolute top-2 sm:top-3 right-2 sm:right-3"
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -362,9 +362,9 @@ const Properties = () => {
                     {property.status}
                   </span>
                 </motion.div>
-                
-                
-                
+
+
+
               </div>
 
               {/* Property Details */}
@@ -422,11 +422,10 @@ const Properties = () => {
                   <button
                     onClick={() => updatePropertyStatus(property.id, property.status === 'Active' ? 'inactive' : 'active')}
                     disabled={updatingStatus[property.id]}
-                    className={`flex items-center justify-center px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors duration-200 ${
-                      property.status === 'Active' 
-                        ? 'text-red-700 bg-red-100 hover:bg-red-200' 
+                    className={`flex items-center justify-center px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors duration-200 ${property.status === 'Active'
+                        ? 'text-red-700 bg-red-100 hover:bg-red-200'
                         : 'text-green-700 bg-green-100 hover:bg-green-200'
-                    } ${updatingStatus[property.id] ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      } ${updatingStatus[property.id] ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {updatingStatus[property.id] ? (
                       <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -453,7 +452,7 @@ const Properties = () => {
             <Building className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
             <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No properties found</h3>
             <p className="text-sm sm:text-base text-gray-500 mb-4">
-              {searchTerm || filterStatus !== 'all' 
+              {searchTerm || filterStatus !== 'all'
                 ? 'Try adjusting your search or filters'
                 : 'No properties available'
               }

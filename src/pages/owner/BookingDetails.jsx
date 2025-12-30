@@ -2,24 +2,26 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import OwnerLayout from '../../components/owner/OwnerLayout';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  MapPin, 
-  Home, 
-  Bed, 
-  Users, 
-  Mail, 
-  Phone, 
-  CheckCircle, 
-  XCircle, 
+import {
+  ArrowLeft,
+  Calendar,
+  MapPin,
+  Home,
+  Bed,
+  Users,
+  Mail,
+  Phone,
+  CheckCircle,
+  XCircle,
   Clock,
   DollarSign,
   Tag,
   Maximize,
   User,
   Building,
-  AlertCircle
+  AlertCircle,
+  AlertTriangle,
+  Shield
 } from 'lucide-react';
 
 const BookingDetails = () => {
@@ -33,6 +35,7 @@ const BookingDetails = () => {
   const [updating, setUpdating] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [actionType, setActionType] = useState(null);
 
   useEffect(() => {
@@ -42,30 +45,31 @@ const BookingDetails = () => {
         setError('');
         const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
         const token = localStorage.getItem('authToken');
-        let endpoint = token && bookingId ? `${baseUrl}/api/bookings/${bookingId}` : `${baseUrl}/api/public/bookings/${bookingId}`;
-        let resp = await fetch(endpoint, {
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          }
-        });
+
+        // Fix: Removed duplicate /api prefix. baseUrl includes /api/property
+        // If token exists, use direct ID endpoint. Else, try the same endpoint (backend will reject if auth needed)
+        // or rely on lookup loop below.
+        let endpoint = token && bookingId ? `${baseUrl}/bookings/${bookingId}` : null;
+
+        let resp;
+        if (endpoint) {
+          resp = await fetch(endpoint, {
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {})
+            }
+          });
+        }
+
         let data;
-        if (resp.ok) {
+        if (resp && resp.ok) {
           data = await resp.json();
           setBooking(data.booking);
+          console.log('Booking Data:', data.booking); // Debug log
           setSource(data.source || 'booking');
         } else {
-          // Second attempt: try public by id explicitly
-          if (bookingId) {
-            const publicById = `${baseUrl}/api/public/bookings/${bookingId}`;
-            const publicResp = await fetch(publicById, { headers: { 'Content-Type': 'application/json' } });
-            if (publicResp.ok) {
-              const publicData = await publicResp.json();
-              setBooking(publicData.booking);
-              setSource(publicData.source || 'booking');
-              return;
-            }
-          }
+          // Second attempt: Public lookup if no direct access or failed
+          // There is no /api/public/bookings/:id route in backend, so we skip that and go to lookup params.
 
           // Build lookup params from state or query
           const stateParams = location.state || {};
@@ -76,7 +80,8 @@ const BookingDetails = () => {
           const roomId = stateParams.roomId || searchParams.get('roomId');
 
           if (userId && ownerId && propertyId && roomId) {
-            const lookupUrl = `${baseUrl}/api/bookings/lookup?userId=${encodeURIComponent(userId)}&ownerId=${encodeURIComponent(ownerId)}&propertyId=${encodeURIComponent(propertyId)}&roomId=${encodeURIComponent(roomId)}`;
+            // Fix: endpoint is /bookings/lookup/payment and removed /api prefix
+            const lookupUrl = `${baseUrl}/bookings/lookup/payment?userId=${encodeURIComponent(userId)}&ownerId=${encodeURIComponent(ownerId)}&propertyId=${encodeURIComponent(propertyId)}&roomId=${encodeURIComponent(roomId)}`;
             const lookupResp = await fetch(lookupUrl);
             if (!lookupResp.ok) {
               const text = await lookupResp.text();
@@ -86,8 +91,12 @@ const BookingDetails = () => {
             setBooking(lookupData.booking);
             setSource(lookupData.source || 'composed');
           } else {
-            const text = await resp.text();
-            throw new Error(text || `HTTP ${resp.status}`);
+            if (resp) {
+              const text = await resp.text();
+              throw new Error(text || `HTTP ${resp.status}`);
+            } else {
+              throw new Error('No booking ID or lookup parameters found');
+            }
           }
         }
       } catch (e) {
@@ -103,15 +112,18 @@ const BookingDetails = () => {
     try {
       if (!booking?._id) return;
       setUpdating(true);
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const token = localStorage.getItem('authToken');
-      const resp = await fetch(`${baseUrl}/api/bookings/${booking._id}/status`, {
+
+      const status = action === 'approve' ? 'approved' : 'rejected';
+
+      const resp = await fetch(`${baseUrl}/property/bookings/${booking._id}/status`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ action })
+        body: JSON.stringify({ status })
       });
       if (!resp.ok) {
         const text = await resp.text();
@@ -120,7 +132,7 @@ const BookingDetails = () => {
       const data = await resp.json();
       setBooking(data.booking);
       setActionType(action);
-      
+
       // Show success modal
       if (action === 'approve') {
         setShowApprovalModal(true);
@@ -134,17 +146,47 @@ const BookingDetails = () => {
     }
   };
 
+  const finalizeCheckIn = async () => {
+    try {
+      if (!booking?._id) return;
+      setUpdating(true);
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const token = localStorage.getItem('authToken');
+
+      const resp = await fetch(`${baseUrl}/property/bookings/${booking._id}/finalize-check-in`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      });
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(text || `HTTP ${resp.status}`);
+      }
+      const data = await resp.json();
+      setBooking(prev => ({ ...prev, status: 'checked_in' }));
+      setShowCheckInModal(true);
+    } catch (e) {
+      setError(e.message || 'Failed to finalize check-in');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const getStatusBadge = (status) => {
     const statusConfig = {
       pending_approval: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: Clock, label: 'Pending Approval' },
-      confirmed: { bg: 'bg-green-100', text: 'text-green-800', icon: CheckCircle, label: 'Confirmed' },
+      confirmed: { bg: 'bg-green-100', text: 'text-green-800', icon: CheckCircle, label: 'Approved' },
+      approved: { bg: 'bg-green-100', text: 'text-green-800', icon: CheckCircle, label: 'Approved' },
+      checked_in: { bg: 'bg-blue-100', text: 'text-blue-800', icon: MapPin, label: 'Checked In' },
       rejected: { bg: 'bg-red-100', text: 'text-red-800', icon: XCircle, label: 'Rejected' },
       cancelled: { bg: 'bg-gray-100', text: 'text-gray-800', icon: XCircle, label: 'Cancelled' },
     };
-    
+
     const config = statusConfig[status] || statusConfig.pending_approval;
     const StatusIcon = config.icon;
-    
+
     return (
       <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${config.bg} ${config.text} font-medium`}>
         <StatusIcon className="w-4 h-4" />
@@ -158,19 +200,19 @@ const BookingDetails = () => {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <button 
-              onClick={() => navigate('/owner-bookings')} 
+            <button
+              onClick={() => navigate('/owner-bookings')}
               className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
               <span className="font-medium">Back to Bookings</span>
             </button>
-        <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Booking Details</h1>
                 <p className="text-gray-600 mt-1">Manage and review booking information</p>
@@ -180,23 +222,23 @@ const BookingDetails = () => {
                   {getStatusBadge(booking.status)}
                 </div>
               )}
-        </div>
+            </div>
           </motion.div>
 
-        {loading ? (
+          {loading ? (
             <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
               <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-red-600 mx-auto mb-4"></div>
               <p className="text-gray-600 text-lg">Loading booking details...</p>
-          </div>
-        ) : error ? (
+            </div>
+          ) : error ? (
             <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
               <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
               <p className="text-gray-700 text-lg">{error}</p>
-          </div>
-        ) : booking ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            </div>
+          ) : booking ? (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
+              <div className="lg:col-span-2 space-y-6">
                 {/* Property Information */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -227,8 +269,8 @@ const BookingDetails = () => {
                           Security Deposit
                         </label>
                         <p className="mt-1 text-lg font-semibold text-gray-900">
-                          {booking.propertySnapshot?.security_deposit != null 
-                            ? `₹${Number(booking.propertySnapshot.security_deposit).toLocaleString()}` 
+                          {booking.propertySnapshot?.security_deposit != null
+                            ? `₹${Number(booking.propertySnapshot.security_deposit).toLocaleString()}`
                             : 'N/A'}
                         </p>
                       </div>
@@ -268,10 +310,10 @@ const BookingDetails = () => {
                       <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                         {booking.roomSnapshot?.images?.room && (
                           <div className="relative group overflow-hidden rounded-xl">
-                            <img 
-                              src={booking.roomSnapshot.images.room} 
-                              alt="Room" 
-                              className="w-full h-64 object-cover transform group-hover:scale-105 transition-transform duration-300" 
+                            <img
+                              src={booking.roomSnapshot.images.room}
+                              alt="Room"
+                              className="w-full h-64 object-cover transform group-hover:scale-105 transition-transform duration-300"
                             />
                             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
                               <p className="text-white font-medium">Room View</p>
@@ -280,10 +322,10 @@ const BookingDetails = () => {
                         )}
                         {booking.roomSnapshot?.images?.toilet && (
                           <div className="relative group overflow-hidden rounded-xl">
-                            <img 
-                              src={booking.roomSnapshot.images.toilet} 
-                              alt="Bathroom" 
-                              className="w-full h-64 object-cover transform group-hover:scale-105 transition-transform duration-300" 
+                            <img
+                              src={booking.roomSnapshot.images.toilet}
+                              alt="Bathroom"
+                              className="w-full h-64 object-cover transform group-hover:scale-105 transition-transform duration-300"
                             />
                             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
                               <p className="text-white font-medium">Bathroom View</p>
@@ -345,6 +387,19 @@ const BookingDetails = () => {
                           {booking.roomSnapshot?.rent != null ? `₹${Number(booking.roomSnapshot.rent).toLocaleString()}` : 'N/A'}
                         </p>
                       </div>
+                      <div className={booking.status === 'pending_approval' ? 'bg-purple-50 p-3 rounded-xl border border-purple-100' : ''}>
+                        <label className="text-sm font-medium text-purple-600 flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          Requested Check-in
+                        </label>
+                        <p className={`mt-1 text-lg font-bold ${booking.checkInDate ? 'text-purple-700' : 'text-gray-400 italic'}`}>
+                          {booking.checkInDate ? new Date(booking.checkInDate).toLocaleDateString('en-IN', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          }) : 'Not set by seeker yet'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -377,6 +432,19 @@ const BookingDetails = () => {
                           {new Date(booking.createdAt || booking.bookedAt).toLocaleTimeString('en-IN')}
                         </p>
                       </div>
+                      {booking.checkInDate && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Requested Check-in Date</label>
+                          <p className="mt-1 text-lg font-semibold text-purple-600">
+                            {new Date(booking.checkInDate).toLocaleDateString('en-IN', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </p>
+                          <p className="text-sm text-gray-500 italic">Expected arrival</p>
+                        </div>
+                      )}
                       {booking.approvedAt && (
                         <div>
                           <label className="text-sm font-medium text-gray-500">Approved Date</label>
@@ -393,7 +461,7 @@ const BookingDetails = () => {
                         </div>
                       )}
                     </div>
-                </div>
+                  </div>
                 </motion.div>
 
                 {/* Action Buttons */}
@@ -404,12 +472,23 @@ const BookingDetails = () => {
                     transition={{ delay: 0.4 }}
                     className="bg-white rounded-2xl shadow-lg p-6"
                   >
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Actions</h3>
+
+                    {!booking.checkInDate && booking.status === 'pending_approval' && (
+                      <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl mb-4 flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-sm">Awaiting Seeker's Check-in Date</p>
+                          <p className="text-xs mt-1">The seeker needs to set their preferred check-in date from their dashboard before you can approve this booking.</p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex flex-wrap gap-4">
-                  <button
-                    disabled={updating}
-                    onClick={() => updateStatus('approve')}
-                        className="flex-1 min-w-[200px] bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-xl font-semibold hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      <button
+                        disabled={updating || !booking.checkInDate}
+                        onClick={() => updateStatus('approve')}
+                        className="flex-1 min-w-[200px] bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-xl font-semibold hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {updating ? (
                           <>
@@ -419,13 +498,13 @@ const BookingDetails = () => {
                         ) : (
                           <>
                             <CheckCircle className="w-5 h-5" />
-                            Approve Booking
+                            {booking.checkInDate ? 'Approve Booking' : 'Awaiting Date'}
                           </>
                         )}
-                  </button>
-                  <button
-                    disabled={updating}
-                    onClick={() => updateStatus('reject')}
+                      </button>
+                      <button
+                        disabled={updating}
+                        onClick={() => updateStatus('reject')}
                         className="flex-1 min-w-[200px] bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 rounded-xl font-semibold hover:from-red-700 hover:to-red-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {updating ? (
@@ -439,14 +518,72 @@ const BookingDetails = () => {
                             Reject Booking
                           </>
                         )}
-                  </button>
-                </div>
+                      </button>
+                    </div>
                   </motion.div>
                 )}
-            </div>
+
+                {(booking.status === 'approved' || booking.status === 'confirmed') && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-blue-600"
+                  >
+                    <div className="flex items-start gap-4 mb-6">
+                      <div className="p-3 bg-blue-100 rounded-xl">
+                        <MapPin className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">Final Check-in Confirmation</h3>
+                        <p className="text-gray-600 mt-1">Confirm that the seeker has arrived at the property and successfully checked in.</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50 rounded-xl p-4 mb-6">
+                      <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                        <Shield className="w-4 h-4" />
+                        What happens next?
+                      </h4>
+                      <ul className="text-sm text-blue-800 space-y-2">
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
+                          Seeker will be officially added as a Tenant in this room
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
+                          Room occupancy will be updated
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
+                          Tenancy records will be visible in your Tenant Management area
+                        </li>
+                      </ul>
+                    </div>
+
+                    <button
+                      disabled={updating}
+                      onClick={finalizeCheckIn}
+                      className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-3"
+                    >
+                      {updating ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Processing Check-in...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-6 h-6" />
+                          Confirm Final Check-in
+                        </>
+                      )}
+                    </button>
+                  </motion.div>
+                )}
+              </div>
 
               {/* Sidebar */}
-            <div className="space-y-6">
+              <div className="space-y-6">
                 {/* Seeker Information */}
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
@@ -461,6 +598,19 @@ const BookingDetails = () => {
                     </h2>
                   </div>
                   <div className="p-6 space-y-4">
+                    <div className="flex justify-center mb-4">
+                      {(booking.userId?.profilePicture || booking.userId?.picture) ? (
+                        <img
+                          src={booking.userId?.profilePicture || booking.userId?.picture}
+                          alt="Seeker Profile"
+                          className="w-24 h-24 rounded-full object-cover border-4 border-indigo-50 shadow-md"
+                        />
+                      ) : (
+                        <div className="w-24 h-24 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-300">
+                          <User className="w-12 h-12" />
+                        </div>
+                      )}
+                    </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Name</label>
                       <p className="mt-1 text-lg font-semibold text-gray-900">
@@ -485,8 +635,63 @@ const BookingDetails = () => {
                         {booking.userSnapshot?.phone || 'N/A'}
                       </p>
                     </div>
-                </div>
+                  </div>
                 </motion.div>
+
+                {/* Seeker Identity Verification */}
+                {booking.userId && (booking.userId.govtIdFrontUrl || booking.userId.govtIdBackUrl) && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.25 }}
+                    className="bg-white rounded-2xl shadow-lg overflow-hidden"
+                  >
+                    <div className="bg-gradient-to-r from-teal-600 to-teal-700 px-6 py-4">
+                      <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <Shield className="w-5 h-5" />
+                        Identity Verification
+                      </h2>
+                    </div>
+                    <div className="p-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        {booking.userId.kycVerified ? (
+                          <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full flex items-center gap-1 font-medium">
+                            <CheckCircle className="w-3 h-3" /> Verified
+                          </span>
+                        ) : (
+                          <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full flex items-center gap-1 font-medium">
+                            <Clock className="w-3 h-3" /> Pending
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-gray-500 mb-3">Government ID</p>
+                      <div className="grid grid-cols-1 gap-4">
+                        {booking.userId.govtIdFrontUrl && (
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1">Front Side</p>
+                            <img
+                              src={booking.userId.govtIdFrontUrl}
+                              alt="ID Front"
+                              className="w-full h-40 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                              onClick={() => window.open(booking.userId.govtIdFrontUrl, '_blank')}
+                            />
+                          </div>
+                        )}
+                        {booking.userId.govtIdBackUrl && (
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1">Back Side</p>
+                            <img
+                              src={booking.userId.govtIdBackUrl}
+                              alt="ID Back"
+                              className="w-full h-40 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                              onClick={() => window.open(booking.userId.govtIdBackUrl, '_blank')}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
 
                 {/* Owner Information */}
                 <motion.div
@@ -525,14 +730,14 @@ const BookingDetails = () => {
                       <p className="mt-1 text-gray-900">
                         {booking.ownerSnapshot?.phone || 'N/A'}
                       </p>
-                </div>
+                    </div>
                   </div>
                 </motion.div>
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
-            </div>
 
       {/* Approval Success Modal */}
       {showApprovalModal && (
@@ -587,7 +792,35 @@ const BookingDetails = () => {
               Back to Bookings
             </button>
           </motion.div>
-          </div>
+        </div>
+      )}
+
+      {/* Check-in Success Modal */}
+      {showCheckInModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center"
+          >
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-10 h-10 text-blue-600" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Check-in Successful!</h3>
+            <p className="text-gray-600 mb-6">
+              The seeker has been successfully checked in.
+            </p>
+            <button
+              onClick={() => {
+                setShowCheckInModal(false);
+                navigate('/owner-bookings');
+              }}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200"
+            >
+              Back to Bookings
+            </button>
+          </motion.div>
+        </div>
       )}
     </OwnerLayout>
   );

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Bell, 
-  User, 
+import {
+  Bell,
+  User,
   Menu,
   LogOut,
   X,
@@ -15,7 +15,7 @@ const getTimeAgo = (dateString) => {
   const date = new Date(dateString);
   const now = new Date();
   const seconds = Math.floor((now - date) / 1000);
-  
+
   if (seconds < 60) return 'Just now';
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
@@ -41,11 +41,11 @@ const OwnerNavbar = ({ onMenuToggle }) => {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
 
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
-  
+
   // Keep navbar avatar in sync when profile changes
   useEffect(() => {
     const onUpdate = () => {
-      try { setUser(JSON.parse(localStorage.getItem('user') || '{}')); } catch {}
+      try { setUser(JSON.parse(localStorage.getItem('user') || '{}')); } catch { }
     };
     window.addEventListener('lyvo-profile-update', onUpdate);
     window.addEventListener('lyvo-login', onUpdate);
@@ -57,58 +57,73 @@ const OwnerNavbar = ({ onMenuToggle }) => {
     };
   }, []);
 
+  // Listen for notification events
+  useEffect(() => {
+    const handleNewNotification = (event) => {
+      console.log('🔔 OwnerNavbar received new-notification event:', event.detail);
+      // Force fetch regardless of loading state
+      fetchNotifications(true);
+    };
+
+    window.addEventListener('new-notification', handleNewNotification);
+    return () => window.removeEventListener('new-notification', handleNewNotification);
+  }, []);
+
   // Fetch notifications
-  const fetchNotifications = async () => {
-    // Prevent multiple simultaneous requests
-    if (notificationsLoading) {
+  const fetchNotifications = async (force = false) => {
+    // Prevent multiple simultaneous requests unless forced
+    if (notificationsLoading && !force) {
+      console.log('Skipping fetch: already loading');
       return;
     }
 
     try {
-      setNotificationsLoading(true);
+      if (!force) setNotificationsLoading(true);
       const authToken = localStorage.getItem('authToken');
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      
+
       if (!authToken || !userData._id) {
+        console.log('Skipping fetch: Not authenticated');
         return;
       }
 
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-      
-      const response = await fetch(`${baseUrl}/api/notifications`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      console.log('Fetching notifications from:', `${baseUrl}/notifications`);
+
+      const response = await fetch(`${baseUrl}/notifications`, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'x-user-id': userData._id
+          'Authorization': `Bearer ${authToken}`
         }
       });
 
       if (response.ok) {
         const data = await response.json();
         if (data.success && isMountedRef.current) {
+          console.log('Notifications fetched:', data.data.length);
           setNotifications(data.data || []);
-          setUnreadCount(data.unread_count || 0);
+          setUnreadCount(data.unreadCount || 0); // Fixed key name unreadCount vs unread_count
         }
+      } else {
+        console.error('Fetch failed:', response.status);
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {
-      setNotificationsLoading(false);
+      if (!force) setNotificationsLoading(false);
     }
   };
 
-  // Mark notification as read
-  const markAsRead = async (notificationId) => {
+  // Delete notification
+  const deleteNotification = async (notificationId) => {
     try {
       const authToken = localStorage.getItem('authToken');
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      
-      if (!authToken || !userData._id) {
-        return;
-      }
 
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-      const response = await fetch(`${baseUrl}/api/notifications/${notificationId}/read`, {
-        method: 'PATCH',
+      if (!authToken || !userData._id) return;
+
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${baseUrl}/notifications/${notificationId}`, {
+        method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'x-user-id': userData._id
@@ -116,11 +131,14 @@ const OwnerNavbar = ({ onMenuToggle }) => {
       });
 
       if (response.ok) {
-        // Refresh notifications
-        fetchNotifications();
+        // Optimistic update
+        setNotifications(prev => prev.filter(n => n._id !== notificationId));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+        // Refresh to be safe
+        fetchNotifications(true);
       }
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error('Error deleting notification:', error);
     }
   };
 
@@ -135,12 +153,12 @@ const OwnerNavbar = ({ onMenuToggle }) => {
   useEffect(() => {
     // Initial fetch
     fetchNotifications();
-    
-    // Poll for new notifications every 2 minutes (reduced frequency)
+
+    // Poll for new notifications every 2 minutes
     const pollInterval = setInterval(() => {
       fetchNotifications();
-    }, 120000); // 2 minutes instead of 30 seconds
-    
+    }, 120000);
+
     // Cleanup function
     return () => {
       clearInterval(pollInterval);
@@ -149,10 +167,11 @@ const OwnerNavbar = ({ onMenuToggle }) => {
 
   // Listen for notification events
   useEffect(() => {
-    const handleNewNotification = () => {
-      fetchNotifications();
+    const handleNewNotification = (event) => {
+      console.log('🔔 OwnerNavbar received new-notification event:', event.detail);
+      fetchNotifications(true);
     };
-    
+
     window.addEventListener('new-notification', handleNewNotification);
     return () => window.removeEventListener('new-notification', handleNewNotification);
   }, []);
@@ -180,24 +199,24 @@ const OwnerNavbar = ({ onMenuToggle }) => {
   // Animation variants
 
   const dropdownVariants = {
-    hidden: { 
-      opacity: 0, 
-      y: -10, 
+    hidden: {
+      opacity: 0,
+      y: -10,
       scale: 0.95,
       transformOrigin: "top right"
     },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
+    visible: {
+      opacity: 1,
+      y: 0,
       scale: 1,
       transition: {
         duration: 0.2,
         ease: "easeOut"
       }
     },
-    exit: { 
-      opacity: 0, 
-      y: -10, 
+    exit: {
+      opacity: 0,
+      y: -10,
       scale: 0.95,
       transition: {
         duration: 0.15,
@@ -207,11 +226,11 @@ const OwnerNavbar = ({ onMenuToggle }) => {
   };
 
   const buttonHoverVariants = {
-    hover: { 
+    hover: {
       scale: 1.05,
       transition: { duration: 0.1 }
     },
-    tap: { 
+    tap: {
       scale: 0.95,
       transition: { duration: 0.1 }
     }
@@ -236,19 +255,19 @@ const OwnerNavbar = ({ onMenuToggle }) => {
 
           {/* Logo */}
           <Link to="/owner-dashboard" className="flex items-center space-x-2 sm:space-x-3">
-            <motion.div 
+            <motion.div
               className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center"
               whileHover={{ scale: 1.05 }}
               transition={{ duration: 0.2 }}
             >
-              <img 
-                src="/Lyvo_no_bg.png" 
-                alt="Lyvo Owner" 
+              <img
+                src="/Lyvo_no_bg.png"
+                alt="Lyvo Owner"
                 className="w-full h-full object-contain"
               />
             </motion.div>
             <div className="hidden sm:block">
-                              <h1 className="text-lg sm:text-xl font-bold text-gray-900"><span className="text-red-600">Lyvo</span><span className="text-black">+</span> Owner</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900"><span className="text-red-600">Lyvo</span><span className="text-black">+</span> Owner</h1>
               <p className="text-xs text-gray-500">Property Management</p>
             </div>
           </Link>
@@ -269,7 +288,7 @@ const OwnerNavbar = ({ onMenuToggle }) => {
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
-                <motion.span 
+                <motion.span
                   className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white px-1"
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
@@ -282,7 +301,7 @@ const OwnerNavbar = ({ onMenuToggle }) => {
             {/* Notifications Dropdown */}
             <AnimatePresence>
               {showNotifications && (
-                <motion.div 
+                <motion.div
                   className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
                   variants={dropdownVariants}
                   initial="hidden"
@@ -306,12 +325,12 @@ const OwnerNavbar = ({ onMenuToggle }) => {
                       </div>
                     ) : (
                       notifications.filter(n => !n.is_read).slice(0, 5).map((notification) => (
-                        <motion.div 
+                        <motion.div
                           key={notification._id}
                           className="relative p-4 border-b border-gray-100 bg-blue-50 hover:bg-blue-100 group"
                           transition={{ duration: 0.2 }}
                         >
-                          <div 
+                          <div
                             className="cursor-pointer pr-8"
                             onClick={() => {
                               if (notification.action_url) {
@@ -329,14 +348,14 @@ const OwnerNavbar = ({ onMenuToggle }) => {
                               <span className="ml-2 w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></span>
                             </div>
                           </div>
-                          {/* Mark as Read Button */}
+                          {/* Delete Button */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              markAsRead(notification._id);
+                              deleteNotification(notification._id);
                             }}
                             className="absolute top-3 right-3 p-1 rounded-full hover:bg-red-100 transition-colors opacity-0 group-hover:opacity-100"
-                            title="Mark as read"
+                            title="Delete notification"
                           >
                             <XCircle className="w-4 h-4 text-gray-400 hover:text-red-600" />
                           </button>
@@ -346,8 +365,8 @@ const OwnerNavbar = ({ onMenuToggle }) => {
                   </div>
                   {notifications.filter(n => !n.is_read).length > 0 && (
                     <div className="p-4 border-t border-gray-200 flex items-center justify-between">
-                      <Link 
-                        to="/owner-notifications" 
+                      <Link
+                        to="/owner-notifications"
                         className="text-sm text-red-600 hover:text-red-700 font-medium"
                         onClick={() => setShowNotifications(false)}
                       >
@@ -373,7 +392,7 @@ const OwnerNavbar = ({ onMenuToggle }) => {
               whileHover="hover"
               whileTap="tap"
             >
-              <motion.div 
+              <motion.div
                 className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden bg-red-100 flex items-center justify-center"
                 whileHover={{ scale: 1.05 }}
                 transition={{ duration: 0.2 }}
@@ -392,7 +411,7 @@ const OwnerNavbar = ({ onMenuToggle }) => {
             {/* User Dropdown */}
             <AnimatePresence>
               {showUserMenu && (
-                <motion.div 
+                <motion.div
                   className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
                   variants={dropdownVariants}
                   initial="hidden"

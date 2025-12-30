@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Lock, Eye, EyeOff, AlertCircle, User, CheckCircle, Shield, X, Check } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, AlertCircle, User, CheckCircle, X } from "lucide-react";
 import apiClient from "../utils/apiClient";
-
-const API_URL = 'http://localhost:4002/api/user';
+import { auth } from "../firebase";
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+  sendEmailVerification,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut
+} from "firebase/auth";
 
 // Password strength interface
 const PasswordStrength = {
@@ -20,7 +27,6 @@ const RoomOwnerSignup = () => {
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(PasswordStrength);
   const [passwordFeedback, setPasswordFeedback] = useState('');
@@ -31,129 +37,47 @@ const RoomOwnerSignup = () => {
   const [emailChecking, setEmailChecking] = useState(false);
   const [emailExists, setEmailExists] = useState(false);
   const [emailInfo, setEmailInfo] = useState(null);
+
   const navigate = useNavigate();
 
-  // Initialize Google Sign-In
-  useEffect(() => {
-    const loadGoogleScript = () => {
-      // Check if Google Client ID is configured
-      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-      console.log('RoomOwnerSignup: Google Client ID:', clientId);
-      
-      if (!clientId || clientId === 'your-google-client-id') {
-        console.warn('RoomOwnerSignup: Google Client ID not configured. Please set VITE_GOOGLE_CLIENT_ID in your .env file');
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-
-      script.onload = () => {
-        console.log('RoomOwnerSignup: Google script loaded successfully');
-        if (window.google) {
-          try {
-            console.log('RoomOwnerSignup: Initializing Google Sign-In with client ID:', clientId);
-            window.google.accounts.id.initialize({
-              client_id: clientId,
-              callback: handleGoogleSignIn,
-              auto_select: false,
-              cancel_on_tap_outside: true,
-            });
-
-            window.google.accounts.id.renderButton(
-              document.getElementById('google-signin-button'),
-              {
-                theme: 'outline',
-                size: 'large',
-                text: 'signup_with',
-                shape: 'rectangular',
-                width: '100%',
-              }
-            );
-            console.log('RoomOwnerSignup: Google Sign-In button rendered successfully');
-          } catch (error) {
-            console.error('RoomOwnerSignup: Error initializing Google Sign-In:', error);
-            setError('Failed to initialize Google Sign-In. Please refresh the page and try again.');
-          }
-        }
-      };
-
-      script.onerror = () => {
-        console.error('RoomOwnerSignup: Failed to load Google Sign-In script');
-        setError('Failed to load Google Sign-In. Please check your internet connection.');
-      };
-    };
-
-    loadGoogleScript();
-  }, []);
-
-  const handleGoogleSignIn = async (response) => {
+  const handleGoogleSignIn = async () => {
     try {
       setGoogleLoading(true);
       setError(null);
       setSuccess(null);
 
-      console.log('RoomOwnerSignup: Google Sign-in attempt for owner...');
-      console.log('RoomOwnerSignup: Response received:', {
-        hasCredential: !!response?.credential,
-        credentialLength: response?.credential ? response.credential.length : 0,
-        responseKeys: Object.keys(response || {})
-      });
-      
-      if (!response || !response.credential) {
-        throw new Error('No credential received from Google');
-      }
-      
-      console.log('RoomOwnerSignup: Making API call to:', `/user/google-signin`);
-      console.log('RoomOwnerSignup: Request payload:', {
-        credential: response.credential.substring(0, 50) + '...',
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Get ID Token
+      const idToken = await user.getIdToken();
+
+      // Exchange with backend - specifying ROLE 3 (Owner)
+      const backendResponse = await apiClient.post('/user/auth/firebase', {
         role: 3
-      });
-      
-      const result = await apiClient.post(`/user/google-signin`, {
-        credential: response.credential,
-        role: 3, // Set role as property owner
+      }, {
+        headers: {
+          Authorization: `Bearer ${idToken}`
+        }
       });
 
-      console.log('RoomOwnerSignup: Google Sign-in successful:', result.data);
-      
       // Store user data and token
-      localStorage.setItem('authToken', result.data.token);
-      localStorage.setItem('user', JSON.stringify(result.data.user));
-      
-      // Dispatch login event to update navbar
+      localStorage.setItem('authToken', backendResponse.data.token);
+      localStorage.setItem('user', JSON.stringify(backendResponse.data.user));
+
+      // Dispatch login event
       window.dispatchEvent(new Event('lyvo-login'));
-      
+
       // Navigate to owner dashboard
       navigate('/owner-dashboard');
-      
+
     } catch (err) {
-      console.error('RoomOwnerSignup: Google Sign-in error:', err);
-      console.error('RoomOwnerSignup: Full error details:', {
-        status: err.response?.status,
-        statusText: err.response?.statusText,
-        data: err.response?.data,
-        message: err.message,
-        code: err.code
-      });
-      
-      if (err.response?.data?.errorCode === 'ROLE_CONFLICT') {
-        setError(err.response.data.message);
-      } else if (err.message === 'No credential received from Google') {
-        setError('Google Sign-in failed. Please try again.');
-      } else if (err.response?.status === 403) {
-        setError('Google Sign-in is not configured for this domain. Please use email/password signup.');
-      } else if (err.response?.status === 400) {
-        setError('Invalid Google credentials. Please try again.');
-      } else if (err.code === 'ERR_NETWORK') {
-        setError('Network error. Please check your connection and try again.');
-      } else if (err.response?.status === 500) {
-        setError(`Server error: ${err.response?.data?.message || 'Please try again or use email/password signup.'}`);
+      console.error('Google Sign-in error:', err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in cancelled');
       } else {
-        setError(err.response?.data?.message || 'Google sign-in failed. Please try email/password signup.');
+        setError(err.message || 'Google sign-in failed');
       }
     } finally {
       setGoogleLoading(false);
@@ -171,140 +95,87 @@ const RoomOwnerSignup = () => {
 
   const calculatePasswordStrength = (password) => {
     if (!password) {
-      return {
-        score: 0,
-        label: '',
-        color: 'text-gray-400',
-        barColor: 'bg-gray-200'
-      };
+      return { score: 0, label: '', color: 'text-gray-400', barColor: 'bg-gray-200' };
     }
 
     let score = 0;
-    let feedback = '';
-
     // Length check
     if (password.length >= 8) score += 20;
     if (password.length >= 12) score += 10;
-
-    // Character variety checks
+    // Character variety
     if (/[a-z]/.test(password)) score += 20;
     if (/[A-Z]/.test(password)) score += 20;
     if (/\d/.test(password)) score += 20;
     if (/[@$!%*?&]/.test(password)) score += 20;
-
-    // Additional complexity
+    // Complexity
     if (password.length > 8 && /[a-z]/.test(password) && /[A-Z]/.test(password)) score += 10;
     if (password.length > 8 && /\d/.test(password) && /[@$!%*?&]/.test(password)) score += 10;
 
-    // Cap at 100
     score = Math.min(score, 100);
 
-    // Determine strength level and colors
-    let label = '';
-    let color = '';
-    let barColor = '';
+    let label = '', color = '', barColor = '';
+    if (score < 40) { label = 'weak'; color = 'text-orange-500'; barColor = 'bg-orange-500'; }
+    else if (score < 80) { label = 'good'; color = 'text-yellow-500'; barColor = 'bg-yellow-500'; }
+    else { label = 'strong'; color = 'text-green-500'; barColor = 'bg-green-500'; }
 
-    if (score < 20) {
-      label = 'weak';
-      color = 'text-orange-500';
-      barColor = 'bg-orange-500';
-    } else if (score < 40) {
-      label = 'weak';
-      color = 'text-orange-500';
-      barColor = 'bg-orange-500';
-    } else if (score < 60) {
-      label = 'medium';
-      color = 'text-yellow-500';
-      barColor = 'bg-gradient-to-r from-orange-500 to-yellow-500';
-    } else if (score < 80) {
-      label = 'good';
-      color = 'text-yellow-500';
-      barColor = 'bg-gradient-to-r from-orange-500 to-yellow-500';
-    } else {
-      label = 'strong';
-      color = 'text-green-500';
-      barColor = 'bg-gradient-to-r from-red-500 via-orange-500 via-yellow-500 to-green-500';
-    }
-
-    // Generate feedback
-    if (score < 20) {
-      feedback = 'This password is not acceptable. Add another word or two.';
-    } else if (score < 40) {
-      feedback = 'Weak password. Try adding numbers and special characters.';
-    } else if (score < 60) {
-      feedback = 'Fair password. Add more variety to make it stronger.';
-    } else if (score < 80) {
-      feedback = 'Good password. Almost there!';
-    } else {
-      feedback = 'Excellent! Your password is strong.';
-    }
+    let feedback = '';
+    if (score < 40) feedback = 'Weak password.';
+    else if (score < 80) feedback = 'Good password.';
+    else feedback = 'Strong password!';
 
     setPasswordFeedback(feedback);
-
-    return {
-      score,
-      label,
-      color,
-      barColor
-    };
+    return { score, label, color, barColor };
   };
 
-  // Validation functions
-  const validateFullName = (name) => {
-    if (!name.trim()) {
-      return 'Full name is required';
-    }
-    if (name.trim().length < 2) {
-      return 'Full name must be at least 2 characters long';
-    }
-    if (name.trim().length > 50) {
-      return 'Full name must be less than 50 characters';
-    }
-    return undefined;
-  };
-
-  const validateEmail = (email) => {
-    if (!email.trim()) {
-      return 'Email is required';
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      return 'Please enter a valid email address';
-    }
-    return undefined;
-  };
+  const validateFullName = (name) => (!name.trim() ? 'Name required' : name.length < 2 ? 'Too short' : undefined);
+  const validateEmail = (email) => (!email.trim() ? 'Email required' : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? 'Invalid email' : undefined);
 
   const validatePassword = (password) => {
-    if (!password) {
-      return 'Password is required';
-    }
-    if (password.length < 8) {
-      return 'Password must be at least 8 characters long';
-    }
-    if (!/[A-Z]/.test(password)) {
-      return 'Password must contain at least one uppercase letter';
-    }
-    if (!/[a-z]/.test(password)) {
-      return 'Password must contain at least one lowercase letter';
-    }
-    if (!/\d/.test(password)) {
-      return 'Password must contain at least one number';
-    }
-    if (!/[@$!%*?&]/.test(password)) {
-      return 'Password must contain at least one special character (@$!%*?&)';
-    }
+    if (!password) return 'Password is required';
+    if (password.length < 8) return 'Password must be at least 8 characters long';
+    if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter';
+    if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter';
+    if (!/\d/.test(password)) return 'Password must contain at least one number';
+    if (!/[@$!%*?&]/.test(password)) return 'Password must contain at least one special character (@$!%*?&)';
     return undefined;
   };
 
-  const validateConfirmPassword = (confirmPassword, password) => {
-    if (!confirmPassword) {
-      return 'Please confirm your password';
+  const validateConfirmPassword = (confirm, original) => (confirm !== original ? 'Passwords do not match' : undefined);
+
+  // Check if a field can be accessed (previous field must be completed and valid)
+  const canAccessField = (fieldName) => {
+    const fieldOrder = ['name', 'email', 'password', 'confirmPassword'];
+    const currentIndex = fieldOrder.indexOf(fieldName);
+    if (currentIndex === 0) return true;
+    const previousField = fieldOrder[currentIndex - 1];
+
+    // Check if previous field is completed
+    const isPreviousFieldCompleted = completedFields[previousField];
+
+    // Special case for password field - email must be completed AND either:
+    // 1. Email doesn't exist in DB, OR
+    // 2. Email exists but user is not verified (unverified users can re-register)
+    if (fieldName === 'password') {
+      const isEmailCompleted = completedFields.email;
+      const isEmailBlocked = emailExists && emailInfo && emailInfo.isVerified;
+      return isEmailCompleted && !isEmailBlocked;
     }
-    if (confirmPassword !== password) {
-      return 'Passwords do not match';
-    }
-    return undefined;
+
+    return isPreviousFieldCompleted;
   };
+
+  const allPasswordValid = Object.values(passwordValidation).every(Boolean);
+
+  useEffect(() => {
+    setPasswordStrength(calculatePasswordStrength(formData.password));
+  }, [formData.password]);
+
+  useEffect(() => {
+    if (allPasswordValid && showPasswordValidation) {
+      const timer = setTimeout(() => setShowPasswordValidation(false), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [allPasswordValid, showPasswordValidation]);
 
   // Check if email exists in database
   const checkEmailExists = async (email) => {
@@ -316,47 +187,38 @@ const RoomOwnerSignup = () => {
 
     try {
       setEmailChecking(true);
-      const base = import.meta.env.VITE_API_URL || 'http://localhost:4002/api';
-      console.log('Checking email:', email, 'at URL:', `${base}/user/check-email?email=${encodeURIComponent(email)}`);
-      
-      const response = await fetch(`${base}/user/check-email?email=${encodeURIComponent(email)}`);
-      const data = await response.json();
-      
-      console.log('Email check response:', { email, response: data, status: response.status });
-      
-      if (response.ok) { // Check if HTTP response was successful
-        if (data.exists === true) {
-          // User exists and is verified - show error
-          setEmailExists(true);
-          setEmailInfo({ 
-            isVerified: true, 
-            note: 'This email is already registered. Please use a different email or try logging in.' 
-          });
-          setErrors(prev => ({ ...prev, email: 'This email is already registered' }));
-          setCompletedFields(prev => ({ ...prev, email: false }));
-        } else if (data.isUnverified === true) {
-          // User exists but not verified - allow registration
-          setEmailExists(true);
-          setEmailInfo({ 
-            isUnverified: true, 
-            note: 'This email was previously registered but not verified. You can register again.' 
-          });
-          setErrors(prev => ({ ...prev, email: '' }));
-          // Allow unverified users to proceed regardless of email format
-          setCompletedFields(prev => ({ ...prev, email: true }));
-        } else {
-          // Email is completely new and available
-          setEmailExists(false);
-          setEmailInfo(null);
-          setErrors(prev => ({ ...prev, email: '' }));
-          // Re-validate email format
-          const emailError = validateEmail(email);
-          setCompletedFields(prev => ({ ...prev, email: !emailError }));
-        }
+      const response = await apiClient.get(`/user/check-email?email=${encodeURIComponent(email)}`);
+      const data = response.data;
+
+      console.log('Email check response:', data);
+
+      if (data.exists === true) {
+        // User exists and is verified - show error
+        setEmailExists(true);
+        setEmailInfo({
+          isVerified: true,
+          note: 'This email is already registered. Please use a different email or try logging in.'
+        });
+        setErrors(prev => ({ ...prev, email: 'Email already registered. Please use a different email.' }));
+        setCompletedFields(prev => ({ ...prev, email: false }));
+      } else if (data.isUnverified === true) {
+        // User exists but not verified - allow registration
+        setEmailExists(true);
+        setEmailInfo({
+          isUnverified: true,
+          note: 'This email was previously registered but not verified. You can register again.'
+        });
+        setErrors(prev => ({ ...prev, email: '' }));
+        // Allow unverified users to proceed regardless of email format
+        setCompletedFields(prev => ({ ...prev, email: true }));
       } else {
-        console.error('Email check failed:', data);
+        // Email is completely new and available
         setEmailExists(false);
         setEmailInfo(null);
+        setErrors(prev => ({ ...prev, email: '' }));
+        // Re-validate email format
+        const emailError = validateEmail(email);
+        setCompletedFields(prev => ({ ...prev, email: !emailError }));
       }
     } catch (error) {
       console.error('Error checking email:', error);
@@ -383,166 +245,121 @@ const RoomOwnerSignup = () => {
     return () => clearTimeout(timeoutId);
   }, [formData.email]);
 
-  // Check if a field can be accessed (previous field must be completed and valid)
-  const canAccessField = (fieldName) => {
-    const fieldOrder = ['name', 'email', 'password', 'confirmPassword'];
-    const currentIndex = fieldOrder.indexOf(fieldName);
-    
-    if (currentIndex === 0) return true; // First field is always accessible
-    
-    // Check if previous field is completed
-    const previousField = fieldOrder[currentIndex - 1];
-    const isPreviousFieldCompleted = completedFields[previousField];
-    
-    // Special case for password field - email must be completed AND either:
-    // 1. Email doesn't exist in DB, OR
-    // 2. Email exists but user is not verified (unverified users can re-register)
-    if (fieldName === 'password') {
-      // Always allow if email field is completed and no blocking conditions
-      const isEmailCompleted = completedFields.email;
-      const isEmailBlocked = emailExists && emailInfo && emailInfo.isVerified;
-      
-      return isEmailCompleted && !isEmailBlocked;
-    }
-    
-    return isPreviousFieldCompleted;
-  };
-
-  // Check if all fields are completed and valid
-  const isFormReady = () => {
-    // Allow form submission if email exists but user is not verified (unverified users can re-register)
-    return completedFields.name && completedFields.email && completedFields.password && completedFields.confirmPassword;
-  };
-
-  // Minimize password validation card if all requirements are met
-  const allPasswordValid = Object.values(passwordValidation).every(Boolean);
-
-  // Calculate password strength when password changes
-  useEffect(() => {
-    const strength = calculatePasswordStrength(formData.password);
-    setPasswordStrength(strength);
-  }, [formData.password]);
-
-  // Auto-minimize when all requirements are met
-  useEffect(() => {
-    if (allPasswordValid && showPasswordValidation) {
-      const timer = setTimeout(() => {
-        setShowPasswordValidation(false);
-      }, 1000); // Auto-minimize after 1 second
-      return () => clearTimeout(timer);
-    }
-  }, [allPasswordValid, showPasswordValidation]);
-
   const handleBlur = (field) => {
     setTouched(prev => ({ ...prev, [field]: true }));
-    
     let error;
-    
     switch (field) {
-      case 'name':
-        error = validateFullName(formData.name);
-        break;
-      case 'email':
-        error = validateEmail(formData.email);
-        break;
-      case 'password':
-        error = validatePassword(formData.password);
-        break;
-      case 'confirmPassword':
-        error = validateConfirmPassword(formData.confirmPassword, formData.password);
-        break;
+      case 'name': error = validateFullName(formData.name); break;
+      case 'email': error = validateEmail(formData.email); break;
+      case 'password': error = validatePassword(formData.password); break;
+      case 'confirmPassword': error = validateConfirmPassword(formData.confirmPassword, formData.password); break;
     }
-    
     setErrors(prev => ({ ...prev, [field]: error }));
-    
-    // Mark field as completed if no error
     setCompletedFields(prev => ({ ...prev, [field]: !error }));
   };
 
   const handleChange = (e) => {
     const { id, value } = e.target;
     setFormData(prev => ({ ...prev, [id]: value }));
-    
-    // Show password validation when user starts typing password
-    if (id === 'password' && value.length > 0) {
-      setShowPasswordValidation(true);
+    if (id === 'password' && value.length > 0) setShowPasswordValidation(true);
+
+    // Clear error when user starts typing
+    if (errors[id]) {
+      setErrors(prev => ({ ...prev, [id]: '' }));
     }
-    
-    // Real-time validation and completion status
+
+    // Real-time validation
     let currentError = '';
     switch (id) {
-      case 'name':
-        currentError = validateFullName(value);
-        break;
-      case 'email':
-        currentError = validateEmail(value);
-        break;
-      case 'password':
-        currentError = validatePassword(value);
-        break;
-      case 'confirmPassword':
-        currentError = validateConfirmPassword(value, formData.password);
-        break;
+      case 'name': currentError = validateFullName(value); break;
+      case 'email': currentError = validateEmail(value); break;
+      case 'password': currentError = validatePassword(value); break;
+      case 'confirmPassword': currentError = validateConfirmPassword(value, formData.password); break;
     }
-    
-    // Update errors and completion status
     setErrors(prev => ({ ...prev, [id]: currentError || '' }));
     setCompletedFields(prev => ({ ...prev, [id]: !currentError }));
-    
-    // If password changes, also re-validate confirm password if it's been touched
+
     if (id === 'password' && touched.confirmPassword) {
-      const confirmPasswordError = validateConfirmPassword(formData.confirmPassword, value);
-      setErrors(prev => ({ ...prev, confirmPassword: confirmPasswordError || '' }));
-      setCompletedFields(prev => ({ ...prev, confirmPassword: !confirmPasswordError }));
+      const confirmError = validateConfirmPassword(formData.confirmPassword, value);
+      setErrors(prev => ({ ...prev, confirmPassword: confirmError || '' }));
     }
+  };
+
+  const isFormValid = () => {
+    return completedFields.name && completedFields.email && completedFields.password && completedFields.confirmPassword && !errors.name && !errors.email && !errors.password && !errors.confirmPassword && !emailChecking && (!emailExists || (emailInfo && emailInfo.isUnverified));
   };
 
   const handleSignup = async (e) => {
     e.preventDefault();
-    
-    // Validate all fields
+
+    // Touch all fields to show errors
+    setTouched({ name: true, email: true, password: true, confirmPassword: true });
+
+    // Validate all fields manually
     const nameError = validateFullName(formData.name);
     const emailError = validateEmail(formData.email);
     const passwordError = validatePassword(formData.password);
     const confirmPasswordError = validateConfirmPassword(formData.confirmPassword, formData.password);
-    
+
     setErrors({
       name: nameError || '',
       email: emailError || '',
       password: passwordError || '',
       confirmPassword: confirmPasswordError || ''
     });
-    
-    setTouched({ name: true, email: true, password: true, confirmPassword: true });
-    
-    // Check if there are any errors
-    if (nameError || emailError || passwordError || confirmPasswordError) {
-      setError("Please fix the errors above before submitting.");
+
+    if (nameError || emailError || passwordError || confirmPasswordError || (emailExists && emailInfo?.isVerified)) {
+      setError("Please fix the highlighted errors before submitting.");
       return;
     }
-    
+
+    if (emailChecking) {
+      setError("Please wait, checking email availability...");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSuccess(null);
-    
+
     try {
-      // Add role: 3 for property owners
-      const signupData = { ...formData, role: 3 };
-      const response = await apiClient.post(`/user/register`, signupData);
-      
-      // Show success message instead of automatically logging in
-      setSuccess(response.data.message);
-      
-      // Clear form data
+      // 1. Create User in Firebase
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      const user = userCredential.user;
+
+      // 2. Update Profile
+      await updateProfile(user, { displayName: formData.name });
+
+      // 3. Send Verification Email
+      await sendEmailVerification(user);
+
+      // 4. Sync with Backend (Create User in MongoDB with Role 3 - OWNER)
+      const idToken = await user.getIdToken();
+      await apiClient.post('/user/auth/firebase', {
+        role: 3 // CRITICAL: Ensure they are marked as Property Owner
+      }, {
+        headers: { Authorization: `Bearer ${idToken}` }
+      });
+
+      // 5. Sign Out (Don't auto-login until verified)
+      await signOut(auth);
+
+      setSuccess("Account created successfully!");
       setFormData({ name: '', email: '', password: '', confirmPassword: '' });
-      setPasswordStrength(PasswordStrength);
-      setPasswordFeedback('');
-      setShowPasswordValidation(false);
-      setErrors({ name: '', email: '', password: '', confirmPassword: '' });
+      setEmailExists(false);
+      setEmailInfo(null);
+      setCompletedFields({ name: false, email: false, password: false, confirmPassword: false });
       setTouched({ name: false, email: false, password: false, confirmPassword: false });
-      
+
     } catch (err) {
-      setError(err.response?.data?.message || 'An unexpected error occurred.');
+      console.error(err);
+      if (err.code === 'auth/email-already-in-use') {
+        setError("Email is already registered. Please log in.");
+      } else if (err.code === 'auth/weak-password') {
+        setError("Password is too weak.");
+      } else {
+        setError(err.message || 'Signup failed.');
+      }
     } finally {
       setLoading(false);
     }
@@ -556,28 +373,13 @@ const RoomOwnerSignup = () => {
         className="max-w-md w-full"
       >
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-          {/* Header */}
           <div className="text-center mb-8">
-            {/* Lyvo+ Logo */}
             <div className="flex justify-center mb-6">
               <div className="flex items-center space-x-3 group">
-                <div className="relative">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300 overflow-hidden">
-                    <img 
-                      src="/Lyvo_no_bg.png" 
-                      alt="Lyvo Logo" 
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-pulse"></div>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-2xl font-bold text-gray-900"><span className="text-red-600">Lyvo</span><span className="text-black">+</span></span>
-                  <span className="text-xs text-gray-500 font-medium">Co-Living Platform</span>
-                </div>
+                <span className="text-2xl font-bold text-gray-900"><span className="text-red-600">Lyvo</span><span className="text-black">+</span></span>
               </div>
             </div>
-            
+
             <h2 className="text-3xl font-bold text-gray-900 mb-3 relative">
               <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Join <span className="text-red-600">Lyvo</span><span className="text-black">+</span> as a
@@ -591,11 +393,8 @@ const RoomOwnerSignup = () => {
             <p className="text-sm text-gray-600 mb-4">
               List your properties and connect with room seekers
             </p>
-            
-
           </div>
 
-          {/* Error and Success Messages */}
           <AnimatePresence>
             {error && (
               <motion.div
@@ -608,7 +407,7 @@ const RoomOwnerSignup = () => {
                 <span className="text-sm font-medium">{error}</span>
               </motion.div>
             )}
-            
+
             {success && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -620,34 +419,34 @@ const RoomOwnerSignup = () => {
                 <div className="text-sm">
                   <div className="font-medium">{success}</div>
                   <div className="text-xs mt-1">
-                    Please check your email and click the verification link to complete your property owner registration.
+                    Please check your email and click the verification link.
                   </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Google Sign-In Button */}
           <div className="mb-6">
-            <div id="google-signin-button" className="w-full"></div>
-            {googleLoading && (
-              <div className="mt-3 text-center">
-                <div className="inline-flex items-center text-sm text-gray-600">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500 mr-2"></div>
-                  Signing in with Google...
-                </div>
-              </div>
-            )}
-            {!import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.VITE_GOOGLE_CLIENT_ID === 'your-google-client-id' && (
-              <div className="mt-3 text-center">
-                <div className="text-xs text-gray-500">
-                  Google Sign-In not configured. Please set up your Google OAuth credentials.
-                </div>
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={googleLoading}
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all font-medium"
+            >
+              {googleLoading ? (
+                <div className="w-5 h-5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                </svg>
+              )}
+              <span>Sign up with Google</span>
+            </button>
           </div>
 
-          {/* Divider */}
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-300"></div>
@@ -657,7 +456,6 @@ const RoomOwnerSignup = () => {
             </div>
           </div>
 
-          {/* Email Form */}
           <form onSubmit={handleSignup} className="space-y-6">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -670,31 +468,20 @@ const RoomOwnerSignup = () => {
                   type="text"
                   required
                   disabled={!canAccessField('name')}
-                  className={`w-full pl-10 pr-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 ${
-                    !canAccessField('name')
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 ${!canAccessField('name')
                       ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
-                      : touched.name && errors.name 
-                      ? 'border-red-300 bg-red-50' 
-                      : completedFields.name
-                      ? 'border-green-300 bg-green-50'
-                      : 'border-gray-300'
-                  }`}
+                      : touched.name && errors.name
+                        ? 'border-red-300 bg-red-50'
+                        : completedFields.name
+                          ? 'border-green-300 bg-green-50'
+                          : 'border-gray-300'
+                    }`}
                   placeholder="Enter your full name"
                   value={formData.name}
                   onChange={handleChange}
                   onBlur={() => handleBlur('name')}
                 />
               </div>
-              {touched.name && errors.name && (
-                <motion.p
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-1 text-sm text-red-600 flex items-center gap-1"
-                >
-                  <X className="w-4 h-4" />
-                  {errors.name}
-                </motion.p>
-              )}
             </div>
 
             <div>
@@ -708,15 +495,14 @@ const RoomOwnerSignup = () => {
                   type="email"
                   required
                   disabled={!canAccessField('email')}
-                  className={`w-full pl-10 pr-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 ${
-                    !canAccessField('email')
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 ${!canAccessField('email')
                       ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
                       : formData.email && (errors.email || emailExists)
-                      ? 'border-red-300 bg-red-50' 
-                      : formData.email && completedFields.email && !emailExists
-                      ? 'border-green-300 bg-green-50'
-                      : 'border-gray-300'
-                  }`}
+                        ? 'border-red-300 bg-red-50'
+                        : formData.email && completedFields.email && !emailExists
+                          ? 'border-green-300 bg-green-50'
+                          : 'border-gray-300'
+                    }`}
                   placeholder="Enter your email"
                   value={formData.email}
                   onChange={handleChange}
@@ -762,11 +548,11 @@ const RoomOwnerSignup = () => {
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password {completedFields.password && <CheckCircle className="inline w-4 h-4 text-green-500 ml-1" />}
-                {!canAccessField('password') && emailExists && emailInfo && emailInfo.isVerified && (
+                Password
+                {emailExists && emailInfo && emailInfo.isVerified && (
                   <span className="text-xs text-red-500 ml-2">(Email already registered - use different email)</span>
                 )}
-                {!canAccessField('password') && emailExists && emailInfo && emailInfo.isUnverified && (
+                {emailExists && emailInfo && emailInfo.isUnverified && (
                   <span className="text-xs text-blue-500 ml-2">(Complete email validation first)</span>
                 )}
               </label>
@@ -777,15 +563,14 @@ const RoomOwnerSignup = () => {
                   type={showPassword ? "text" : "password"}
                   required
                   disabled={!canAccessField('password')}
-                  className={`w-full pl-10 pr-12 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 ${
-                    !canAccessField('password')
+                  className={`w-full pl-10 pr-12 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 ${!canAccessField('password')
                       ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
-                      : touched.password && errors.password 
-                      ? 'border-red-300 bg-red-50' 
-                      : completedFields.password
-                      ? 'border-green-300 bg-green-50'
-                      : 'border-gray-300'
-                  }`}
+                      : touched.password && errors.password
+                        ? 'border-red-300 bg-red-50'
+                        : completedFields.password
+                          ? 'border-green-300 bg-green-50'
+                          : 'border-gray-300'
+                    }`}
                   placeholder="Enter your password"
                   value={formData.password}
                   onChange={handleChange}
@@ -800,189 +585,82 @@ const RoomOwnerSignup = () => {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
-              
-              {/* Password Strength Bar */}
-              {formData.password && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className="mt-3 space-y-3"
-                >
-                  {/* Strength Bar */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-gray-700">Password strength</span>
-                      <span className={`text-xs font-medium ${passwordStrength.color}`}>
-                        {passwordStrength.label}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <motion.div
-                        className={`h-2 rounded-full ${passwordStrength.barColor}`}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${passwordStrength.score}%` }}
-                        transition={{ duration: 0.3, ease: "easeOut" }}
-                      />
-                    </div>
+
+              {/* Strength Meter */}
+              {showPasswordValidation && (
+                <div className="mt-2">
+                  <div className="flex h-2 overflow-hidden rounded-full bg-gray-200">
+                    <div
+                      className={`h-full transition-all duration-300 ${passwordStrength.barColor}`}
+                      style={{ width: `${passwordStrength.score}%` }}
+                    />
                   </div>
-                  
-                  {/* Password Feedback */}
-                  {passwordFeedback && (
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className={`text-xs ${passwordStrength.color}`}
-                    >
-                      {passwordFeedback}
-                    </motion.p>
-                  )}
-                  
-                  {/* Password Requirements */}
-                  <AnimatePresence>
-                    {showPasswordValidation && !allPasswordValid && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="bg-gray-50 rounded-lg p-3 space-y-2"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Shield className="w-4 h-4 text-gray-500" />
-                          <span className="text-xs font-medium text-gray-700">Password requirements</span>
-                        </div>
-                        <div className="space-y-1">
-                          <div className={`flex items-center gap-2 text-xs ${
-                            passwordValidation.length ? 'text-green-600' : 'text-gray-500'
-                          }`}>
-                            {passwordValidation.length ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                            <span>At least 8 characters</span>
-                          </div>
-                          <div className={`flex items-center gap-2 text-xs ${
-                            passwordValidation.uppercase ? 'text-green-600' : 'text-gray-500'
-                          }`}>
-                            {passwordValidation.uppercase ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                            <span>One uppercase letter</span>
-                          </div>
-                          <div className={`flex items-center gap-2 text-xs ${
-                            passwordValidation.lowercase ? 'text-green-600' : 'text-gray-500'
-                          }`}>
-                            {passwordValidation.lowercase ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                            <span>One lowercase letter</span>
-                          </div>
-                          <div className={`flex items-center gap-2 text-xs ${
-                            passwordValidation.number ? 'text-green-600' : 'text-gray-500'
-                          }`}>
-                            {passwordValidation.number ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                            <span>One number</span>
-                          </div>
-                          <div className={`flex items-center gap-2 text-xs ${
-                            passwordValidation.special ? 'text-green-600' : 'text-gray-500'
-                          }`}>
-                            {passwordValidation.special ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                            <span>One special character (@$!%*?&)</span>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              )}
-              
-              {touched.password && errors.password && (
-                <motion.p
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-1 text-sm text-red-600 flex items-center gap-1"
-                >
-                  <X className="w-4 h-4" />
-                  {errors.password}
-                </motion.p>
+                  <div className="mt-2 flex justify-between text-xs">
+                    <span className={`${passwordStrength.color} font-medium`}>{passwordFeedback}</span>
+                  </div>
+                  {/* Validation Requirements */}
+                  <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-gray-500">
+                    <div className={passwordValidation.length ? 'text-green-600' : ''}>• 8+ characters</div>
+                    <div className={passwordValidation.uppercase ? 'text-green-600' : ''}>• Uppercase</div>
+                    <div className={passwordValidation.lowercase ? 'text-green-600' : ''}>• Lowercase</div>
+                    <div className={passwordValidation.number ? 'text-green-600' : ''}>• Number</div>
+                    <div className={passwordValidation.special ? 'text-green-600' : ''}>• Special char</div>
+                  </div>
+                </div>
               )}
             </div>
 
-            {/* Confirm Password Field */}
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                Confirm Password {completedFields.confirmPassword && <CheckCircle className="inline w-4 h-4 text-green-500 ml-1" />}
+                Confirm Password
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
+                  type={showPassword ? "text" : "password"}
                   required
                   disabled={!canAccessField('confirmPassword')}
-                  className={`w-full pl-10 pr-12 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 ${
-                    !canAccessField('confirmPassword')
+                  className={`w-full pl-10 pr-12 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 ${!canAccessField('confirmPassword')
                       ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
-                      : touched.confirmPassword && errors.confirmPassword 
-                      ? 'border-red-300 bg-red-50' 
-                      : touched.confirmPassword && formData.confirmPassword && formData.confirmPassword === formData.password
-                      ? 'border-green-300 bg-green-50'
-                      : 'border-gray-300'
-                  }`}
+                      : touched.confirmPassword && errors.confirmPassword
+                        ? 'border-red-300 bg-red-50'
+                        : completedFields.confirmPassword
+                          ? 'border-green-300 bg-green-50'
+                          : 'border-gray-300'
+                    }`}
                   placeholder="Confirm your password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   onBlur={() => handleBlur('confirmPassword')}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  disabled={!canAccessField('confirmPassword')}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:cursor-not-allowed"
-                >
-                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
               </div>
-              
-              {touched.confirmPassword && errors.confirmPassword && (
-                <motion.p
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-1 text-sm text-red-600 flex items-center gap-1"
-                >
-                  <X className="w-4 h-4" />
-                  {errors.confirmPassword}
-                </motion.p>
-              )}
             </div>
 
-            {/* Create Account Button */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               type="submit"
               disabled={loading}
-              className="w-full bg-red-600 text-white py-3 px-4 rounded-lg font-semibold shadow-sm hover:bg-red-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`w-full flex justify-center py-4 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white transition-all transform hover:scale-[1.02] ${loading ? 'opacity-70 cursor-not-allowed' : ''
+                } ${isFormValid()
+                  ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
+                  : 'bg-gray-400 cursor-pointer hover:bg-gray-500' // Make it look clickable but greyish if invalid, or just let them click it.
+                }`}
             >
-              {loading ? "Creating property owner account..." : "Create property owner account"}
-            </motion.button>
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                "Create Owner Account"
+              )}
+            </button>
           </form>
 
-          {/* Sign In Link */}
-          <div className="mt-6 text-center space-y-3">
+          <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Already have an account?{" "}
-              <Link
-                to="/login"
-                className="font-semibold text-red-600 hover:text-red-700 underline"
-              >
-                Sign in
+              Already have an account?{' '}
+              <Link to="/login" className="font-medium text-red-600 hover:text-red-500 transition-colors">
+                Sign in here
               </Link>
             </p>
-            
-            {/* Room Seeker Signup Link */}
-            <div className="pt-3 border-t border-gray-200">
-              <p className="text-xs text-gray-500 mb-2">Are you looking for a room?</p>
-              <Link
-                to="/signup"
-                className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 underline"
-              >
-                <Shield className="w-4 h-4 mr-1" />
-                Sign up as Room Seeker
-              </Link>
-            </div>
           </div>
         </div>
       </motion.div>
@@ -990,4 +668,4 @@ const RoomOwnerSignup = () => {
   );
 };
 
-export default RoomOwnerSignup; 
+export default RoomOwnerSignup;

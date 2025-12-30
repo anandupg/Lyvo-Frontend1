@@ -3,14 +3,14 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import OwnerLayout from '../../components/owner/OwnerLayout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select.jsx';
-import { 
-  Building, 
-  MapPin, 
-  DollarSign, 
-  Users, 
-  Home, 
-  Car, 
-  Wifi, 
+import {
+  Building,
+  MapPin,
+  DollarSign,
+  Users,
+  Home,
+  Car,
+  Wifi,
   Snowflake,
   Utensils,
   Dumbbell,
@@ -77,11 +77,11 @@ const AddProperty = () => {
       latitude: '',
       longitude: ''
     },
-    
+
     // Pricing (only security deposit retained; monthly rent moved per-room)
     monthlyRent: '',
     securityDeposit: '',
-    
+
     // Amenities (limited set per requirements)
     amenities: {
       parking4w: false,
@@ -89,7 +89,7 @@ const AddProperty = () => {
       kitchen: false,
       powerBackup: false
     },
-    
+
     // Rules and Policies
     rules: {
       petsAllowed: false,
@@ -97,7 +97,7 @@ const AddProperty = () => {
       visitorsAllowed: true,
       cookingAllowed: true
     },
-    
+
     // Images
     images: [],
     requiredImages: {
@@ -108,11 +108,11 @@ const AddProperty = () => {
     },
     toiletOutside: false,
     outsideToiletImage: null,
-    
+
     // Property Document (only Land Tax Receipt)
     landTaxReceipt: null,
     documents: [], // Additional documents array (currently not used but prevents errors)
-    
+
     // Room Details
     rooms: []
   });
@@ -189,12 +189,12 @@ const AddProperty = () => {
       rooms: prev.rooms.map((room, index) => {
         if (index === roomIndex) {
           const updatedRoom = { ...room, [field]: value };
-          
+
           // Auto-set occupancy when room type changes
           if (field === 'roomType' && value) {
             updatedRoom.occupancy = getOccupancyFromRoomType(value);
           }
-          
+
           return updatedRoom;
         }
         return room;
@@ -206,15 +206,15 @@ const AddProperty = () => {
   const handleRoomAmenityChange = (roomIndex, amenity, value) => {
     setFormData(prev => ({
       ...prev,
-      rooms: prev.rooms.map((room, index) => 
-        index === roomIndex 
-          ? { 
-              ...room, 
-              amenities: { 
-                ...room.amenities, 
-                [amenity]: value 
-              }
+      rooms: prev.rooms.map((room, index) =>
+        index === roomIndex
+          ? {
+            ...room,
+            amenities: {
+              ...room.amenities,
+              [amenity]: value
             }
+          }
           : room
       )
     }));
@@ -264,14 +264,14 @@ const AddProperty = () => {
   const listRef = useRef(null);
   const selectingRef = useRef(false);
   const [markerPosition, setMarkerPosition] = useState([12.9716, 77.5946]); // Default: Bangalore
-  
+
 
   // Check authentication
   useEffect(() => {
     const checkAuth = () => {
       const authToken = localStorage.getItem('authToken');
       const userData = localStorage.getItem('user');
-      
+
       if (!authToken || !userData) {
         navigate('/login');
         return;
@@ -290,7 +290,7 @@ const AddProperty = () => {
         console.error('Error parsing user data:', error);
         navigate('/login');
       }
-      
+
       setLoading(false);
     };
 
@@ -381,7 +381,7 @@ const AddProperty = () => {
             }
           }
         );
-        
+
         if (response.ok) {
           const data = await response.json();
           setSuggestions(data);
@@ -415,7 +415,7 @@ const AddProperty = () => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setShowSuggestions(false);
     setSuggestions([]);
-    
+
     // Extract address components from Nominatim data
     const addr = place.address || {};
     const street = [addr.road, addr.suburb, addr.neighbourhood].filter(Boolean).join(', ');
@@ -425,12 +425,12 @@ const AddProperty = () => {
     const landmark = place.name || addr.amenity || '';
     const lat = parseFloat(place.lat);
     const lng = parseFloat(place.lon);
-    
+
     // Update marker position
     if (!isNaN(lat) && !isNaN(lng)) {
       setMarkerPosition([lat, lng]);
     }
-    
+
     setFormData(prev => ({
       ...prev,
       address: {
@@ -476,7 +476,7 @@ const AddProperty = () => {
         [field]: value
       }));
     }
-    
+
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
@@ -513,7 +513,7 @@ const AddProperty = () => {
       preview: URL.createObjectURL(file),
       name: file.name
     }));
-    
+
     setFormData(prev => ({
       ...prev,
       images: [...prev.images, ...newImages]
@@ -600,7 +600,7 @@ const AddProperty = () => {
     if (!formData.propertyName.trim()) newErrors.propertyName = 'Property name is required';
     // Description is always required
     if (!formData.description.trim()) newErrors.description = 'Description is required';
-    if (formData.propertyMode==='room') {
+    if (formData.propertyMode === 'room') {
       const n = parseInt(formData.numberOfRooms);
       if (!n || n <= 0) newErrors.numberOfRooms = 'Number of rooms is required';
       else if (n > 6) newErrors.numberOfRooms = 'Maximum 6 rooms allowed';
@@ -613,9 +613,9 @@ const AddProperty = () => {
       }
       if (!formData.dormitory.pricePerBed) newErrors['dormitory.pricePerBed'] = 'Price per bed is required';
     }
-    
+
     // Room details validation
-    if (formData.propertyMode==='room' && formData.rooms.length > 0) {
+    if (formData.propertyMode === 'room' && formData.rooms.length > 0) {
       formData.rooms.forEach((room, index) => {
         if (!room.roomType) newErrors[`room_${index}_type`] = `Room ${index + 1} type is required`;
         if (!room.roomSize || parseInt(room.roomSize) <= 0) newErrors[`room_${index}_size`] = `Room ${index + 1} size is required`;
@@ -630,12 +630,12 @@ const AddProperty = () => {
     if (!formData.address.city.trim()) newErrors['address.city'] = 'City is required';
     if (!formData.address.state.trim()) newErrors['address.state'] = 'State is required';
     if (!formData.address.pincode.trim()) newErrors['address.pincode'] = 'Pincode is required';
-    
+
     // Property details validation
     if (!formData.securityDeposit) newErrors.securityDeposit = 'Security deposit is required';
 
     // Required image slots
-    const slots = ['front','back','hall'];
+    const slots = ['front', 'back', 'hall'];
     // Only require kitchen image if kitchen amenity is checked
     if (formData.amenities.kitchen) {
       slots.push('kitchen');
@@ -661,13 +661,13 @@ const AddProperty = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     setIsSubmitting(true);
-    
+
     try {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) {
@@ -679,7 +679,7 @@ const AddProperty = () => {
 
       // Clone data and strip file objects
       const payload = { ...formData };
-      if (formData.propertyMode==='room') {
+      if (formData.propertyMode === 'room') {
         // Remove room details for dormitory listing
         payload.rooms = (payload.rooms || []).map((r) => {
           const { roomImage, toiletImage, ...rest } = r;
@@ -688,7 +688,7 @@ const AddProperty = () => {
       } else {
         payload.rooms = [];
       }
-      
+
       // Add property data as JSON string
       formDataToSend.append('propertyData', JSON.stringify(payload));
 
@@ -707,7 +707,7 @@ const AddProperty = () => {
       }
 
       // Add per-room images or dormitory images accordingly
-      if (formData.propertyMode==='room') {
+      if (formData.propertyMode === 'room') {
         (formData.rooms || []).forEach((room, idx) => {
           if (room.roomImage?.file) {
             formDataToSend.append(`rooms[${idx}][roomImage]`, room.roomImage.file);
@@ -730,13 +730,13 @@ const AddProperty = () => {
       if (formData.toiletOutside && formData.outsideToiletImage?.file) {
         formDataToSend.append('outsideToiletImage', formData.outsideToiletImage.file);
       }
-      
+
       // Add documents
       console.log('Documents:', formData.documents);
       if (formData.landTaxReceipt?.file) {
         formDataToSend.append('landTaxReceipt', formData.landTaxReceipt.file);
       }
-      
+
       // Handle additional documents if they exist
       if (formData.documents && Array.isArray(formData.documents)) {
         formData.documents.forEach((documentData, index) => {
@@ -746,14 +746,14 @@ const AddProperty = () => {
           }
         });
       }
-      
+
       console.log('FormData entries:');
       for (let [key, value] of formDataToSend.entries()) {
         console.log(key, value);
       }
 
-      // Make API call to simple backend
-      const response = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002'}/api/properties/add`, {
+      // Make API call to unified backend
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/add`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`
@@ -848,7 +848,7 @@ const AddProperty = () => {
               <Building className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Basic Information</h2>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -858,9 +858,8 @@ const AddProperty = () => {
                   type="text"
                   value={formData.propertyName}
                   onChange={(e) => handleInputChange('propertyName', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                    errors.propertyName ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors.propertyName ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="Enter property name"
                 />
                 {errors.propertyName && (
@@ -877,9 +876,8 @@ const AddProperty = () => {
                   type="number"
                   value={formData.securityDeposit}
                   onChange={(e) => handleInputChange('securityDeposit', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                    errors.securityDeposit ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors.securityDeposit ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="Security deposit amount"
                   min="0"
                 />
@@ -889,26 +887,25 @@ const AddProperty = () => {
               </div>
 
 
-              {formData.propertyMode==='room' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Number of Rooms *
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="6"
-                  value={formData.numberOfRooms}
-                  onChange={(e) => handleRoomCountChange(e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                    errors.numberOfRooms ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter number of rooms (max 6)"
-                />
-                {errors.numberOfRooms && (
-                  <p className="mt-1 text-sm text-red-600">{errors.numberOfRooms}</p>
-                )}
-              </div>
+              {formData.propertyMode === 'room' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Number of Rooms *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="6"
+                    value={formData.numberOfRooms}
+                    onChange={(e) => handleRoomCountChange(e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors.numberOfRooms ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    placeholder="Enter number of rooms (max 6)"
+                  />
+                  {errors.numberOfRooms && (
+                    <p className="mt-1 text-sm text-red-600">{errors.numberOfRooms}</p>
+                  )}
+                </div>
               )}
 
 
@@ -920,9 +917,8 @@ const AddProperty = () => {
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   rows={4}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                    errors.description ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors.description ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="Describe your property, its features, and what makes it special..."
                 />
                 {errors.description && (
@@ -945,7 +941,7 @@ const AddProperty = () => {
                 <Home className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Room Details</h2>
               </div>
-              
+
               <div className="space-y-4">
                 {formData.rooms.map((room, index) => (
                   <div key={index} className="border border-red-200 rounded-md p-3 sm:p-4 shadow-sm hover:shadow-md transition-all bg-red-50">
@@ -982,19 +978,18 @@ const AddProperty = () => {
                       </div>
                       <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-red-50 text-red-700 border border-red-200">Room Details</span>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 items-start">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Room Type *
                         </label>
-                        <Select 
-                          value={room.roomType} 
+                        <Select
+                          value={room.roomType}
                           onValueChange={(val) => handleRoomChange(index, 'roomType', val)}
                         >
-                          <SelectTrigger className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                            errors[`room_${index}_type`] ? 'border-red-500' : 'border-gray-300'
-                          }`}>
+                          <SelectTrigger className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors[`room_${index}_type`] ? 'border-red-500' : 'border-gray-300'
+                            }`}>
                             <SelectValue placeholder="Select room type" />
                           </SelectTrigger>
                           <SelectContent position="popper">
@@ -1020,9 +1015,8 @@ const AddProperty = () => {
                           min="50"
                           value={room.roomSize}
                           onChange={(e) => handleRoomChange(index, 'roomSize', e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                            errors[`room_${index}_size`] ? 'border-red-500' : 'border-gray-300'
-                          }`}
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors[`room_${index}_size`] ? 'border-red-500' : 'border-gray-300'
+                            }`}
                           placeholder="Enter room size"
                         />
                         {errors[`room_${index}_size`] && (
@@ -1034,13 +1028,12 @@ const AddProperty = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Bed Type *
                         </label>
-                        <Select 
-                          value={room.bedType} 
+                        <Select
+                          value={room.bedType}
                           onValueChange={(val) => handleRoomChange(index, 'bedType', val)}
                         >
-                          <SelectTrigger className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                            errors[`room_${index}_bed`] ? 'border-red-500' : 'border-gray-300'
-                          }`}>
+                          <SelectTrigger className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors[`room_${index}_bed`] ? 'border-red-500' : 'border-gray-300'
+                            }`}>
                             <SelectValue placeholder="Select bed type" />
                           </SelectTrigger>
                           <SelectContent position="popper">
@@ -1082,9 +1075,8 @@ const AddProperty = () => {
                           min="0"
                           value={room.rent}
                           onChange={(e) => handleRoomChange(index, 'rent', e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                            errors[`room_${index}_rent`] ? 'border-red-500' : 'border-gray-300'
-                          }`}
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors[`room_${index}_rent`] ? 'border-red-500' : 'border-gray-300'
+                            }`}
                           placeholder="Enter monthly rent"
                         />
                         {errors[`room_${index}_rent`] && (
@@ -1176,7 +1168,7 @@ const AddProperty = () => {
                         </div>
                       </div>
 
-                      
+
 
                       <div className="md:col-span-3">
                         <label className="block text-sm font-medium text-gray-700 mb-2">Room Amenities</label>
@@ -1216,7 +1208,7 @@ const AddProperty = () => {
               <MapPin className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Address Information</h2>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {/* Google Maps place search */}
               <div className="md:col-span-2">
@@ -1246,7 +1238,7 @@ const AddProperty = () => {
                           onMouseEnter={() => setActiveSuggestionIndex(idx)}
                           onMouseLeave={() => setActiveSuggestionIndex(-1)}
                           onClick={() => selectPlace(s)}
-                          className={`w-full text-left px-4 py-3 text-sm transition-colors ${idx===activeSuggestionIndex ? 'bg-red-50' : 'hover:bg-gray-50'}`}
+                          className={`w-full text-left px-4 py-3 text-sm transition-colors ${idx === activeSuggestionIndex ? 'bg-red-50' : 'hover:bg-gray-50'}`}
                         >
                           <div className="text-gray-700 leading-snug line-clamp-2">{s.display_name || s.name || ''}</div>
                           {s.type && (
@@ -1278,9 +1270,8 @@ const AddProperty = () => {
                   type="text"
                   value={formData.address.street}
                   onChange={(e) => handleInputChange('address.street', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                    errors['address.street'] ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors['address.street'] ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="Enter street address"
                 />
                 {errors['address.street'] && (
@@ -1296,9 +1287,8 @@ const AddProperty = () => {
                   type="text"
                   value={formData.address.city}
                   onChange={(e) => handleInputChange('address.city', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                    errors['address.city'] ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors['address.city'] ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="Enter city"
                 />
                 {errors['address.city'] && (
@@ -1314,9 +1304,8 @@ const AddProperty = () => {
                   type="text"
                   value={formData.address.state}
                   onChange={(e) => handleInputChange('address.state', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                    errors['address.state'] ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors['address.state'] ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="Enter state"
                 />
                 {errors['address.state'] && (
@@ -1332,9 +1321,8 @@ const AddProperty = () => {
                   type="text"
                   value={formData.address.pincode}
                   onChange={(e) => handleInputChange('address.pincode', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                    errors['address.pincode'] ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors['address.pincode'] ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="Enter pincode"
                 />
                 {errors['address.pincode'] && (
@@ -1357,9 +1345,9 @@ const AddProperty = () => {
             </div>
           </motion.div>
 
-          
 
-          
+
+
 
           {/* Amenities */}
           <motion.div
@@ -1372,7 +1360,7 @@ const AddProperty = () => {
               <Wifi className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Amenities</h2>
             </div>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               {[
                 ['parking4w', 'Parking (4 wheeler)'],
@@ -1406,7 +1394,7 @@ const AddProperty = () => {
               <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Rules and Policies</h2>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               {Object.entries(formData.rules).map(([rule, allowed]) => (
                 <label key={rule} className="flex items-center space-x-3 cursor-pointer">
@@ -1468,8 +1456,8 @@ const AddProperty = () => {
               ))}
             </div>
 
-            
-            
+
+
             <div className="space-y-3 sm:space-y-4">
               <div className="flex items-center justify-center w-full">
                 <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
@@ -1570,43 +1558,43 @@ const AddProperty = () => {
               <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Property Documents</h2>
             </div>
-          <p className="text-sm text-gray-600 mb-6">Upload the latest Land Tax Receipt (PDF). No other property documents are accepted.</p>
-            
-            <div className="space-y-6">
-            {/* Land Tax Receipt (Required) */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-gray-700">Latest Land Tax Receipt (PDF) *</label>
-                {formData.landTaxReceipt && (
-                  <button type="button" onClick={removeLandTaxReceipt} className="text-xs text-red-600 hover:underline">Remove</button>
-                )}
-                      </div>
-              {!formData.landTaxReceipt ? (
-                <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-lg cursor-pointer ${errors['landTaxReceipt'] ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-gray-50'} hover:bg-gray-100`}>
-                  <FileText className="w-6 h-6 text-gray-400 mb-1" />
-                  <div className="text-xs text-gray-500 text-center px-2">Click to upload latest Land Tax Receipt (PDF only)</div>
-                  <input type="file" accept="application/pdf" className="hidden" onChange={handleLandTaxReceiptUpload} />
-                </label>
-              ) : (
-                <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-white">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded bg-red-100">
-                      <FileText className="w-5 h-5 text-red-600" />
-              </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{formData.landTaxReceipt.name}</div>
-                      <div className="text-xs text-gray-500">PDF Document</div>
-                  </div>
-                            </div>
-                  <button type="button" onClick={removeLandTaxReceipt} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50">Change</button>
-                </div>
-              )}
-              {errors['landTaxReceipt'] && (
-                <div className="mt-1 text-[11px] text-red-600">{errors['landTaxReceipt']}</div>
-              )}
-            </div>
+            <p className="text-sm text-gray-600 mb-6">Upload the latest Land Tax Receipt (PDF). No other property documents are accepted.</p>
 
-            {/* All other generic document upload UI removed */}
+            <div className="space-y-6">
+              {/* Land Tax Receipt (Required) */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-gray-700">Latest Land Tax Receipt (PDF) *</label>
+                  {formData.landTaxReceipt && (
+                    <button type="button" onClick={removeLandTaxReceipt} className="text-xs text-red-600 hover:underline">Remove</button>
+                  )}
+                </div>
+                {!formData.landTaxReceipt ? (
+                  <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-lg cursor-pointer ${errors['landTaxReceipt'] ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-gray-50'} hover:bg-gray-100`}>
+                    <FileText className="w-6 h-6 text-gray-400 mb-1" />
+                    <div className="text-xs text-gray-500 text-center px-2">Click to upload latest Land Tax Receipt (PDF only)</div>
+                    <input type="file" accept="application/pdf" className="hidden" onChange={handleLandTaxReceiptUpload} />
+                  </label>
+                ) : (
+                  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-white">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded bg-red-100">
+                        <FileText className="w-5 h-5 text-red-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{formData.landTaxReceipt.name}</div>
+                        <div className="text-xs text-gray-500">PDF Document</div>
+                      </div>
+                    </div>
+                    <button type="button" onClick={removeLandTaxReceipt} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50">Change</button>
+                  </div>
+                )}
+                {errors['landTaxReceipt'] && (
+                  <div className="mt-1 text-[11px] text-red-600">{errors['landTaxReceipt']}</div>
+                )}
+              </div>
+
+              {/* All other generic document upload UI removed */}
             </div>
           </motion.div>
 
@@ -1667,7 +1655,7 @@ const AddProperty = () => {
               >
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url={isSatellite 
+                  url={isSatellite
                     ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
                     : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
                   }
@@ -1700,7 +1688,7 @@ const AddProperty = () => {
         </div>
       )}
 
-      
+
     </OwnerLayout>
   );
 };

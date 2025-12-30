@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import SeekerLayout from '../../components/seeker/SeekerLayout';
-import { 
-  Heart, 
-  MapPin, 
-  Star, 
-  Eye, 
-  MessageCircle, 
+import {
+  Heart,
+  MapPin,
+  Star,
+  Eye,
+  MessageCircle,
   Trash2,
   Building,
   Wifi,
@@ -62,14 +62,41 @@ const SeekerFavorites = () => {
 
     try {
       setLoading(true);
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3003';
-      const response = await fetch(`${baseUrl}/api/favorites/user?userId=${userId}`);
-      
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        console.error('No auth token found');
+        setLoading(false);
+        return;
+      }
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${baseUrl}/property/favorites`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
       if (response.ok) {
         const data = await response.json();
         console.log('Favorites data received:', data);
-        setFavorites(data.favorites || []);
-        setFilteredFavorites(data.favorites || []);
+
+        // Map backend fields to frontend expectations
+        const mappedFavorites = (data.favorites || []).map(fav => ({
+          ...fav,
+          property: {
+            ...fav.propertyId,
+            propertyName: fav.propertyId?.property_name, // Map snake_case to camelCase
+            address: fav.propertyId?.address // Ensure address is accessible
+          },
+          room: {
+            ...fav.roomId,
+            roomNumber: fav.roomId?.room_number, // Map snake_case to camelCase
+            roomImage: fav.roomId?.room_image, // Correct field from Room model
+            toiletImage: fav.roomId?.toilet_image
+          }
+        }));
+
+        setFavorites(mappedFavorites);
+        setFilteredFavorites(mappedFavorites);
       } else {
         console.error('Failed to fetch favorites');
       }
@@ -86,11 +113,13 @@ const SeekerFavorites = () => {
     if (!userId) return;
 
     try {
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3003';
-      const response = await fetch(`${baseUrl}/api/favorites/remove`, {
+      const token = localStorage.getItem('authToken');
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${baseUrl}/property/favorites/remove`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           userId: userId,
@@ -105,7 +134,7 @@ const SeekerFavorites = () => {
           // Remove from local state
           setFavorites(prev => prev.filter(fav => fav._id !== favoriteId));
           setFilteredFavorites(prev => prev.filter(fav => fav._id !== favoriteId));
-          
+
           toast({
             title: "Removed from Favorites",
             description: "Property has been removed from your favorites",
@@ -134,13 +163,13 @@ const SeekerFavorites = () => {
     if (searchQuery) {
       const filtered = favorites.filter(favorite => {
         const propertyName = favorite.property?.propertyName?.toLowerCase() || '';
-        const address = favorite.property?.address 
-          ? (typeof favorite.property.address === 'string' 
-              ? favorite.property.address.toLowerCase()
-              : `${favorite.property.address.street || ''} ${favorite.property.address.city || ''} ${favorite.property.address.state || ''}`.toLowerCase())
+        const address = favorite.property?.address
+          ? (typeof favorite.property.address === 'string'
+            ? favorite.property.address.toLowerCase()
+            : `${favorite.property.address.street || ''} ${favorite.property.address.city || ''} ${favorite.property.address.state || ''}`.toLowerCase())
           : '';
         const roomNumber = favorite.room?.roomNumber?.toLowerCase() || '';
-        
+
         const query = searchQuery.toLowerCase();
         return propertyName.includes(query) || address.includes(query) || roomNumber.includes(query);
       });
@@ -279,7 +308,7 @@ const SeekerFavorites = () => {
             <Heart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No Favorites Yet</h3>
             <p className="text-gray-600 mb-6">
-              {favorites.length === 0 
+              {favorites.length === 0
                 ? "Start exploring properties and add them to your favorites to see them here!"
                 : "No favorites match your current search. Try adjusting your search criteria."
               }
@@ -345,15 +374,15 @@ const SeekerFavorites = () => {
                               {favorite.property?.propertyName || 'Unnamed Property'}
                             </h3>
                           </div>
-                          
+
                           {/* Address */}
                           <div className="flex items-center text-gray-600 mb-3">
                             <MapPin className="w-4 h-4 mr-1" />
                             <span className="text-sm">
-                              {favorite.property?.address 
-                                ? (typeof favorite.property.address === 'string' 
-                                    ? favorite.property.address 
-                                    : `${favorite.property.address.street || ''}, ${favorite.property.address.city || ''}, ${favorite.property.address.state || ''}`.trim().replace(/^,\s*|,\s*$/g, ''))
+                              {favorite.property?.address
+                                ? (typeof favorite.property.address === 'string'
+                                  ? favorite.property.address
+                                  : `${favorite.property.address.street || ''}, ${favorite.property.address.city || ''}, ${favorite.property.address.state || ''}`.trim().replace(/^,\s*|,\s*$/g, ''))
                                 : 'Address not available'
                               }
                             </span>
@@ -390,7 +419,7 @@ const SeekerFavorites = () => {
                             <span>Added on {formatDate(favorite.addedAt)}</span>
                           </div>
                         </div>
-                        
+
                         {/* Price */}
                         <div className="mt-4 lg:mt-0 lg:text-right">
                           <div className="text-2xl font-bold text-gray-900">
@@ -453,10 +482,10 @@ const SeekerFavorites = () => {
                           <Eye className="w-4 h-4" />
                           View Property
                         </button>
-                        
+
                         {favorite.room && (
                           <button
-                            onClick={() => navigate(`/room/${favorite.room?._id}`)}
+                            onClick={() => navigate(`/seeker/room/${favorite.room?._id}`)}
                             className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                           >
                             <Bed className="w-4 h-4" />
@@ -464,7 +493,7 @@ const SeekerFavorites = () => {
                           </button>
                         )}
 
-                        <button 
+                        <button
                           onClick={() => openContactModal(favorite)}
                           className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                         >

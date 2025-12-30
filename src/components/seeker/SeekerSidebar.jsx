@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
+import {
   Home,
   Heart,
   Calendar,
@@ -12,9 +12,14 @@ import {
   Star,
   BookOpen,
   X,
-  Shield
+  Shield,
+  DollarSign,
+  Wrench,
+  FileText,
+  Receipt
 } from 'lucide-react';
 import { useBookingStatus } from '../../hooks/useBookingStatus';
+import { useTenantStatus } from '../../hooks/useTenantStatus';
 
 const SeekerSidebar = ({ onClose }) => {
   const location = useLocation();
@@ -22,7 +27,7 @@ const SeekerSidebar = ({ onClose }) => {
   const [user, setUser] = useState({});
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const DEFAULT_AVATAR = "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face";
-  
+
   // Safely parse user from localStorage
   useEffect(() => {
     try {
@@ -40,9 +45,10 @@ const SeekerSidebar = ({ onClose }) => {
       setUser({});
     }
   }, []);
-  
-  // Get booking status
+
+  // Get booking and tenant status
   const { hasConfirmedBooking, loading: bookingLoading, refreshBookingStatus } = useBookingStatus();
+  const { isTenant, tenantData, loading: tenantLoading } = useTenantStatus();
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
@@ -85,20 +91,31 @@ const SeekerSidebar = ({ onClose }) => {
   // Items to show only when user HAS confirmed booking
   const confirmedBookingNavigation = [
     { name: 'My Room', href: '/my-room', icon: Home },
-    { name: 'Messages', href: '/seeker-messages', icon: MessageCircle }, // Only show when booking is confirmed
+    { name: 'Messages', href: '/seeker-messages', icon: MessageCircle },
   ];
 
-  // Build navigation based on booking status
-  // If profile incomplete, only allow Profile and KYC; block others
+  // Items to show when user is a TENANT
+  const tenantNavigation = [
+    { name: 'Dashboard', href: '/tenant-dashboard', icon: Home },
+    { name: 'Payment History', href: '/tenant-payments', icon: DollarSign },
+    { name: 'Split Expenses', href: '/tenant-expenses', icon: Receipt },
+    { name: 'Request Maintenance', href: '/tenant-maintenance', icon: Wrench },
+    { name: 'View Agreement', href: '/tenant-agreement', icon: FileText },
+    { name: 'Roommates', href: '/tenant-roommates', icon: User },
+  ];
+
+  // Build navigation based on tenant/booking status
   const blocked = profileIncomplete;
   const navigation = blocked
     ? [
-        { name: 'Profile', href: '/seeker-profile', icon: User },
-        { name: 'Identity Verification', href: '/seeker-kyc', icon: Shield },
-      ]
-    : hasConfirmedBooking 
-      ? [...confirmedBookingNavigation, ...baseNavigation] 
-      : [...noBookingNavigation, ...baseNavigation];
+      { name: 'Profile', href: '/seeker-profile', icon: User },
+      { name: 'Identity Verification', href: '/seeker-kyc', icon: Shield },
+    ]
+    : isTenant
+      ? [...tenantNavigation, ...baseNavigation]
+      : hasConfirmedBooking
+        ? [...confirmedBookingNavigation, ...baseNavigation]
+        : [...noBookingNavigation, ...baseNavigation];
 
   const isActive = (path) => location.pathname === path;
 
@@ -135,7 +152,7 @@ const SeekerSidebar = ({ onClose }) => {
   };
 
   return (
-    <motion.div 
+    <motion.div
       className="fixed inset-y-0 left-0 z-50 w-64 max-w-[80vw] bg-white border-r border-red-200/50 flex flex-col shadow-2xl h-screen"
       initial={{ x: '-100%' }}
       animate={{ x: 0 }}
@@ -150,15 +167,15 @@ const SeekerSidebar = ({ onClose }) => {
       </div>
       {/* Header */}
       <div className="relative flex-shrink-0 flex items-center justify-between p-4 border-b border-red-200/50 bg-red-50/30">
-        <motion.div 
+        <motion.div
           className="flex items-center space-x-3"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.3 }}
         >
-          <motion.div 
+          <motion.div
             className="relative w-10 h-10 flex items-center justify-center overflow-hidden bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg"
-            whileHover={{ 
+            whileHover={{
               scale: 1.1,
               rotate: [0, -5, 5, 0],
               transition: { duration: 0.3 }
@@ -166,43 +183,43 @@ const SeekerSidebar = ({ onClose }) => {
             whileTap={{ scale: 0.95 }}
             transition={{ duration: 0.2 }}
           >
-            <img 
-              src="/Lyvo_no_bg.png" 
-              alt="Lyvo Logo" 
+            <img
+              src="/Lyvo_no_bg.png"
+              alt="Lyvo Logo"
               className="w-6 h-6 object-contain filter brightness-0 invert"
             />
             {/* Glowing effect */}
             <div className="absolute inset-0 bg-red-400 rounded-xl blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
           </motion.div>
           <div>
-            <motion.div 
+            <motion.div
               className="flex items-center"
               whileHover={{ scale: 1.05 }}
               transition={{ duration: 0.2 }}
             >
               <span className="text-xl font-bold bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent">Lyvo</span>
-              <motion.span 
+              <motion.span
                 className="text-xl font-bold text-gray-800 ml-1"
-                animate={{ 
+                animate={{
                   scale: [1, 1.1, 1],
                   opacity: [1, 0.7, 1]
                 }}
-                transition={{ 
+                transition={{
                   duration: 2,
                   repeat: Infinity,
                   ease: "easeInOut"
                 }}
               >+</motion.span>
             </motion.div>
-            <motion.p 
+            <motion.p
               className="text-xs text-gray-600 font-medium"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5, duration: 0.5 }}
-            >Seeker Portal</motion.p>
+            >{isTenant ? 'Tenant Portal' : 'Seeker Portal'}</motion.p>
           </div>
         </motion.div>
-        
+
         {/* Close button for mobile */}
         <button
           onClick={onClose}
@@ -214,24 +231,24 @@ const SeekerSidebar = ({ onClose }) => {
 
       {/* User Profile Section */}
       <div className="relative flex-shrink-0 p-4 border-b border-red-200/50 bg-red-50/20">
-        <motion.div 
+        <motion.div
           className="relative flex items-center space-x-3 p-3 rounded-xl bg-white border border-red-100/50 shadow-sm"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.3 }}
-          whileHover={{ 
+          whileHover={{
             scale: 1.02,
             transition: { duration: 0.2 }
           }}
         >
-          <motion.div 
+          <motion.div
             className="relative w-12 h-12 rounded-full overflow-hidden shadow-lg"
-            whileHover={{ 
+            whileHover={{
               scale: 1.05,
               transition: { duration: 0.2 }
             }}
           >
-            <img 
+            <img
               src={user?.profilePicture || DEFAULT_AVATAR}
               alt="Profile"
               className="w-full h-full object-cover"
@@ -239,31 +256,31 @@ const SeekerSidebar = ({ onClose }) => {
             />
           </motion.div>
           <div className="flex-1 min-w-0 pr-2">
-            <motion.p 
+            <motion.p
               className="text-sm font-semibold text-gray-900 truncate"
               whileHover={{ scale: 1.02 }}
               transition={{ duration: 0.2 }}
             >
               {user.name || 'User'}
             </motion.p>
-            <motion.p 
+            <motion.p
               className="text-xs text-gray-600 break-words"
               whileHover={{ scale: 1.01 }}
               transition={{ duration: 0.2 }}
             >
               {user.email || 'user@example.com'}
             </motion.p>
-            {/* Booking Status Indicator */}
-            {!bookingLoading && (
-              <motion.div 
+            {/* Status Indicator */}
+            {!bookingLoading && !tenantLoading && (
+              <motion.div
                 className="mt-1 flex items-center space-x-1"
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.3 }}
               >
-                <div className={`w-2 h-2 rounded-full ${hasConfirmedBooking ? 'bg-green-400' : 'bg-yellow-400'}`}></div>
+                <div className={`w-2 h-2 rounded-full ${isTenant ? 'bg-green-500' : hasConfirmedBooking ? 'bg-blue-400' : 'bg-yellow-400'}`}></div>
                 <span className="text-xs font-medium text-gray-600">
-                  {hasConfirmedBooking ? 'Confirmed Tenant' : 'Looking for Room'}
+                  {isTenant ? 'Active Tenant' : hasConfirmedBooking ? 'Booking Confirmed' : 'Looking for Room'}
                 </span>
               </motion.div>
             )}
@@ -298,30 +315,28 @@ const SeekerSidebar = ({ onClose }) => {
           >
             <Link
               to={item.href}
-              className={`group relative flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-300 ${
-                isActive(item.href)
-                  ? 'bg-gradient-to-r from-red-50 to-red-100 text-red-700 border-r-4 border-red-500 shadow-lg'
-                  : 'text-gray-700 hover:bg-gradient-to-r hover:from-red-50/50 hover:to-red-100/50 hover:text-red-700 hover:shadow-md'
-              }`}
+              className={`group relative flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-300 ${isActive(item.href)
+                ? 'bg-gradient-to-r from-red-50 to-red-100 text-red-700 border-r-4 border-red-500 shadow-lg'
+                : 'text-gray-700 hover:bg-gradient-to-r hover:from-red-50/50 hover:to-red-100/50 hover:text-red-700 hover:shadow-md'
+                }`}
             >
               {/* Animated background glow */}
               <motion.div
                 className="absolute inset-0 bg-gradient-to-r from-red-400/20 to-red-600/20 rounded-xl opacity-0 group-hover:opacity-100"
                 transition={{ duration: 0.3 }}
               />
-              
+
               <motion.div
                 className="relative z-10 flex items-center w-full"
                 whileHover={{ x: 2 }}
                 transition={{ duration: 0.2 }}
               >
                 <motion.div
-                  className={`mr-4 h-6 w-6 flex items-center justify-center rounded-lg transition-all duration-300 ${
-                    isActive(item.href)
-                      ? 'bg-red-100 text-red-600'
-                      : 'text-gray-400 group-hover:bg-red-100 group-hover:text-red-600'
-                  }`}
-                  whileHover={{ 
+                  className={`mr-4 h-6 w-6 flex items-center justify-center rounded-lg transition-all duration-300 ${isActive(item.href)
+                    ? 'bg-red-100 text-red-600'
+                    : 'text-gray-400 group-hover:bg-red-100 group-hover:text-red-600'
+                    }`}
+                  whileHover={{
                     scale: 1.1,
                     rotate: [0, -5, 5, 0],
                     transition: { duration: 0.3 }
@@ -329,9 +344,9 @@ const SeekerSidebar = ({ onClose }) => {
                 >
                   <item.icon className="h-4 w-4" />
                 </motion.div>
-                
+
                 <span className="flex-1 font-semibold">{item.name}</span>
-                
+
                 {isActive(item.href) && (
                   <motion.div
                     className="flex items-center space-x-2"
@@ -386,7 +401,7 @@ const SeekerSidebar = ({ onClose }) => {
             className="absolute inset-0 bg-gradient-to-r from-red-400 to-red-500 opacity-0 group-hover:opacity-100"
             transition={{ duration: 0.3 }}
           />
-          
+
           {/* Shimmer effect */}
           <motion.div
             className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
@@ -399,7 +414,7 @@ const SeekerSidebar = ({ onClose }) => {
               ease: "easeInOut"
             }}
           />
-          
+
           <motion.div
             className="relative z-10 flex items-center"
             whileHover={{ x: 2 }}
@@ -407,7 +422,7 @@ const SeekerSidebar = ({ onClose }) => {
           >
             <motion.div
               className="mr-3 p-1 rounded-lg bg-white/20"
-              whileHover={{ 
+              whileHover={{
                 rotate: [0, -10, 10, 0],
                 transition: { duration: 0.3 }
               }}

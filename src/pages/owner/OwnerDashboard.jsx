@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import OwnerLayout from '../../components/owner/OwnerLayout';
-import { 
-  Building, 
-  Users, 
-  DollarSign, 
-  TrendingUp, 
-  Star, 
+import {
+  Building,
+  Users,
+  DollarSign,
+  TrendingUp,
+  Star,
   Calendar,
   Plus,
   Eye,
@@ -25,7 +25,7 @@ const OwnerDashboard = () => {
   const [tenantCount, setTenantCount] = useState(0);
   const [tenantLoading, setTenantLoading] = useState(false);
   const [tenantError, setTenantError] = useState(null);
-  
+
   // Real data states
   const [properties, setProperties] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -45,7 +45,7 @@ const OwnerDashboard = () => {
     const checkAuth = () => {
       const authToken = localStorage.getItem('authToken');
       const userData = localStorage.getItem('user');
-      
+
       if (!authToken || !userData) {
         navigate('/login');
         return;
@@ -63,7 +63,7 @@ const OwnerDashboard = () => {
         console.error('Error parsing user data:', error);
         navigate('/login');
       }
-      
+
       setLoading(false);
     };
 
@@ -75,7 +75,7 @@ const OwnerDashboard = () => {
     try {
       setTenantLoading(true);
       setTenantError(null);
-      
+
       const token = localStorage.getItem('authToken');
       if (!token) {
         console.warn('No auth token found for tenant fetch');
@@ -83,13 +83,13 @@ const OwnerDashboard = () => {
         return;
       }
 
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-      console.log('Fetching tenants from:', `${baseUrl}/api/tenants/owner`);
-      
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      console.log('Fetching tenants from:', `${baseUrl}/property/owner/tenants`);
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-      const response = await fetch(`${baseUrl}/api/tenants/owner`, {
+      const response = await fetch(`${baseUrl}/property/owner/tenants`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -104,12 +104,12 @@ const OwnerDashboard = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('Tenant fetch response data:', data);
-        
+
         if (data.success) {
           const count = data.count || 0;
           setTenantCount(count);
           console.log(`Successfully fetched ${count} tenants`);
-          
+
           // Clear any previous errors
           setTenantError(null);
         } else {
@@ -119,7 +119,7 @@ const OwnerDashboard = () => {
       } else {
         const errorText = await response.text();
         console.error('Tenant fetch failed:', response.status, errorText);
-        
+
         if (response.status === 401) {
           setTenantError('Authentication failed. Please log in again.');
         } else if (response.status === 404) {
@@ -135,7 +135,7 @@ const OwnerDashboard = () => {
       }
     } catch (error) {
       console.error('Network error fetching tenant count:', error);
-      
+
       if (error.name === 'AbortError') {
         setTenantError('Request timed out. Please try again.');
       } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
@@ -176,8 +176,8 @@ const OwnerDashboard = () => {
         return;
       }
 
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-      const response = await fetch(`${baseUrl}/api/properties`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${baseUrl}/property/owner/properties`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -207,8 +207,8 @@ const OwnerDashboard = () => {
         return;
       }
 
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-      const response = await fetch(`${baseUrl}/api/owner/bookings`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${baseUrl}/property/owner/bookings`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -291,7 +291,7 @@ const OwnerDashboard = () => {
     try {
       setDataLoading(true);
       setDataError(null);
-      
+
       await Promise.all([
         fetchProperties(),
         fetchBookings(),
@@ -311,18 +311,18 @@ const OwnerDashboard = () => {
     const totalRooms = rooms.length;
     const occupiedRooms = rooms.filter(room => !room.isAvailable).length;
     const occupancyPercentage = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
-    
+
     // Calculate revenue from confirmed bookings for this property
-    const propertyBookings = bookings.filter(b => 
+    const propertyBookings = bookings.filter(b =>
       String(b.propertyId) === String(property._id) && b.status === 'confirmed'
     );
     const propertyRevenue = propertyBookings.reduce((sum, b) => sum + (b.rent || 0), 0);
-    
+
     // Get first image from property images
-    const propertyImage = property.images && property.images[0] 
-      ? property.images[0] 
+    const propertyImage = property.images && property.images[0]
+      ? property.images[0]
       : property.frontImage || "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&w=400&h=300&fit=crop&crop=center";
-    
+
     // Format address object to string
     let locationString = 'Location not available';
     if (property.address) {
@@ -336,7 +336,7 @@ const OwnerDashboard = () => {
         locationString = parts.length > 0 ? parts.join(', ') : 'Location not available';
       }
     }
-    
+
     return {
       id: property._id,
       name: property.propertyName || property.property_name || 'Unnamed Property',
@@ -353,11 +353,11 @@ const OwnerDashboard = () => {
   // Format time ago helper function
   const formatTimeAgo = (dateString) => {
     if (!dateString) return 'Unknown time';
-    
+
     const date = new Date(dateString);
     const now = new Date();
     const seconds = Math.floor((now - date) / 1000);
-    
+
     if (seconds < 60) return 'Just now';
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
@@ -376,17 +376,17 @@ const OwnerDashboard = () => {
   // Generate real activities from actual data
   const generateRecentActivities = () => {
     const activities = [];
-    
+
     // Add booking activities
     bookings.slice(0, 3).forEach((booking) => {
       const property = properties.find(p => String(p._id) === String(booking.propertyId));
       const propertyName = property ? property.propertyName || property.property_name : 'Unknown Property';
       const seekerName = booking.userSnapshot?.name || 'Unknown User';
-      
+
       let message = '';
       let status = '';
       let type = '';
-      
+
       switch (booking.status) {
         case 'pending_approval':
           message = `New booking request from ${seekerName} for ${propertyName}`;
@@ -397,6 +397,11 @@ const OwnerDashboard = () => {
           message = `Booking confirmed by ${seekerName} for ${propertyName}`;
           status = 'completed';
           type = 'payment';
+          break;
+        case 'checked_in':
+          message = `${seekerName} successfully checked in to ${propertyName}`;
+          status = 'completed';
+          type = 'tenant';
           break;
         case 'rejected':
           message = `Booking rejected for ${propertyName}`;
@@ -413,7 +418,7 @@ const OwnerDashboard = () => {
           status = 'in-progress';
           type = 'tenant';
       }
-      
+
       activities.push({
         id: `booking-${booking._id}`,
         type,
@@ -423,11 +428,11 @@ const OwnerDashboard = () => {
         createdAt: booking.createdAt || booking.bookedAt
       });
     });
-    
+
     // Add property activities
     properties.slice(0, 2).forEach((property) => {
       const propertyName = property.propertyName || property.property_name || 'Unnamed Property';
-      
+
       activities.push({
         id: `property-${property._id}`,
         type: 'property',
@@ -437,7 +442,7 @@ const OwnerDashboard = () => {
         createdAt: property.createdAt
       });
     });
-    
+
     // Sort by creation date (most recent first) and limit to 4
     return activities
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -562,32 +567,30 @@ const OwnerDashboard = () => {
                     </button>
                   </div>
                 ) : (
-                <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats.activeTenants}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats.activeTenants}</p>
                 )}
               </div>
-              <div className={`p-2 sm:p-3 rounded-lg ${
-                tenantError ? 'bg-red-100' : 'bg-green-100'
-              }`}>
-                <Users className={`w-5 h-5 sm:w-6 sm:h-6 ${
-                  tenantError ? 'text-red-600' : 'text-green-600'
-                }`} />
+              <div className={`p-2 sm:p-3 rounded-lg ${tenantError ? 'bg-red-100' : 'bg-green-100'
+                }`}>
+                <Users className={`w-5 h-5 sm:w-6 sm:h-6 ${tenantError ? 'text-red-600' : 'text-green-600'
+                  }`} />
               </div>
             </div>
             {!tenantLoading && !tenantError && (
-            <div className="mt-3 sm:mt-4 flex items-center text-xs sm:text-sm text-green-600">
-              <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+              <div className="mt-3 sm:mt-4 flex items-center text-xs sm:text-sm text-green-600">
+                <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                 <span>{stats.activeTenants > 0 ? '+3 this week' : 'No tenants yet'}</span>
               </div>
             )}
             {tenantError && (
               <div className="mt-3 sm:mt-4">
                 <p className="text-xs text-gray-500">
-                  {tenantError === 'No tenants found for this owner' 
-                    ? 'Start by adding properties and getting bookings' 
+                  {tenantError === 'No tenants found for this owner'
+                    ? 'Start by adding properties and getting bookings'
                     : 'Check your connection and try again'
                   }
                 </p>
-            </div>
+              </div>
             )}
           </motion.div>
 
@@ -708,29 +711,29 @@ const OwnerDashboard = () => {
                 </div>
               ) : (
                 recentProperties.map((property) => (
-                <div key={property.id} className="flex items-center space-x-3 sm:space-x-4">
-                  <img
-                    src={property.image}
-                    alt={property.name}
-                    className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg object-cover flex-shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xs sm:text-sm font-medium text-gray-900 truncate">{property.name}</h3>
-                    <p className="text-xs text-gray-500">{property.location}</p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <span className="text-xs text-gray-600">{property.tenants} tenants</span>
-                      <span className="text-xs text-gray-600">•</span>
-                      <span className="text-xs text-gray-600">{property.occupancy} occupied</span>
+                  <div key={property.id} className="flex items-center space-x-3 sm:space-x-4">
+                    <img
+                      src={property.image}
+                      alt={property.name}
+                      className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg object-cover flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-xs sm:text-sm font-medium text-gray-900 truncate">{property.name}</h3>
+                      <p className="text-xs text-gray-500">{property.location}</p>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <span className="text-xs text-gray-600">{property.tenants} tenants</span>
+                        <span className="text-xs text-gray-600">•</span>
+                        <span className="text-xs text-gray-600">{property.occupancy} occupied</span>
+                      </div>
                     </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-xs sm:text-sm font-medium text-gray-900">{property.revenue}</p>
+                      <p className="text-xs text-green-600">{property.status}</p>
+                    </div>
+                    <button className="p-1 sm:p-2 text-gray-400 hover:text-gray-600 flex-shrink-0">
+                      <MoreVertical className="w-3 h-3 sm:w-4 sm:h-4" />
+                    </button>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-xs sm:text-sm font-medium text-gray-900">{property.revenue}</p>
-                    <p className="text-xs text-green-600">{property.status}</p>
-                  </div>
-                  <button className="p-1 sm:p-2 text-gray-400 hover:text-gray-600 flex-shrink-0">
-                    <MoreVertical className="w-3 h-3 sm:w-4 sm:h-4" />
-                  </button>
-                </div>
                 ))
               )}
             </div>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
+import {
   Home,
   Building,
   Users,
@@ -12,7 +12,9 @@ import {
   MessageCircle,
   LogOut,
   Plus,
-  X
+  X,
+  Wrench,
+  DollarSign
 } from 'lucide-react';
 
 const OwnerSidebar = ({ onClose }) => {
@@ -32,8 +34,9 @@ const OwnerSidebar = ({ onClose }) => {
     { name: 'Properties', href: '/owner-properties', icon: Building },
     { name: 'Tenants', href: '/owner-tenants', icon: Users },
     { name: 'Bookings', href: '/owner-bookings', icon: Calendar },
+    { name: 'Maintenance', href: '/owner-maintenance', icon: Wrench },
+    { name: 'Payments', href: '/owner-payments', icon: DollarSign },
     { name: 'Analytics', href: '/owner-analytics', icon: BarChart3 },
-    { name: 'Messages', href: '/owner-messages', icon: MessageCircle },
     { name: 'Profile Settings', href: '/owner-settings', icon: Settings },
   ];
 
@@ -72,7 +75,7 @@ const OwnerSidebar = ({ onClose }) => {
   };
 
   return (
-    <motion.div 
+    <motion.div
       className="fixed inset-y-0 left-0 z-50 w-64 max-w-[80vw] bg-white border-r border-gray-200 flex flex-col shadow-xl"
       initial={{ x: '-100%' }}
       animate={{ x: 0 }}
@@ -81,25 +84,25 @@ const OwnerSidebar = ({ onClose }) => {
     >
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-200">
-        <motion.div 
+        <motion.div
           className="flex items-center space-x-3"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.3 }}
         >
-          <motion.div 
+          <motion.div
             className="w-8 h-8 flex items-center justify-center"
             whileHover={{ scale: 1.05 }}
             transition={{ duration: 0.2 }}
           >
-            <img 
-              src="/Lyvo_no_bg.png" 
-              alt="Lyvo Owner" 
+            <img
+              src="/Lyvo_no_bg.png"
+              alt="Lyvo Owner"
               className="w-full h-full object-contain"
             />
           </motion.div>
           <div className="hidden sm:block">
-                            <h1 className="text-lg sm:text-xl font-bold text-gray-900"><span className="text-red-600">Lyvo</span><span className="text-black">+</span> Owner</h1>
+            <h1 className="text-lg sm:text-xl font-bold text-gray-900"><span className="text-red-600">Lyvo</span><span className="text-black">+</span> Owner</h1>
             <p className="text-xs text-gray-500">Property Management</p>
           </div>
         </motion.div>
@@ -117,14 +120,14 @@ const OwnerSidebar = ({ onClose }) => {
       </div>
 
       {/* User Info */}
-      <motion.div 
+      <motion.div
         className="flex-shrink-0 p-4 border-b border-gray-200"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15, duration: 0.3 }}
       >
         <div className="flex items-center space-x-3">
-          <motion.div 
+          <motion.div
             className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center"
             whileHover={{ scale: 1.05 }}
             transition={{ duration: 0.2 }}
@@ -136,7 +139,7 @@ const OwnerSidebar = ({ onClose }) => {
               {user.name || 'Property Owner'}
             </p>
             <p className="text-xs text-gray-500 truncate">
-                              {user.email || 'owner@lyvo+.com'}
+              {user.email || 'owner@lyvo+.com'}
             </p>
           </div>
         </div>
@@ -169,8 +172,8 @@ const OwnerSidebar = ({ onClose }) => {
                 key={item.name}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ 
-                  delay: 0.25 + (index * 0.05), 
+                transition={{
+                  delay: 0.25 + (index * 0.05),
                   duration: 0.3,
                   ease: "easeOut"
                 }}
@@ -183,15 +186,13 @@ const OwnerSidebar = ({ onClose }) => {
                   <Link
                     to={item.href}
                     onClick={onClose}
-                    className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                      isActive(item.href)
-                        ? 'text-red-700 bg-red-50 border-r-2 border-red-700'
-                        : 'text-gray-700 hover:text-red-700 hover:bg-red-50'
-                    }`}
+                    className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-colors duration-200 ${isActive(item.href)
+                      ? 'text-red-700 bg-red-50 border-r-2 border-red-700'
+                      : 'text-gray-700 hover:text-red-700 hover:bg-red-50'
+                      }`}
                   >
-                    <Icon className={`mr-3 h-5 w-5 ${
-                      isActive(item.href) ? 'text-red-700' : 'text-gray-400 group-hover:text-red-700'
-                    }`} />
+                    <Icon className={`mr-3 h-5 w-5 ${isActive(item.href) ? 'text-red-700' : 'text-gray-400 group-hover:text-red-700'
+                      }`} />
                     {item.name}
                   </Link>
                 </motion.div>
@@ -202,7 +203,7 @@ const OwnerSidebar = ({ onClose }) => {
       </nav>
 
       {/* Footer */}
-      <motion.div 
+      <motion.div
         className="flex-shrink-0 p-4 border-t border-gray-200"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}

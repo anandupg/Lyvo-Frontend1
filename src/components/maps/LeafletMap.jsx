@@ -39,22 +39,26 @@ const createCustomIcon = (propertyType, color) => {
   });
 };
 
-const LeafletMap = ({ 
-  properties = [], 
-  selectedLocation = null, 
+const LeafletMap = ({
+  properties = [],
+  selectedLocation = null,
   radius = 5,
-  onPropertyClick = () => {},
+  onPropertyClick = () => { },
   height = '320px',
-  showRadius = true 
+  showRadius = true
 }) => {
   const [mapCenter, setMapCenter] = useState([12.9716, 77.5946]); // Default to Bangalore
   const [mapZoom, setMapZoom] = useState(12);
 
   // Update map center when selectedLocation changes
   useEffect(() => {
-    if (selectedLocation) {
-      setMapCenter([selectedLocation.lat, selectedLocation.lng]);
-      setMapZoom(15);
+    if (selectedLocation && selectedLocation.lat && selectedLocation.lng) {
+      const lat = parseFloat(selectedLocation.lat);
+      const lng = parseFloat(selectedLocation.lng);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        setMapCenter([lat, lng]);
+        setMapZoom(15);
+      }
     }
   }, [selectedLocation]);
 
@@ -91,19 +95,23 @@ const LeafletMap = ({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        
+
+        {/* Property markers */}
         {/* Property markers */}
         {properties.map((property) => {
-          if (!property.lat || !property.lng) return null;
-          
+          const lat = parseFloat(property.lat);
+          const lng = parseFloat(property.lng);
+
+          if (isNaN(lat) || isNaN(lng)) return null;
+
           const markerColor = getMarkerColor(property.propertyType);
           const customIcon = createCustomIcon(property.propertyType, markerColor);
           const amenities = formatAmenities(property.amenities);
-          
+
           return (
             <Marker
               key={property.id}
-              position={[property.lat, property.lng]}
+              position={[lat, lng]}
               icon={customIcon}
               eventHandlers={{
                 click: () => onPropertyClick(property.id),
@@ -119,19 +127,19 @@ const LeafletMap = ({
                       {property.propertyType || 'PG'}
                     </span>
                   </div>
-                  
+
                   <div className="flex items-center text-xs text-gray-600 mb-2">
                     <MapPin className="w-3 h-3 mr-1" />
                     <span className="truncate">{property.address}</span>
                   </div>
-                  
+
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-lg font-bold text-red-600">{property.price}</p>
                     {property.distance && property.distance !== '0 km' && (
                       <p className="text-xs text-gray-500">{property.distance} away</p>
                     )}
                   </div>
-                  
+
                   <div className="space-y-1 text-xs text-gray-600">
                     {property.maxOccupancy && (
                       <div className="flex items-center">
@@ -139,14 +147,14 @@ const LeafletMap = ({
                         <span>Max Occupancy: {property.maxOccupancy} people</span>
                       </div>
                     )}
-                    
+
                     {property.ownerName && (
                       <div className="flex items-center">
                         <Building className="w-3 h-3 mr-1" />
                         <span>Owner: {property.ownerName}</span>
                       </div>
                     )}
-                    
+
                     {property.rating && (
                       <div className="flex items-center">
                         <Star className="w-3 h-3 mr-1 text-yellow-400 fill-current" />
@@ -154,14 +162,14 @@ const LeafletMap = ({
                       </div>
                     )}
                   </div>
-                  
+
                   {amenities.length > 0 && (
                     <div className="mt-2">
                       <p className="font-medium mb-1 text-xs">Amenities:</p>
                       <div className="flex flex-wrap gap-1">
                         {amenities.slice(0, 3).map((amenity, idx) => (
-                          <span 
-                            key={idx} 
+                          <span
+                            key={idx}
                             className="px-1 py-0.5 bg-gray-100 text-gray-700 rounded text-xs"
                           >
                             {amenity}
@@ -175,17 +183,17 @@ const LeafletMap = ({
                       </div>
                     </div>
                   )}
-                  
+
                   {property.images && property.images.length > 0 && (
                     <div className="mt-3">
-                      <img 
-                        src={property.images[0]} 
-                        alt={property.name} 
-                        className="w-full h-16 object-cover rounded border" 
+                      <img
+                        src={property.images[0]}
+                        alt={property.name}
+                        className="w-full h-16 object-cover rounded border"
                       />
                     </div>
                   )}
-                  
+
                   <button
                     onClick={() => onPropertyClick(property.id)}
                     className="w-full mt-3 bg-red-600 text-white text-xs py-2 px-3 rounded hover:bg-red-700 transition-colors"
@@ -199,15 +207,15 @@ const LeafletMap = ({
         })}
 
         {/* Radius Circle */}
-        {selectedLocation && showRadius && (
+        {selectedLocation && showRadius && !isNaN(parseFloat(selectedLocation.lat)) && !isNaN(parseFloat(selectedLocation.lng)) && (
           <Circle
-            center={[selectedLocation.lat, selectedLocation.lng]}
+            center={[parseFloat(selectedLocation.lat), parseFloat(selectedLocation.lng)]}
             radius={radius * 1000} // Convert km to meters
-            pathOptions={{ 
-              color: '#ef4444', 
-              fillColor: '#ef4444', 
-              fillOpacity: 0.1, 
-              weight: 2 
+            pathOptions={{
+              color: '#ef4444',
+              fillColor: '#ef4444',
+              fillOpacity: 0.1,
+              weight: 2
             }}
           />
         )}

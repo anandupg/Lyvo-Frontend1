@@ -8,13 +8,13 @@ import { autoRepairUserRole } from './roleRepair';
  */
 export const getUserRole = (user) => {
   if (!user) return null;
-  
+
   const role = user.role;
-  
+
   // Handle undefined/null role
   if (role === undefined || role === null) {
     console.warn('User role is undefined/null, attempting to determine from email or other data');
-    
+
     // Try to determine role from email or other indicators
     if (user.email && user.email.includes('admin')) {
       return 2; // Admin
@@ -26,7 +26,7 @@ export const getUserRole = (user) => {
       return 1; // Seeker
     }
   }
-  
+
   if (typeof role === 'string') {
     return parseInt(role, 10);
   }
@@ -73,15 +73,15 @@ export const getUserFromStorage = () => {
   try {
     const user = localStorage.getItem('user');
     if (!user) return null;
-    
+
     const userData = JSON.parse(user);
-    
+
     // Validate user data structure
     if (!userData || typeof userData !== 'object') {
       console.error('Invalid user data in localStorage');
       return null;
     }
-    
+
     return userData;
   } catch (error) {
     console.error('Error parsing user data from localStorage:', error);
@@ -97,15 +97,15 @@ export const getUserFromStorageWithRepair = async () => {
   try {
     const user = localStorage.getItem('user');
     if (!user) return null;
-    
+
     const userData = JSON.parse(user);
-    
+
     // Validate user data structure
     if (!userData || typeof userData !== 'object') {
       console.error('Invalid user data in localStorage');
       return null;
     }
-    
+
     // Auto-repair role if needed
     const repairedUser = await autoRepairUserRole(userData);
     return repairedUser;
@@ -140,7 +140,7 @@ export const isAuthenticated = () => {
  */
 export const getRedirectUrl = (user) => {
   const userRole = getUserRole(user);
-  
+
   console.log('getRedirectUrl: Processing user:', {
     userRole: userRole,
     userRoleType: typeof userRole,
@@ -149,7 +149,7 @@ export const getRedirectUrl = (user) => {
     userEmail: user?.email,
     rawUser: user
   });
-  
+
   switch (userRole) {
     case 2: // Admin
       console.log('getRedirectUrl: Redirecting admin to /admin-dashboard');
@@ -178,19 +178,19 @@ export const getRedirectUrl = (user) => {
  */
 export const isPathAllowedForUser = (pathname, user) => {
   const userRole = getUserRole(user);
-  
+
   switch (userRole) {
     case 2: // Admin
       return pathname.startsWith('/admin');
     case 3: // Owner
       return pathname.startsWith('/owner');
     case 1: // Seeker
-      return pathname.startsWith('/seeker') || 
-             pathname === '/dashboard' || 
-             pathname.startsWith('/room/') || 
-             pathname.startsWith('/booking-dashboard/') || 
-             pathname.startsWith('/seeker-dashboard') || 
-             pathname === '/my-room';
+      return pathname.startsWith('/seeker') ||
+        pathname === '/dashboard' ||
+        pathname.startsWith('/seeker/room/') ||
+        pathname.startsWith('/booking-dashboard/') ||
+        pathname.startsWith('/seeker-dashboard') ||
+        pathname === '/my-room';
     default:
       return false;
   }

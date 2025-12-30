@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  MapPin, 
-  DollarSign, 
-  Users, 
-  Home, 
-  Building, 
-  CheckCircle2, 
-  XCircle, 
+import {
+  ArrowLeft,
+  MapPin,
+  DollarSign,
+  Users,
+  Home,
+  Building,
+  CheckCircle2,
+  XCircle,
   Calendar,
   Phone,
   Mail,
@@ -27,15 +27,29 @@ import {
   Bath,
   Square,
   Send,
-  MessageSquare
+  MessageSquare,
+  Trash2
 } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { motion } from 'framer-motion';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
 const AdminPropertyDetails = () => {
   const { propertyId } = useParams();
   const navigate = useNavigate();
-  
+
   console.log('AdminPropertyDetails component loaded');
   console.log('propertyId from useParams:', propertyId);
   console.log('Current URL:', window.location.href);
@@ -45,27 +59,20 @@ const AdminPropertyDetails = () => {
   const [error, setError] = useState('');
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [showRoomModal, setShowRoomModal] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [confirmationModal, setConfirmationModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [successMessage, setSuccessMessage] = useState('');
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [adminMessage, setAdminMessage] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
-  
-  // Google Maps state
-  const [isGoogleLoaded, setIsGoogleLoaded] = useState(false);
-  const [isMapOpen, setIsMapOpen] = useState(false);
-  const [isSatellite, setIsSatellite] = useState(false);
-  const mapRef = useRef(null);
-  const markerRef = useRef(null);
-  const sidebarMapDivRef = useRef(null);
-  const modalMapDivRef = useRef(null);
 
-  const propertyServiceUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3003';
+  const propertyServiceUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   // Calculate hasCoords early to avoid reference errors
-  const hasCoords = property && typeof property.latitude === 'number' && typeof property.longitude === 'number' && 
-                   !Number.isNaN(property.latitude) && !Number.isNaN(property.longitude);
+  const hasCoords = property && typeof property.latitude === 'number' && typeof property.longitude === 'number' &&
+    !Number.isNaN(property.latitude) && !Number.isNaN(property.longitude);
 
   useEffect(() => {
     const fetchPropertyDetails = async () => {
@@ -79,7 +86,8 @@ const AdminPropertyDetails = () => {
         console.log('Fetching property details for ID:', propertyId);
         console.log('Current URL:', window.location.href);
 
-        const resp = await fetch(`${propertyServiceUrl}/api/admin/properties/${propertyId}`, {
+        // Unified path: /property/admin/properties/:id
+        const resp = await fetch(`${propertyServiceUrl}/property/admin/properties/${propertyId}`, {
           headers: {
             'Authorization': authToken ? `Bearer ${authToken}` : '',
             'x-user-id': userId
@@ -90,7 +98,7 @@ const AdminPropertyDetails = () => {
         if (!resp.ok || data.success !== true) {
           throw new Error(data.message || 'Failed to fetch property');
         }
-        
+
         console.log('Found property:', data.data);
         setProperty(data.data);
       } catch (e) {
@@ -105,146 +113,133 @@ const AdminPropertyDetails = () => {
     }
   }, [propertyId]);
 
-  // Load Google Maps JS API
-  useEffect(() => {
-    const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyCoPzRJLAmma54BBOyF4AhZ2ZIqGvak8CA';
-    if (!key) return;
-    if (window.google && window.google.maps) {
-      setIsGoogleLoaded(true);
-      return;
-    }
-    const existing = document.querySelector('script[data-google-maps="true"]');
-    if (existing) {
-      existing.addEventListener('load', () => setIsGoogleLoaded(true));
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}`;
-    script.async = true;
-    script.defer = true;
-    script.dataset.googleMaps = 'true';
-    script.onload = () => setIsGoogleLoaded(true);
-    document.head.appendChild(script);
-  }, []);
-
-  // Initialize sidebar map
-  useEffect(() => {
-    if (!isGoogleLoaded || !property || !hasCoords) return;
-    if (!sidebarMapDivRef.current) return;
-    
-    const center = {
-      lat: property.latitude,
-      lng: property.longitude,
-    };
-    
-    const map = new window.google.maps.Map(sidebarMapDivRef.current, {
-      center,
-      zoom: 15,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-      mapTypeId: 'roadmap',
-    });
-    
-    new window.google.maps.Marker({ 
-      map, 
-      position: center, 
-      draggable: false,
-      title: property.name || 'Property Location'
-    });
-  }, [isGoogleLoaded, property, hasCoords]);
-
-  // Initialize modal map when modal opens
-  useEffect(() => {
-    if (!isMapOpen || !isGoogleLoaded || !property || !hasCoords) return;
-    if (!modalMapDivRef.current) return;
-    
-    const center = {
-      lat: property.latitude,
-      lng: property.longitude,
-    };
-    
-    mapRef.current = new window.google.maps.Map(modalMapDivRef.current, {
-      center,
-      zoom: 15,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-      mapTypeId: isSatellite ? 'hybrid' : 'roadmap',
-    });
-    
-    markerRef.current = new window.google.maps.Marker({ 
-      map: mapRef.current, 
-      position: center, 
-      draggable: false,
-      title: property.name || 'Property Location'
-    });
-  }, [isMapOpen, isGoogleLoaded, isSatellite, property, hasCoords]);
-
-  const toggleSatellite = () => {
-    const next = !isSatellite;
-    setIsSatellite(next);
-    if (mapRef.current) {
-      mapRef.current.setMapTypeId(next ? 'hybrid' : 'roadmap');
-    }
-  };
-
   const approveRoom = async (roomId, action) => {
     try {
       console.log(`Attempting to ${action} room:`, roomId);
       const authToken = localStorage.getItem('authToken');
       const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
       const userId = user._id || user.id || '';
-      
+
       console.log('Auth token:', authToken ? 'Present' : 'Missing');
       console.log('User ID:', userId);
-      
-      const resp = await fetch(`${propertyServiceUrl}/api/admin/rooms/${roomId}/approval`, {
-        method: 'POST',
+
+      const resp = await fetch(`${propertyServiceUrl}/property/admin/rooms/${roomId}/approve`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': authToken ? `Bearer ${authToken}` : '',
           'x-user-id': userId
         },
-        body: JSON.stringify({ action })
+        body: JSON.stringify({ status: action === 'approve' ? 'approved' : 'rejected' })
       });
-      
+
       console.log('Response status:', resp.status);
       const data = await resp.json();
       console.log('Response data:', data);
-      
+
       if (!resp.ok || data.success !== true) {
         throw new Error(data.message || 'Failed to update room');
       }
-      
+
       // Update local state
       setProperty(prev => ({
         ...prev,
         rooms: (prev.rooms || []).map(r => r._id === roomId ? { ...r, ...data.data } : r)
       }));
-      
+
       // Close modal after successful update
       setShowRoomModal(false);
-      
+
       // Show success modal
       setSuccessMessage(`Room ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
       setShowSuccessModal(true);
-      
+
       // Auto-close success modal after 3 seconds
       setTimeout(() => {
         setShowSuccessModal(false);
       }, 3000);
-      
+
       console.log(`Room ${roomId} ${action}ed successfully`);
     } catch (e) {
       console.error(`Error ${action}ing room:`, e);
       setErrorMessage(`Failed to ${action} room: ${e.message}`);
       setShowErrorModal(true);
-      
+
       // Auto-close error modal after 5 seconds
       setTimeout(() => {
         setShowErrorModal(false);
       }, 5000);
+    }
+  };
+
+  const deleteProperty = async () => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+      const userId = user._id || user.id || '';
+
+      const resp = await fetch(`${propertyServiceUrl}/property/admin/properties/${propertyId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': authToken ? `Bearer ${authToken}` : '',
+          'x-user-id': userId
+        }
+      });
+
+      const data = await resp.json();
+      if (!resp.ok || data.success !== true) {
+        throw new Error(data.message || 'Failed to delete property');
+      }
+
+      setSuccessMessage('Property deleted successfully!');
+      setShowSuccessModal(true);
+
+      // Redirect after short delay
+      setTimeout(() => {
+        setShowSuccessModal(false);
+        navigate('/admin-properties');
+      }, 1500);
+
+    } catch (e) {
+      setErrorMessage(e.message);
+      setShowErrorModal(true);
+      setTimeout(() => setShowErrorModal(false), 5000);
+    }
+  };
+
+  const deleteRoom = async (roomId) => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+      const userId = user._id || user.id || '';
+
+      const resp = await fetch(`${propertyServiceUrl}/property/admin/rooms/${roomId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': authToken ? `Bearer ${authToken}` : '',
+          'x-user-id': userId
+        }
+      });
+
+      const data = await resp.json();
+      if (!resp.ok || data.success !== true) {
+        throw new Error(data.message || 'Failed to delete room');
+      }
+
+      // Update local state by removing the deleted room
+      setProperty(prev => ({
+        ...prev,
+        rooms: (prev.rooms || []).filter(r => r._id !== roomId)
+      }));
+
+      setSuccessMessage('Room deleted successfully!');
+      setShowSuccessModal(true);
+      setTimeout(() => setShowSuccessModal(false), 3000);
+
+    } catch (e) {
+      setErrorMessage(e.message);
+      setShowErrorModal(true);
+      setTimeout(() => setShowErrorModal(false), 5000);
     }
   };
 
@@ -254,14 +249,14 @@ const AdminPropertyDetails = () => {
       const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
       const userId = user._id || user.id || '';
 
-      const resp = await fetch(`${propertyServiceUrl}/api/admin/properties/${propertyId}/approval`, {
-        method: 'POST',
+      const resp = await fetch(`${propertyServiceUrl}/property/admin/properties/${propertyId}/approve`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': authToken ? `Bearer ${authToken}` : '',
           'x-user-id': userId
         },
-        body: JSON.stringify({ action })
+        body: JSON.stringify({ status: action === 'approve' ? 'approved' : 'rejected' })
       });
 
       const data = await resp.json();
@@ -294,14 +289,14 @@ const AdminPropertyDetails = () => {
       const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
       const userId = user._id || user.id || '';
 
-      const resp = await fetch(`${propertyServiceUrl}/api/admin/properties/${propertyId}/send-message`, {
+      const resp = await fetch(`${propertyServiceUrl}/property/admin/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': authToken ? `Bearer ${authToken}` : '',
           'x-user-id': userId
         },
-        body: JSON.stringify({ message: adminMessage.trim() })
+        body: JSON.stringify({ propertyId: propertyId, message: adminMessage.trim() })
       });
 
       const data = await resp.json();
@@ -395,7 +390,7 @@ const AdminPropertyDetails = () => {
         {/* Header */}
         <div className="bg-white shadow-sm border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
+            <div className="flex flex-col md:flex-row md:items-center justify-between min-h-[4rem] py-4 md:py-0 space-y-4 md:space-y-0">
               <div className="flex items-center space-x-4">
                 <button
                   onClick={() => navigate('/admin-properties')}
@@ -404,30 +399,56 @@ const AdminPropertyDetails = () => {
                   <ArrowLeft className="w-5 h-5 text-gray-600" />
                 </button>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">{property.property_name}</h1>
-                  <p className="text-gray-600">{property.owner?.name || 'Unknown Owner'}</p>
+                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 line-clamp-1">{property.property_name}</h1>
+                  <p className="text-sm md:text-base text-gray-600 line-clamp-1">{property.owner?.name || 'Unknown Owner'}</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-wrap items-center gap-2 md:space-x-3">
                 <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusBadge(property.approval_status || 'pending').color}`}>
                   {getStatusBadge(property.approval_status || 'pending').text}
                 </span>
-                {['pending','rejected'].includes(property.approval_status || 'pending') && (
+
+                <div className="flex flex-1 md:flex-none gap-2 overflow-x-auto pb-1 md:pb-0">
+                  {['pending', 'rejected'].includes(property.approval_status || 'pending') && (
+                    <button
+                      onClick={() => setConfirmationModal({
+                        isOpen: true,
+                        title: 'Approve Property?',
+                        message: 'Are you sure you want to approve this property? This will make it visible to potential tenants.',
+                        onConfirm: () => approveProperty('approve')
+                      })}
+                      className="flex-shrink-0 bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 whitespace-nowrap"
+                    >
+                      Approve
+                    </button>
+                  )}
+                  {['pending', 'approved'].includes(property.approval_status || 'pending') && (
+                    <button
+                      onClick={() => setConfirmationModal({
+                        isOpen: true,
+                        title: 'Reject Property?',
+                        message: 'Are you sure you want to reject this property?',
+                        onConfirm: () => approveProperty('reject')
+                      })}
+                      className="flex-shrink-0 bg-red-600 text-white px-3 py-2 rounded text-sm hover:bg-red-700 whitespace-nowrap"
+                    >
+                      Reject
+                    </button>
+                  )}
+
                   <button
-                    onClick={() => approveProperty('approve')}
-                    className="bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700"
+                    onClick={() => setConfirmationModal({
+                      isOpen: true,
+                      title: 'Delete Property?',
+                      message: `Are you sure you want to permanently delete "${property.property_name}"? This will delete all associated rooms and cannot be undone.`,
+                      onConfirm: () => deleteProperty()
+                    })}
+                    className="flex-shrink-0 bg-red-700 text-white px-3 py-2 rounded text-sm hover:bg-red-800 flex items-center whitespace-nowrap"
                   >
-                    Approve Property
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete
                   </button>
-                )}
-                {['pending','approved'].includes(property.approval_status || 'pending') && (
-                  <button
-                    onClick={() => approveProperty('reject')}
-                    className="bg-red-600 text-white px-3 py-2 rounded text-sm hover:bg-red-700"
-                  >
-                    Reject Property
-                  </button>
-                )}
+                </div>
               </div>
             </div>
           </div>
@@ -538,9 +559,9 @@ const AdminPropertyDetails = () => {
                     <div>
                       <h3 className="text-sm font-medium text-gray-700 mb-2">Monthly Rent</h3>
                       <p className="text-2xl font-bold text-gray-900">
-                        {property.rooms && property.rooms.length > 0 
+                        {property.rooms && property.rooms.length > 0
                           ? `₹${Math.min(...property.rooms.map(r => r.rent || 0)).toLocaleString()} - ₹${Math.max(...property.rooms.map(r => r.rent || 0)).toLocaleString()}`
-                          : property.monthly_rent 
+                          : property.monthly_rent
                             ? `₹${property.monthly_rent.toLocaleString()}`
                             : '₹0'}
                       </p>
@@ -605,47 +626,53 @@ const AdminPropertyDetails = () => {
                 className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
               >
                 <div className="p-6 border-b">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <h2 className="text-xl font-bold text-gray-900 flex items-center">
                       <Building className="w-5 h-5 mr-2" />
                       Rooms ({(property.rooms || []).length})
                     </h2>
-                    
+
                     {/* Bulk Room Actions */}
                     {(property.rooms || []).some(room => room.approval_status === 'pending') && (
-                      <div className="flex items-center space-x-2">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                         <button
                           onClick={() => {
                             const pendingRooms = (property.rooms || []).filter(room => room.approval_status === 'pending');
-                            if (window.confirm(`Are you sure you want to approve all ${pendingRooms.length} pending rooms?`)) {
-                              pendingRooms.forEach(room => approveRoom(room._id, 'approve'));
-                            }
+                            setConfirmationModal({
+                              isOpen: true,
+                              title: 'Approve All Pending Rooms?',
+                              message: `Are you sure you want to approve all ${pendingRooms.length} pending rooms? This action cannot be undone.`,
+                              onConfirm: () => pendingRooms.forEach(room => approveRoom(room._id, 'approve'))
+                            });
                           }}
-                          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors flex items-center"
+                          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors flex items-center justify-center whitespace-nowrap"
                         >
                           <CheckCircle2 className="w-4 h-4 mr-1" />
-                          Approve All Pending
+                          Approve All
                         </button>
                         <button
                           onClick={() => {
                             const pendingRooms = (property.rooms || []).filter(room => room.approval_status === 'pending');
-                            if (window.confirm(`Are you sure you want to reject all ${pendingRooms.length} pending rooms?`)) {
-                              pendingRooms.forEach(room => approveRoom(room._id, 'reject'));
-                            }
+                            setConfirmationModal({
+                              isOpen: true,
+                              title: 'Reject All Pending Rooms?',
+                              message: `Are you sure you want to reject all ${pendingRooms.length} pending rooms? This action cannot be undone.`,
+                              onConfirm: () => pendingRooms.forEach(room => approveRoom(room._id, 'reject'))
+                            });
                           }}
-                          className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors flex items-center"
+                          className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors flex items-center justify-center whitespace-nowrap"
                         >
                           <XCircle className="w-4 h-4 mr-1" />
-                          Reject All Pending
+                          Reject All
                         </button>
                       </div>
                     )}
                   </div>
                 </div>
-                
+
                 {/* Room Status Summary */}
-                <div className="px-6 py-4 bg-gray-50 border-b">
-                  <div className="flex items-center space-x-6">
+                <div className="px-6 py-4 bg-gray-50 border-b overflow-x-auto">
+                  <div className="flex items-center space-x-6 min-w-max">
                     {(property.rooms || []).filter(room => room.approval_status === 'pending').length > 0 && (
                       <div className="flex items-center space-x-2">
                         <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
@@ -672,7 +699,7 @@ const AdminPropertyDetails = () => {
                     )}
                   </div>
                 </div>
-                
+
                 <div className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {(property.rooms || []).map((room) => {
@@ -706,7 +733,7 @@ const AdminPropertyDetails = () => {
 
                           {room.description && (
                             <div className="mt-3">
-                              <p className="text-sm text-gray-600">{room.description}</p>
+                              <p className="text-sm text-gray-600 line-clamp-2">{room.description}</p>
                             </div>
                           )}
 
@@ -746,24 +773,29 @@ const AdminPropertyDetails = () => {
                           )}
 
                           {/* Action Buttons */}
-                          <div className="mt-4 flex items-center space-x-2">
+                          <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:items-center sm:space-x-2">
                             <button
                               onClick={() => openRoomModal(room)}
-                              className="flex-1 bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors"
+                              className="col-span-2 sm:col-span-1 sm:flex-1 bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors flex items-center justify-center order-1 sm:order-none"
                             >
                               <Eye className="w-4 h-4 inline mr-1" />
-                              View Details
+                              View
                             </button>
-                            
+
                             {/* Room Approval Buttons */}
                             {room.approval_status === 'pending' && (
                               <>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    approveRoom(room._id, 'approve');
+                                    setConfirmationModal({
+                                      isOpen: true,
+                                      title: 'Approve Room?',
+                                      message: `Are you sure you want to approve Room ${room.room_number}?`,
+                                      onConfirm: () => approveRoom(room._id, 'approve')
+                                    });
                                   }}
-                                  className="flex-1 bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors flex items-center justify-center"
+                                  className="flex-1 bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors flex items-center justify-center order-2 sm:order-none"
                                 >
                                   <CheckCircle2 className="w-4 h-4 inline mr-1" />
                                   Approve
@@ -771,30 +803,86 @@ const AdminPropertyDetails = () => {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    approveRoom(room._id, 'reject');
+                                    setConfirmationModal({
+                                      isOpen: true,
+                                      title: 'Reject Room?',
+                                      message: `Are you sure you want to reject Room ${room.room_number}?`,
+                                      onConfirm: () => approveRoom(room._id, 'reject')
+                                    });
                                   }}
-                                  className="flex-1 bg-red-600 text-white px-3 py-2 rounded text-sm hover:bg-red-700 transition-colors flex items-center justify-center"
+                                  className="flex-1 bg-red-600 text-white px-3 py-2 rounded text-sm hover:bg-red-700 transition-colors flex items-center justify-center order-3 sm:order-none"
                                 >
                                   <XCircle className="w-4 h-4 inline mr-1" />
                                   Reject
                                 </button>
                               </>
                             )}
-                            
+
                             {/* Show status for approved/rejected rooms */}
                             {room.approval_status === 'approved' && (
-                              <div className="flex-1 bg-green-100 text-green-800 px-3 py-2 rounded text-sm text-center font-medium">
-                                <CheckCircle2 className="w-4 h-4 inline mr-1" />
-                                Approved
-                              </div>
+                              <>
+                                <div className="flex-1 bg-green-100 text-green-800 px-3 py-2 rounded text-sm text-center font-medium flex items-center justify-center order-2 sm:order-none">
+                                  <CheckCircle2 className="w-4 h-4 inline mr-1" />
+                                  Approved
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setConfirmationModal({
+                                      isOpen: true,
+                                      title: 'Reject Approved Room?',
+                                      message: `Are you sure you want to reject this already approved Room ${room.room_number}? It will be hidden from seekers.`,
+                                      onConfirm: () => approveRoom(room._id, 'reject')
+                                    });
+                                  }}
+                                  className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors border border-red-200 mt-0 flex items-center justify-center order-3 sm:order-none"
+                                  title="Reject this room"
+                                >
+                                  <XCircle className="w-5 h-5" />
+                                </button>
+                              </>
                             )}
-                            
+
                             {room.approval_status === 'rejected' && (
-                              <div className="flex-1 bg-red-100 text-red-800 px-3 py-2 rounded text-sm text-center font-medium">
-                                <XCircle className="w-4 h-4 inline mr-1" />
-                                Rejected
-                              </div>
+                              <>
+                                <div className="flex-1 bg-red-100 text-red-800 px-3 py-2 rounded text-sm text-center font-medium flex items-center justify-center order-2 sm:order-none">
+                                  <XCircle className="w-4 h-4 inline mr-1" />
+                                  Rejected
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setConfirmationModal({
+                                      isOpen: true,
+                                      title: 'Re-Approve Room?',
+                                      message: `Are you sure you want to approve this previously rejected Room ${room.room_number}? It will become visible to seekers.`,
+                                      onConfirm: () => approveRoom(room._id, 'approve')
+                                    });
+                                  }}
+                                  className="p-2 bg-green-50 text-green-600 rounded hover:bg-green-100 transition-colors border border-green-200 mt-0 flex items-center justify-center order-3 sm:order-none"
+                                  title="Re-approve this room"
+                                >
+                                  <CheckCircle2 className="w-5 h-5" />
+                                </button>
+                              </>
                             )}
+
+                            {/* Delete Room Button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmationModal({
+                                  isOpen: true,
+                                  title: 'Delete Room?',
+                                  message: `Are you sure you want to permanently delete Room ${room.room_number}? This action cannot be undone.`,
+                                  onConfirm: () => deleteRoom(room._id)
+                                });
+                              }}
+                              className="col-span-2 sm:col-span-1 p-2 bg-gray-50 text-gray-600 rounded hover:bg-red-50 hover:text-red-600 transition-colors border border-gray-200 hover:border-red-200 sm:ml-2 flex items-center justify-center order-4 sm:order-none"
+                              title="Delete this room"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
                           </div>
                         </div>
                       );
@@ -806,6 +894,85 @@ const AdminPropertyDetails = () => {
 
             {/* Sidebar */}
             <div className="space-y-6">
+              {/* Owner Information */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+              >
+                <div className="p-4 border-b">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                    <User className="w-5 h-5 mr-2" />
+                    Owner Information
+                  </h3>
+                </div>
+                <div className="p-4 space-y-4">
+                  <div className="flex items-center space-x-3">
+                    {property.owner?.profilePicture ? (
+                      <img
+                        src={property.owner.profilePicture}
+                        alt={property.owner.name}
+                        className="w-12 h-12 rounded-full object-cover border border-gray-200"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200">
+                        <span className="text-xl font-semibold text-gray-500">
+                          {(property.owner?.name || '?').charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium text-gray-900">{property.owner?.name || 'Unknown'}</p>
+                      <div className="flex items-center text-xs text-gray-500 mt-0.5">
+                        {property.owner?.isVerified ? (
+                          <span className="flex items-center text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                            <CheckCircle2 className="w-3 h-3 mr-1" /> Verified
+                          </span>
+                        ) : (
+                          <span className="flex items-center text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                            Unverified
+                          </span>
+                        )}
+                        <span className="mx-1">•</span>
+                        <span>Joined {property.owner?.createdAt ? new Date(property.owner.createdAt).toLocaleDateString() : 'N/A'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-gray-100 space-y-3">
+                    <div className="flex items-start">
+                      <Mail className="w-4 h-4 text-gray-400 mt-0.5 mr-3" />
+                      <div>
+                        <p className="text-xs text-gray-500">Email</p>
+                        <p className="text-sm text-gray-900 break-all">{property.owner?.email || 'Not provided'}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start">
+                      <Phone className="w-4 h-4 text-gray-400 mt-0.5 mr-3" />
+                      <div>
+                        <p className="text-xs text-gray-500">Phone</p>
+                        <p className="text-sm text-gray-900">{property.owner?.phone || 'Not provided'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setAdminMessage(`Hi ${property.owner?.name || 'Owner'}, regarding your property "${property.property_name}"...`);
+                      document.querySelector('textarea')?.focus();
+                      // Note: This is a simple focus hack, ideally scroll to message box
+                      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                    }}
+                    className="w-full mt-2 bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center"
+                  >
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Contact Owner
+                  </button>
+                </div>
+              </motion.div>
+
               {/* Map */}
               {hasCoords && (
                 <motion.div
@@ -829,20 +996,25 @@ const AdminPropertyDetails = () => {
                     </div>
                   </div>
                   <div className="h-64 relative">
-                    {isGoogleLoaded ? (
-                      <div 
-                        ref={sidebarMapDivRef} 
+                    <div className="h-64 relative z-0">
+                      <MapContainer
+                        center={[property.latitude, property.longitude]}
+                        zoom={15}
+                        scrollWheelZoom={false}
                         className="w-full h-full"
-                        style={{ minHeight: '256px' }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                        <div className="text-center">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                          <p className="text-sm text-gray-600">Loading map...</p>
-                        </div>
-                      </div>
-                    )}
+                        style={{ height: '100%', width: '100%' }}
+                      >
+                        <TileLayer
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        />
+                        <Marker position={[property.latitude, property.longitude]}>
+                          <Popup>
+                            {property.property_name}
+                          </Popup>
+                        </Marker>
+                      </MapContainer>
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -935,18 +1107,17 @@ const AdminPropertyDetails = () => {
                       maxLength="500"
                       disabled={isSendingMessage}
                     />
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
+                      <span className="text-xs text-gray-500 order-2 sm:order-1">
                         {adminMessage.length}/500 characters
                       </span>
                       <button
                         onClick={sendMessageToOwner}
                         disabled={isSendingMessage || !adminMessage.trim()}
-                        className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                          isSendingMessage || !adminMessage.trim()
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
-                        }`}
+                        className={`flex items-center justify-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all w-full sm:w-auto order-1 sm:order-2 ${isSendingMessage || !adminMessage.trim()
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
+                          }`}
                       >
                         {isSendingMessage ? (
                           <>
@@ -1049,6 +1220,42 @@ const AdminPropertyDetails = () => {
           </div>
         )}
 
+        {/* Confirmation Modal */}
+        {confirmationModal.isOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-xl max-w-md w-full p-6"
+            >
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+                  <span className="text-2xl">⚠️</span>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{confirmationModal.title}</h3>
+                <p className="text-sm text-gray-600 mb-6">{confirmationModal.message}</p>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setConfirmationModal({ ...confirmationModal, isOpen: false })}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirmationModal.onConfirm) confirmationModal.onConfirm();
+                      setConfirmationModal({ ...confirmationModal, isOpen: false });
+                    }}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {/* Success Modal */}
         {showSuccessModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -1106,23 +1313,34 @@ const AdminPropertyDetails = () => {
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
                 <div className="text-lg font-semibold text-gray-900">Property Location</div>
                 <div className="flex items-center gap-2">
-                  <button 
-                    type="button" 
-                    onClick={toggleSatellite} 
-                    className="px-3 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 text-sm"
-                  >
-                    {isSatellite ? 'Satellite' : 'Map'} view
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => setIsMapOpen(false)} 
+                  <button
+                    type="button"
+                    onClick={() => setIsMapOpen(false)}
                     className="px-3 py-1 text-gray-500 hover:text-gray-700 text-sm"
                   >
                     Close
                   </button>
                 </div>
               </div>
-              <div ref={modalMapDivRef} style={{ width: '100%', height: '500px' }} />
+              <div style={{ width: '100%', height: '500px' }}>
+                <MapContainer
+                  center={[property.latitude, property.longitude]}
+                  zoom={16}
+                  scrollWheelZoom={true}
+                  className="w-full h-full"
+                  style={{ height: '100%', width: '100%' }}
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  />
+                  <Marker position={[property.latitude, property.longitude]}>
+                    <Popup>
+                      {property.property_name}
+                    </Popup>
+                  </Marker>
+                </MapContainer>
+              </div>
               <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-600 flex items-center justify-between">
                 <div>
                   Lat: {property?.latitude || '—'} | Lng: {property?.longitude || '—'}

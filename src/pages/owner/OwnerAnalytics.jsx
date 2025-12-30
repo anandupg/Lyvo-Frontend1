@@ -43,13 +43,13 @@ const OwnerAnalytics = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('6months'); // '1month', '3months', '6months', '1year'
-  
+
   // Data states
   const [properties, setProperties] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [rooms, setRooms] = useState([]);
 
-  const propertyServiceUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   // Fetch data
   useEffect(() => {
@@ -58,7 +58,7 @@ const OwnerAnalytics = () => {
       try {
         const authToken = localStorage.getItem('authToken');
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        
+
         if (!authToken || !userData._id) {
           navigate('/login');
           return;
@@ -72,8 +72,8 @@ const OwnerAnalytics = () => {
 
         // Fetch properties (owner-scoped via auth) and bookings
         const [propertiesRes, bookingsRes] = await Promise.all([
-          fetch(`${propertyServiceUrl}/api/properties?page=1&limit=500`, { headers }),
-          fetch(`${propertyServiceUrl}/api/bookings/owner`, { headers })
+          fetch(`${baseUrl}/property/owner/properties?page=1&limit=500`, { headers }),
+          fetch(`${baseUrl}/property/owner/bookings`, { headers })
         ]);
 
         const propertiesData = await propertiesRes.json();
@@ -111,18 +111,18 @@ const OwnerAnalytics = () => {
   const stats = useMemo(() => {
     const totalProperties = properties.length;
     const totalRooms = rooms.length;
-    const activeRooms = rooms.filter(r => (r.status === 'active' || r.is_available) ).length;
+    const activeRooms = rooms.filter(r => (r.status === 'active' || r.is_available)).length;
     const occupiedRooms = rooms.filter(r => r.is_available === false).length;
-    
+
     // Revenue calculations
     const confirmedBookings = bookings.filter(b => {
       const paymentStatus = b.payment?.paymentStatus || b.paymentStatus;
       const status = b.status || b.bookingStatus;
       return status === 'confirmed' && paymentStatus === 'completed';
     });
-    
+
     const totalRevenue = confirmedBookings.reduce((sum, b) => sum + (b.payment?.amount || 0), 0);
-    
+
     // Current month revenue
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
@@ -143,7 +143,7 @@ const OwnerAnalytics = () => {
       })
       .reduce((sum, b) => sum + (b.payment?.amount || 0), 0);
 
-    const revenueChange = lastMonthRevenue > 0 
+    const revenueChange = lastMonthRevenue > 0
       ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(1)
       : 0;
 
@@ -259,9 +259,9 @@ const OwnerAnalytics = () => {
     return Object.entries(types).map(([name, value]) => ({
       name,
       value,
-      color: name === 'Single' ? '#3b82f6' : 
-             name === 'Double' ? '#8b5cf6' : 
-             name === 'Triple' ? '#ec4899' : '#6b7280'
+      color: name === 'Single' ? '#3b82f6' :
+        name === 'Double' ? '#8b5cf6' :
+          name === 'Triple' ? '#ec4899' : '#6b7280'
     }));
   }, [rooms]);
 
@@ -341,24 +341,24 @@ const OwnerAnalytics = () => {
 
   return (
     <OwnerLayout>
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-6"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <BarChart3 className="w-8 h-8 text-red-600" />
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+                <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 text-red-600" />
                 Analytics Dashboard
               </h1>
-              <p className="text-gray-600 mt-1">Track your property performance and revenue</p>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">Track your property performance and revenue</p>
             </div>
-            
+
             {/* Time Range Selector */}
-            <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-1">
+            <div className="flex items-center gap-1 sm:gap-2 bg-white rounded-lg border border-gray-200 p-1">
               {[
                 { label: '1M', value: '1month' },
                 { label: '3M', value: '3months' },
@@ -368,11 +368,10 @@ const OwnerAnalytics = () => {
                 <button
                   key={range.value}
                   onClick={() => setTimeRange(range.value)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    timeRange === range.value
-                      ? 'bg-red-600 text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
+                  className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors ${timeRange === range.value
+                    ? 'bg-red-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                    }`}
                 >
                   {range.label}
                 </button>
@@ -391,16 +390,15 @@ const OwnerAnalytics = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center justify-between mb-4">
-                  <div className={`${stat.color} p-3 rounded-lg`}>
-                    <Icon className="w-6 h-6 text-white" />
+                  <div className={`${stat.color} p-2 sm:p-3 rounded-lg`}>
+                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
                   {stat.changeType && (
-                    <div className={`flex items-center gap-1 text-sm font-medium ${
-                      stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <div className={`flex items-center gap-1 text-sm font-medium ${stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
+                      }`}>
                       {stat.changeType === 'positive' ? (
                         <ArrowUpRight className="w-4 h-4" />
                       ) : (
@@ -410,7 +408,7 @@ const OwnerAnalytics = () => {
                     </div>
                   )}
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">{stat.value}</h3>
                 <p className="text-sm text-gray-600">{stat.title}</p>
                 <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
               </motion.div>
@@ -425,33 +423,33 @@ const OwnerAnalytics = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6"
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-green-600" />
               Revenue Trend
             </h3>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <AreaChart data={revenueData}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="month" stroke="#6b7280" style={{ fontSize: '12px' }} />
                 <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                   formatter={(value) => [`₹${value.toLocaleString()}`, 'Revenue']}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="#10b981" 
-                  fillOpacity={1} 
-                  fill="url(#colorRevenue)" 
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#10b981"
+                  fillOpacity={1}
+                  fill="url(#colorRevenue)"
                   strokeWidth={2}
                 />
               </AreaChart>
@@ -463,25 +461,25 @@ const OwnerAnalytics = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7 }}
-            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6"
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-blue-600" />
               Bookings Trend
             </h3>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <LineChart data={revenueData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="month" stroke="#6b7280" style={{ fontSize: '12px' }} />
                 <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                   formatter={(value) => [value, 'Bookings']}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="bookings" 
-                  stroke="#3b82f6" 
+                <Line
+                  type="monotone"
+                  dataKey="bookings"
+                  stroke="#3b82f6"
                   strokeWidth={3}
                   dot={{ fill: '#3b82f6', r: 4 }}
                   activeDot={{ r: 6 }}
@@ -498,18 +496,18 @@ const OwnerAnalytics = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8 }}
-            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 lg:col-span-2"
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 lg:col-span-2"
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Building className="w-5 h-5 text-purple-600" />
               Property Performance
             </h3>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <BarChart data={propertyPerformance}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="name" stroke="#6b7280" style={{ fontSize: '11px' }} />
                 <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                   formatter={(value, name) => [
                     name === 'revenue' ? `₹${value.toLocaleString()}` : value,
@@ -540,7 +538,7 @@ const OwnerAnalytics = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.9 }}
-            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6"
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Activity className="w-5 h-5 text-orange-600" />
@@ -563,7 +561,7 @@ const OwnerAnalytics = () => {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip 
+                    <Tooltip
                       contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                     />
                   </PieChart>
@@ -597,13 +595,13 @@ const OwnerAnalytics = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1.0 }}
-            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6"
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Eye className="w-5 h-5 text-pink-600" />
               Room Type Distribution
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               {roomTypeData.map((type) => (
                 <div key={type.name} className="p-4 border border-gray-200 rounded-lg">
                   <div className="flex items-center gap-3 mb-2">

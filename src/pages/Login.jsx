@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import apiClient from "../utils/apiClient";
 import { getUserFromStorage, getAuthToken, getUserRole, getRedirectUrl } from "../utils/authUtils";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebase";
 
 const API_URL = 'http://localhost:4002/api/user';
 
@@ -85,10 +87,10 @@ const Login = () => {
   useEffect(() => {
     const token = getAuthToken();
     const user = getUserFromStorage();
-    
+
     if (token && user) {
       const userRole = getUserRole(user);
-      
+
       // Role-based redirect for already logged-in users
       const redirectUrl = getRedirectUrl(user);
       navigate(redirectUrl, { replace: true });
@@ -113,18 +115,18 @@ const Login = () => {
       // Store user data and token
       localStorage.setItem('authToken', result.data.token);
       localStorage.setItem('user', JSON.stringify(result.data.user));
-      
+
       console.log('Login: Google sign-in successful, stored data:', {
         token: result.data.token ? 'present' : 'missing',
         user: result.data.user
       });
-      
+
       // Dispatch login event to update navbar
       window.dispatchEvent(new Event('lyvo-login'));
-      
+
       // After login, check if user needs behavioral questions first
       const u = result.data.user || {};
-      
+
       // DEBUG: Log user data for troubleshooting
       console.log('Login: User data after Google sign-in:', {
         role: u.role,
@@ -134,7 +136,7 @@ const Login = () => {
         email: u.email,
         name: u.name
       });
-      
+
       // Check if user is new and hasn't completed behavioral questions
       // ONLY for seekers (role 1) - admins and owners go directly to their dashboards
       if (u.role === 1 && u.isNewUser && !u.hasCompletedBehaviorQuestions) {
@@ -142,7 +144,7 @@ const Login = () => {
         navigate('/onboarding');
         return;
       }
-      
+
       // Then check if seeker needs profile completion
       const needsCompletion = u && u.role === 1 && (!u.phone || !u.location || u.age === undefined || u.age === null || u.age === '' || !u.occupation || !u.gender);
       if (needsCompletion) {
@@ -157,10 +159,10 @@ const Login = () => {
         userData: u
       });
       navigate(redirectUrl);
-      
+
     } catch (err) {
       console.error('Google Sign-in Error:', err);
-      
+
       // Handle specific error cases
       if (err.response?.status === 403) {
         setError('Google Sign-in is not configured for this domain. Please use email/password login.');
@@ -171,7 +173,7 @@ const Login = () => {
       } else {
         setError(err.response?.data?.message || 'Google sign-in failed. Please try again.');
       }
-      
+
       // Hide Google sign-in button on persistent errors
       const googleButton = document.getElementById('google-signin-button');
       if (googleButton) {
@@ -191,38 +193,47 @@ const Login = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.post(`/user/login`, formData);
+      // 1. Firebase Login
+      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      const firebaseUser = userCredential.user;
+
+      if (!firebaseUser.emailVerified) {
+        setError('Please verify your email address before logging in.');
+        setLoading(false);
+        return;
+      }
+
+      // 2. Get ID Token
+      const idToken = await firebaseUser.getIdToken();
+
+      // 3. Exchange for Internal JWT
+      const response = await apiClient.post(`/user/auth/firebase`, {}, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+
+      // 4. Store Internal Session
       localStorage.setItem('authToken', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
-      
-      console.log('Login: Regular login successful, stored data:', {
+
+      console.log('Login: Firebase login successful, stored data:', {
         token: response.data.token ? 'present' : 'missing',
         user: response.data.user
       });
-      
+
       // Dispatch login event to update navbar
       window.dispatchEvent(new Event('lyvo-login'));
-      
+
       const u = response.data.user || {};
-      
-      // DEBUG: Log user data for troubleshooting
-      console.log('Login: User data after regular login:', {
-        role: u.role,
-        roleType: typeof u.role,
-        isNewUser: u.isNewUser,
-        hasCompletedBehaviorQuestions: u.hasCompletedBehaviorQuestions,
-        email: u.email,
-        name: u.name
-      });
-      
+
       // Check if user is new and hasn't completed behavioral questions
       // ONLY for seekers (role 1) - admins and owners go directly to their dashboards
       if (u.role === 1 && u.isNewUser && !u.hasCompletedBehaviorQuestions) {
-        console.log('Login: Redirecting seeker to onboarding for behavioral questions');
         navigate('/onboarding');
         return;
       }
-      
+
       // Then check if seeker needs profile completion
       const needsCompletion = u && u.role === 1 && (!u.phone || !u.location || u.age === undefined || u.age === null || u.age === '' || !u.occupation || !u.gender);
       if (needsCompletion) {
@@ -231,14 +242,16 @@ const Login = () => {
       }
 
       const redirectUrl = getRedirectUrl(u);
-      console.log('Login: Final redirect URL for regular login user:', {
-        role: u.role,
-        redirectUrl: redirectUrl,
-        userData: u
-      });
       navigate(redirectUrl);
     } catch (err) {
-      setError(err.response?.data?.message || 'An unexpected error occurred.');
+      console.error('Login Error:', err);
+      if (err.code === 'auth/invalid-credential') {
+        setError('Invalid email or password.');
+      } else if (err.code === 'auth/user-not-found') {
+        setError('No user found with this email.');
+      } else {
+        setError(err.response?.data?.message || err.message || 'An unexpected error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -259,9 +272,9 @@ const Login = () => {
               <div className="flex items-center space-x-3 group">
                 <div className="relative">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300 overflow-hidden">
-                    <img 
-                      src="/Lyvo_no_bg.png" 
-                      alt="Lyvo Logo" 
+                    <img
+                      src="/Lyvo_no_bg.png"
+                      alt="Lyvo Logo"
                       className="w-full h-full object-contain"
                     />
                   </div>
@@ -273,7 +286,7 @@ const Login = () => {
                 </div>
               </div>
             </div>
-            
+
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
               Welcome back
             </h2>

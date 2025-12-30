@@ -2,19 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import OwnerLayout from '../../components/owner/OwnerLayout';
-import { 
-  User, 
-  Shield, 
+import {
+  User,
+  Shield,
   Save,
   Eye,
   EyeOff,
   Plus,
   Trash2,
-  Upload, 
-  FileText, 
-  CheckCircle, 
-  XCircle, 
-  AlertCircle, 
+  Upload,
+  FileText,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
   Camera,
   Loader2,
   Download,
@@ -43,7 +43,7 @@ const Settings = () => {
   const { toast } = useToast();
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  
+
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
@@ -52,7 +52,7 @@ const Settings = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [profileUpdating, setProfileUpdating] = useState(false);
   const [passwordUpdating, setPasswordUpdating] = useState(false);
-  
+
   // Password validation states
   const [passwordErrors, setPasswordErrors] = useState({});
   const [passwordStrength, setPasswordStrength] = useState(0);
@@ -63,7 +63,7 @@ const Settings = () => {
     number: false,
     special: false
   });
-  
+
   // OCR KYC states
   const [kycStatus, setKycStatus] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -84,7 +84,7 @@ const Settings = () => {
   const [cameraError, setCameraError] = useState(null);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(false);
-  
+
   // Verification badge states
   const [showVerificationBadge, setShowVerificationBadge] = useState(false);
   const [verificationProgress, setVerificationProgress] = useState(0);
@@ -116,14 +116,14 @@ const Settings = () => {
       setCameraLoading(true);
       setVideoLoaded(false);
       console.log('Starting camera...');
-      
+
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('getUserMedia is not supported in this browser');
       }
 
       const devices = await navigator.mediaDevices.enumerateDevices();
       console.log('Available devices:', devices);
-      
+
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
       console.log('Video devices:', videoDevices);
 
@@ -140,7 +140,7 @@ const Settings = () => {
       };
 
       console.log('Trying camera with constraints:', constraints);
-      
+
       let mediaStream;
       try {
         mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -154,12 +154,12 @@ const Settings = () => {
 
       setStream(mediaStream);
       setIsCameraOpen(true);
-      
+
       setTimeout(() => {
         if (videoRef.current) {
           console.log('Setting video source...');
           videoRef.current.srcObject = mediaStream;
-          
+
           videoRef.current.onloadedmetadata = () => {
             console.log('Video metadata loaded');
             setVideoLoaded(true);
@@ -191,15 +191,15 @@ const Settings = () => {
           setCameraLoading(false);
         }
       }, 100);
-      
+
       console.log('Camera modal opened');
-      
+
     } catch (error) {
       console.error('Error accessing camera:', error);
       setCameraLoading(false);
-      
+
       let errorMessage = 'Unable to access camera. ';
-      
+
       if (error.name === 'NotAllowedError') {
         errorMessage += 'Please allow camera permissions and try again.';
       } else if (error.name === 'NotFoundError') {
@@ -211,7 +211,7 @@ const Settings = () => {
       } else {
         errorMessage += 'Please check your camera settings.';
       }
-      
+
       setCameraError(errorMessage);
       toast({
         title: "Camera Error",
@@ -230,7 +230,7 @@ const Settings = () => {
     setCameraError(null);
     setVideoLoaded(false);
     setCameraLoading(false);
-    
+
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
@@ -253,10 +253,10 @@ const Settings = () => {
         const file = new File([blob], `captured_${captureMode}_${Date.now()}.jpg`, {
           type: 'image/jpeg'
         });
-        
+
         setFrontImage(file);
         setFrontPreview(URL.createObjectURL(blob));
-        
+
         stopCamera();
         toast({
           title: "Photo Captured",
@@ -280,7 +280,7 @@ const Settings = () => {
         console.error('No auth token found');
         return;
       }
-      
+
       const response = await fetch('http://localhost:4002/api/user/aadhar-status', {
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -306,12 +306,12 @@ const Settings = () => {
       const authToken = localStorage.getItem('authToken');
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       const userId = userData.id || userData._id;
-      
+
       if (!userId) {
         console.error('User ID not found');
         return;
       }
-      
+
       const response = await fetch(`http://localhost:4002/api/user/profile/${userId}`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -340,8 +340,8 @@ const Settings = () => {
         description: "Please upload an image file (JPG, PNG, etc.)",
         variant: "destructive"
       });
-        return;
-      }
+      return;
+    }
 
     if (file.size > 5 * 1024 * 1024) {
       toast({
@@ -395,7 +395,7 @@ const Settings = () => {
     }
 
     const confidence = matchCount / totalParts;
-    
+
     if (confidence >= 0.8) {
       return { match: true, confidence, reason: 'High similarity match' };
     } else if (confidence >= 0.5) {
@@ -408,27 +408,27 @@ const Settings = () => {
   const calculateSimilarity = (str1, str2) => {
     const normalizedStr1 = str1.toUpperCase();
     const normalizedStr2 = str2.toUpperCase();
-    
+
     const longer = normalizedStr1.length > normalizedStr2.length ? normalizedStr1 : normalizedStr2;
     const shorter = normalizedStr1.length > normalizedStr2.length ? normalizedStr2 : normalizedStr1;
-    
+
     if (longer.length === 0) return 1.0;
-    
+
     const distance = levenshteinDistance(longer, shorter);
     return (longer.length - distance) / longer.length;
   };
 
   const levenshteinDistance = (str1, str2) => {
     const matrix = [];
-    
+
     for (let i = 0; i <= str2.length; i++) {
       matrix[i] = [i];
     }
-    
+
     for (let j = 0; j <= str1.length; j++) {
       matrix[0][j] = j;
     }
-    
+
     for (let i = 1; i <= str2.length; i++) {
       for (let j = 1; j <= str1.length; j++) {
         if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
@@ -442,7 +442,7 @@ const Settings = () => {
         }
       }
     }
-    
+
     return matrix[str2.length][str1.length];
   };
 
@@ -475,12 +475,12 @@ const Settings = () => {
     try {
       const authToken = localStorage.getItem('authToken');
       const formData = new FormData();
-      
+
       formData.append('frontImage', frontImage);
       formData.append('idType', selectedIdType);
       formData.append('idNumber', '');
 
-      const response = await fetch('http://localhost:4002/api/user/upload-kyc', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/user/upload-kyc`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`
@@ -493,22 +493,22 @@ const Settings = () => {
       if (response.ok) {
         clearInterval(progressInterval);
         setVerificationProgress(100);
-        
+
         if (result.kycStatus === 'rejected') {
           setShowVerificationFailedModal(true);
           setVerificationFailureReason(result.verificationFailureReason || 'Verification failed');
-          
+
           toast({
             title: "Verification Failed",
             description: result.verificationFailureReason || "Please verify again with correct image",
             variant: "destructive"
           });
-          
+
           return;
         }
-        
+
         setOcrResults(result.ocrResult);
-        
+
         if (result.ocrResult?.extractedData?.name) {
           const nameMatchResult = checkNameMatch(
             result.ocrResult.extractedData.name,
@@ -569,7 +569,7 @@ const Settings = () => {
     const checkAuth = () => {
       const authToken = localStorage.getItem('authToken');
       const userData = localStorage.getItem('user');
-      
+
       if (!authToken || !userData) {
         navigate('/login');
         return;
@@ -582,17 +582,17 @@ const Settings = () => {
           return;
         }
         setUser(user);
-        
+
         // Check existing KYC status
         checkKycStatus();
-        
+
         // Check Aadhar approval status
         checkAadharApprovalStatus();
       } catch (error) {
         console.error('Error parsing user data:', error);
         navigate('/login');
       }
-      
+
       setLoading(false);
     };
 
@@ -611,7 +611,7 @@ const Settings = () => {
       const updated = { ...user, profilePicture: null };
       localStorage.setItem('user', JSON.stringify(updated));
       setUser(updated);
-      
+
       toast({
         title: "Success",
         description: "Profile picture removed successfully",
@@ -631,21 +631,21 @@ const Settings = () => {
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     if (!user?._id) return;
-    
+
     try {
       setProfileUpdating(true);
       const token = localStorage.getItem('authToken');
-      
+
       // Get form values
       const name = document.getElementById('profile-name').value.trim();
       const phone = document.getElementById('profile-phone').value.trim();
-      
+
       // Prepare update data
       const updateData = {
         name,
         phone: phone || undefined, // Only include if provided
       };
-      
+
       // Call update API
       const base = import.meta.env.VITE_API_URL || 'http://localhost:4002/api';
       const { data } = await axios.put(
@@ -653,15 +653,15 @@ const Settings = () => {
         updateData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       // Update local storage and state
       if (data?.user) {
         localStorage.setItem('user', JSON.stringify(data.user));
         setUser(data.user);
-        
+
         // Notify other components
         window.dispatchEvent(new Event('lyvo-user-updated'));
-        
+
         toast({
           title: "Success",
           description: "Profile updated successfully!",
@@ -688,30 +688,30 @@ const Settings = () => {
       number: /\d/.test(password),
       special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
     };
-    
+
     setPasswordRequirements(requirements);
-    
+
     // Calculate strength (0-100)
     const strength = Object.values(requirements).filter(Boolean).length * 20;
     setPasswordStrength(strength);
-    
+
     return requirements;
   };
 
   const validatePasswordChange = (currentPassword, newPassword, confirmPassword) => {
     const errors = {};
-    
+
     // Current password validation
     if (!currentPassword.trim()) {
       errors.currentPassword = 'Current password is required';
     }
-    
+
     // New password validation
     if (!newPassword.trim()) {
       errors.newPassword = 'New password is required';
     } else {
       const requirements = validatePassword(newPassword);
-      
+
       if (!requirements.length) {
         errors.newPassword = 'Password must be at least 8 characters long';
       } else if (!requirements.uppercase) {
@@ -724,19 +724,19 @@ const Settings = () => {
         errors.newPassword = 'Password must contain at least one special character';
       }
     }
-    
+
     // Confirm password validation
     if (!confirmPassword.trim()) {
       errors.confirmPassword = 'Please confirm your new password';
     } else if (newPassword !== confirmPassword) {
       errors.confirmPassword = 'Passwords do not match';
     }
-    
+
     // Additional validations
     if (currentPassword && newPassword && currentPassword === newPassword) {
       errors.newPassword = 'New password must be different from current password';
     }
-    
+
     setPasswordErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -758,16 +758,16 @@ const Settings = () => {
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     if (!user?._id) return;
-    
+
     try {
       setPasswordUpdating(true);
       const token = localStorage.getItem('authToken');
-      
+
       // Get form values
       const currentPassword = document.getElementById('current-password').value;
       const newPassword = document.getElementById('new-password').value;
       const confirmPassword = document.getElementById('confirm-password').value;
-      
+
       // Enhanced validation
       if (!validatePasswordChange(currentPassword, newPassword, confirmPassword)) {
         toast({
@@ -777,7 +777,7 @@ const Settings = () => {
         });
         return;
       }
-      
+
       // Call change password API
       const base = import.meta.env.VITE_API_URL || 'http://localhost:4002/api';
       await axios.post(
@@ -785,7 +785,7 @@ const Settings = () => {
         { currentPassword, newPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       // Reset form and validation states
       document.getElementById('current-password').value = '';
       document.getElementById('new-password').value = '';
@@ -799,7 +799,7 @@ const Settings = () => {
         number: false,
         special: false
       });
-      
+
       toast({
         title: "Success",
         description: "Password updated successfully!",
@@ -880,11 +880,10 @@ const Settings = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors duration-200 ${
-                    activeTab === tab.id
+                  className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors duration-200 ${activeTab === tab.id
                       ? 'border-red-500 text-red-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                    }`}
                 >
                   <Icon className="w-5 h-5" />
                   <span>{tab.name}</span>
@@ -920,24 +919,24 @@ const Settings = () => {
                           <div className="flex items-center">
                             <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
                               <Shield className="w-5 h-5 text-green-600" />
-                    </div>
-                        <div>
+                            </div>
+                            <div>
                               <h3 className="font-semibold text-gray-900">Aadhar Verification</h3>
                               <p className="text-sm text-gray-600">Status: Approved</p>
-                        </div>
-                        </div>
+                            </div>
+                          </div>
                           <div className="text-right">
                             <div className="flex items-center text-green-600 font-semibold">
                               <CheckCircle2 className="w-5 h-5 mr-1" />
                               Verified
-                    </div>
+                            </div>
                             <p className="text-xs text-gray-500">
-                              {aadharApprovalStatus.details?.approvalDate ? 
-                                new Date(aadharApprovalStatus.details.approvalDate).toLocaleDateString() : 
+                              {aadharApprovalStatus.details?.approvalDate ?
+                                new Date(aadharApprovalStatus.details.approvalDate).toLocaleDateString() :
                                 'Recently approved'
                               }
                             </p>
-                  </div>
+                          </div>
                         </div>
 
                         {aadharApprovalStatus.details && (
@@ -948,7 +947,7 @@ const Settings = () => {
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Aadhar Number:</span>
                                   <span className="font-medium">{aadharApprovalStatus.details.aadharNumber}</span>
-                        </div>
+                                </div>
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Name:</span>
                                   <span className="font-medium">{aadharApprovalStatus.details.name}</span>
@@ -995,14 +994,14 @@ const Settings = () => {
                               ) : (
                                 <Loader2 className="w-6 h-6 text-white animate-spin" />
                               )}
-                      </div>
-                      <div>
+                            </div>
+                            <div>
                               <h3 className="text-lg font-semibold text-gray-900">
                                 {verificationProgress === 100 ? 'Verification Complete!' : 'Verifying Your Identity'}
                               </h3>
                               <p className="text-sm text-gray-600">
-                                {verificationProgress === 100 
-                                  ? 'Your identity has been successfully verified' 
+                                {verificationProgress === 100
+                                  ? 'Your identity has been successfully verified'
                                   : 'Please wait while we process your documents...'
                                 }
                               </p>
@@ -1015,8 +1014,8 @@ const Settings = () => {
                               initial={{ width: 0 }}
                               animate={{ width: `${verificationProgress}%` }}
                               transition={{ duration: 0.3 }}
-                        />
-                      </div>
+                            />
+                          </div>
                           <p className="text-sm text-gray-500 mt-2">
                             {verificationProgress}% Complete
                           </p>
@@ -1032,7 +1031,7 @@ const Settings = () => {
                           <AlertDescription className="ml-2">
                             <strong>Current Status:</strong> {kycStatus.charAt(0).toUpperCase() + kycStatus.slice(1)}
                           </AlertDescription>
-                    </div>
+                        </div>
                       </Alert>
                     )}
 
@@ -1058,7 +1057,7 @@ const Settings = () => {
                           </div>
 
                           {/* Aadhar Card Upload */}
-                    <div>
+                          <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-3">
                               Aadhar Card Photo
                             </label>
@@ -1096,27 +1095,27 @@ const Settings = () => {
                                       Retake
                                     </Button>
                                   </div>
-                        </div>
-                      ) : (
+                                </div>
+                              ) : (
                                 <div>
                                   <div className="w-16 h-16 mx-auto bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mb-4">
                                     <Upload className="w-8 h-8 text-blue-600" />
                                   </div>
                                   <p className="text-gray-600 mb-4 font-medium">Upload a clear photo of your Aadhar card</p>
                                   <div className="flex gap-3 justify-center">
-                          <input
-                            type="file"
-                            accept="image/*"
+                                    <input
+                                      type="file"
+                                      accept="image/*"
                                       onChange={(e) => handleImageUpload(e.target.files[0], 'front')}
-                            className="hidden"
+                                      className="hidden"
                                       id="front-upload"
-                          />
+                                    />
                                     <label
                                       htmlFor="front-upload"
                                       className="cursor-pointer bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 font-semibold"
                                     >
                                       Choose File
-                        </label>
+                                    </label>
                                     <Button
                                       variant="outline"
                                       onClick={() => openCameraForCapture()}
@@ -1129,7 +1128,7 @@ const Settings = () => {
                                 </div>
                               )}
                             </div>
-                    </div>
+                          </div>
 
                           {/* Upload Button */}
                           <Button
@@ -1172,30 +1171,27 @@ const Settings = () => {
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                   <div className="text-center">
-                                    <div className={`text-2xl font-bold ${
-                                      ocrResults.validation?.is_aadhar_card ? 'text-green-600' : 'text-red-600'
-                                    }`}>
+                                    <div className={`text-2xl font-bold ${ocrResults.validation?.is_aadhar_card ? 'text-green-600' : 'text-red-600'
+                                      }`}>
                                       {ocrResults.validation?.is_aadhar_card ? '✓' : '✗'}
-                    </div>
+                                    </div>
                                     <div className="text-sm text-gray-600">Aadhar Card</div>
                                     <div className="text-xs text-gray-500">
                                       {ocrResults.validation?.is_aadhar_card ? 'Valid' : 'Invalid'}
-                  </div>
+                                    </div>
                                   </div>
                                   <div className="text-center">
-                                    <div className={`text-2xl font-bold ${
-                                      ocrResults.confidence > 70 ? 'text-green-600' : 
-                                      ocrResults.confidence > 40 ? 'text-yellow-600' : 'text-red-600'
-                                    }`}>
+                                    <div className={`text-2xl font-bold ${ocrResults.confidence > 70 ? 'text-green-600' :
+                                        ocrResults.confidence > 40 ? 'text-yellow-600' : 'text-red-600'
+                                      }`}>
                                       {Math.round(ocrResults.confidence || 0)}%
                                     </div>
                                     <div className="text-sm text-gray-600">Confidence</div>
                                     <div className="text-xs text-gray-500">Overall Score</div>
                                   </div>
                                   <div className="text-center">
-                                    <div className={`text-2xl font-bold ${
-                                      ocrResults.verified ? 'text-green-600' : 'text-yellow-600'
-                                    }`}>
+                                    <div className={`text-2xl font-bold ${ocrResults.verified ? 'text-green-600' : 'text-yellow-600'
+                                      }`}>
                                       {ocrResults.verified ? '✓' : '⏳'}
                                     </div>
                                     <div className="text-sm text-gray-600">Status</div>
@@ -1217,13 +1213,13 @@ const Settings = () => {
                                     <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
                                       <span className="text-gray-600 font-medium">Name:</span>
                                       <span className="font-semibold text-gray-900">{ocrResults.extractedData.name}</span>
-                  </div>
+                                    </div>
                                   )}
                                   {ocrResults.extractedData?.number && (
                                     <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
                                       <span className="text-gray-600 font-medium">ID Number:</span>
                                       <span className="font-semibold text-gray-900">{ocrResults.extractedData.number}</span>
-                </div>
+                                    </div>
                                   )}
                                   {ocrResults.extractedData?.dob && (
                                     <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
@@ -1258,9 +1254,8 @@ const Settings = () => {
                                     </div>
                                     <div className="flex justify-between">
                                       <span className="text-gray-600 font-medium">Match Status:</span>
-                                      <span className={`font-semibold ${
-                                        nameMatch.match ? 'text-green-600' : 'text-red-600'
-                                      }`}>
+                                      <span className={`font-semibold ${nameMatch.match ? 'text-green-600' : 'text-red-600'
+                                        }`}>
                                         {nameMatch.match ? '✓ Match' : '✗ No Match'}
                                       </span>
                                     </div>
@@ -1366,7 +1361,7 @@ const Settings = () => {
                       />
                     </div>
                   </div>
-                  <button 
+                  <button
                     type="submit"
                     disabled={profileUpdating}
                     className="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1386,7 +1381,7 @@ const Settings = () => {
                 className="space-y-6"
               >
                 <h2 className="text-lg font-semibold text-gray-900">Security Settings</h2>
-                
+
                 {/* Check if user logged in with Google */}
                 {user?.googleId ? (
                   <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
@@ -1399,9 +1394,9 @@ const Settings = () => {
                         </p>
                         <p className="text-sm text-blue-600 mt-2">
                           To change your password, please visit your{' '}
-                          <a 
-                            href="https://myaccount.google.com/security" 
-                            target="_blank" 
+                          <a
+                            href="https://myaccount.google.com/security"
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="underline font-medium hover:text-blue-800"
                           >
@@ -1421,11 +1416,10 @@ const Settings = () => {
                         <input
                           type={showPassword ? "text" : "password"}
                           id="current-password"
-                          className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                            passwordErrors.currentPassword 
-                              ? 'border-red-500 bg-red-50' 
+                          className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${passwordErrors.currentPassword
+                              ? 'border-red-500 bg-red-50'
                               : 'border-gray-300'
-                          }`}
+                            }`}
                           required
                         />
                         <button
@@ -1452,11 +1446,10 @@ const Settings = () => {
                         <input
                           type={showNewPassword ? "text" : "password"}
                           id="new-password"
-                          className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                            passwordErrors.newPassword 
-                              ? 'border-red-500 bg-red-50' 
+                          className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${passwordErrors.newPassword
+                              ? 'border-red-500 bg-red-50'
                               : 'border-gray-300'
-                          }`}
+                            }`}
                           required
                           onChange={(e) => {
                             validatePassword(e.target.value);
@@ -1482,85 +1475,74 @@ const Settings = () => {
                           )}
                         </button>
                       </div>
-                      
+
                       {/* Password Strength Indicator */}
                       {document.getElementById('new-password')?.value && (
                         <div className="mt-2">
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-xs text-gray-600">Password Strength:</span>
-                            <span className={`text-xs font-medium ${
-                              passwordStrength < 40 ? 'text-red-600' :
-                              passwordStrength < 60 ? 'text-orange-600' :
-                              passwordStrength < 80 ? 'text-yellow-600' : 'text-green-600'
-                            }`}>
+                            <span className={`text-xs font-medium ${passwordStrength < 40 ? 'text-red-600' :
+                                passwordStrength < 60 ? 'text-orange-600' :
+                                  passwordStrength < 80 ? 'text-yellow-600' : 'text-green-600'
+                              }`}>
                               {getPasswordStrengthText(passwordStrength)}
                             </span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
+                            <div
                               className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthColor(passwordStrength)}`}
                               style={{ width: `${passwordStrength}%` }}
                             ></div>
                           </div>
                         </div>
                       )}
-                      
+
                       {/* Password Requirements Checklist - Only show when not all requirements are met */}
                       {!Object.values(passwordRequirements).every(Boolean) && (
                         <div className="mt-3 space-y-1">
-                          <div className={`flex items-center text-xs ${
-                            passwordRequirements.length ? 'text-green-600' : 'text-gray-500'
-                          }`}>
-                            <div className={`w-3 h-3 rounded-full mr-2 flex items-center justify-center ${
-                              passwordRequirements.length ? 'bg-green-500' : 'bg-gray-300'
+                          <div className={`flex items-center text-xs ${passwordRequirements.length ? 'text-green-600' : 'text-gray-500'
                             }`}>
+                            <div className={`w-3 h-3 rounded-full mr-2 flex items-center justify-center ${passwordRequirements.length ? 'bg-green-500' : 'bg-gray-300'
+                              }`}>
                               {passwordRequirements.length && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
                             </div>
                             At least 8 characters
                           </div>
-                          <div className={`flex items-center text-xs ${
-                            passwordRequirements.uppercase ? 'text-green-600' : 'text-gray-500'
-                          }`}>
-                            <div className={`w-3 h-3 rounded-full mr-2 flex items-center justify-center ${
-                              passwordRequirements.uppercase ? 'bg-green-500' : 'bg-gray-300'
+                          <div className={`flex items-center text-xs ${passwordRequirements.uppercase ? 'text-green-600' : 'text-gray-500'
                             }`}>
+                            <div className={`w-3 h-3 rounded-full mr-2 flex items-center justify-center ${passwordRequirements.uppercase ? 'bg-green-500' : 'bg-gray-300'
+                              }`}>
                               {passwordRequirements.uppercase && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
                             </div>
                             One uppercase letter
                           </div>
-                          <div className={`flex items-center text-xs ${
-                            passwordRequirements.lowercase ? 'text-green-600' : 'text-gray-500'
-                          }`}>
-                            <div className={`w-3 h-3 rounded-full mr-2 flex items-center justify-center ${
-                              passwordRequirements.lowercase ? 'bg-green-500' : 'bg-gray-300'
+                          <div className={`flex items-center text-xs ${passwordRequirements.lowercase ? 'text-green-600' : 'text-gray-500'
                             }`}>
+                            <div className={`w-3 h-3 rounded-full mr-2 flex items-center justify-center ${passwordRequirements.lowercase ? 'bg-green-500' : 'bg-gray-300'
+                              }`}>
                               {passwordRequirements.lowercase && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
                             </div>
                             One lowercase letter
                           </div>
-                          <div className={`flex items-center text-xs ${
-                            passwordRequirements.number ? 'text-green-600' : 'text-gray-500'
-                          }`}>
-                            <div className={`w-3 h-3 rounded-full mr-2 flex items-center justify-center ${
-                              passwordRequirements.number ? 'bg-green-500' : 'bg-gray-300'
+                          <div className={`flex items-center text-xs ${passwordRequirements.number ? 'text-green-600' : 'text-gray-500'
                             }`}>
+                            <div className={`w-3 h-3 rounded-full mr-2 flex items-center justify-center ${passwordRequirements.number ? 'bg-green-500' : 'bg-gray-300'
+                              }`}>
                               {passwordRequirements.number && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
                             </div>
                             One number
                           </div>
-                          <div className={`flex items-center text-xs ${
-                            passwordRequirements.special ? 'text-green-600' : 'text-gray-500'
-                          }`}>
-                            <div className={`w-3 h-3 rounded-full mr-2 flex items-center justify-center ${
-                              passwordRequirements.special ? 'bg-green-500' : 'bg-gray-300'
+                          <div className={`flex items-center text-xs ${passwordRequirements.special ? 'text-green-600' : 'text-gray-500'
                             }`}>
+                            <div className={`w-3 h-3 rounded-full mr-2 flex items-center justify-center ${passwordRequirements.special ? 'bg-green-500' : 'bg-gray-300'
+                              }`}>
                               {passwordRequirements.special && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
                             </div>
                             One special character
                           </div>
                         </div>
                       )}
-                      
+
                       {passwordErrors.newPassword && (
                         <p className="mt-1 text-sm text-red-600">{passwordErrors.newPassword}</p>
                       )}
@@ -1573,16 +1555,15 @@ const Settings = () => {
                         <input
                           type={showConfirmPassword ? "text" : "password"}
                           id="confirm-password"
-                          className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                            passwordErrors.confirmPassword 
-                              ? 'border-red-500 bg-red-50' 
+                          className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${passwordErrors.confirmPassword
+                              ? 'border-red-500 bg-red-50'
                               : 'border-gray-300'
-                          }`}
+                            }`}
                           required
                           onChange={(e) => {
                             const confirmPassword = e.target.value;
                             const newPassword = document.getElementById('new-password').value;
-                            
+
                             if (confirmPassword && newPassword && confirmPassword !== newPassword) {
                               setPasswordErrors(prev => ({ ...prev, confirmPassword: 'Passwords do not match' }));
                             } else if (passwordErrors.confirmPassword) {
@@ -1610,7 +1591,7 @@ const Settings = () => {
                         <p className="mt-1 text-sm text-red-600">{passwordErrors.confirmPassword}</p>
                       )}
                     </div>
-                    <button 
+                    <button
                       type="submit"
                       disabled={passwordUpdating || Object.values(passwordErrors).some(error => error && error.trim()) || !Object.values(passwordRequirements).every(Boolean)}
                       className="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1618,7 +1599,7 @@ const Settings = () => {
                       <Shield className="w-4 h-4 mr-2" />
                       {passwordUpdating ? 'Updating...' : 'Update Password'}
                     </button>
-                    
+
                     {/* Help text for button state */}
                     {!passwordUpdating && (Object.values(passwordErrors).some(error => error && error.trim()) || !Object.values(passwordRequirements).every(Boolean)) && (
                       <p className="text-xs text-gray-500 mt-2">
@@ -1655,7 +1636,7 @@ const Settings = () => {
                   <X className="w-5 h-5" />
                 </Button>
               </div>
-              
+
               {cameraError ? (
                 <div className="text-center py-12">
                   <div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-6">
@@ -1679,7 +1660,7 @@ const Settings = () => {
                         </div>
                       </div>
                     )}
-                    
+
                     <video
                       ref={videoRef}
                       autoPlay
@@ -1689,7 +1670,7 @@ const Settings = () => {
                       style={{ backgroundColor: '#000' }}
                     />
                     <canvas ref={canvasRef} className="hidden" />
-                    
+
                     {/* Camera Overlay */}
                     {videoLoaded && (
                       <div className="absolute inset-0 pointer-events-none">
@@ -1699,7 +1680,7 @@ const Settings = () => {
                             Align document within frame
                           </div>
                         </div>
-                        
+
                         {/* Corner Guides */}
                         <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-white"></div>
                         <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-white"></div>
@@ -1707,7 +1688,7 @@ const Settings = () => {
                         <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-white"></div>
                       </div>
                     )}
-                    
+
                     {/* No Video State */}
                     {!videoLoaded && !cameraLoading && (
                       <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
@@ -1718,7 +1699,7 @@ const Settings = () => {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Instructions */}
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <div className="flex items-start">
@@ -1735,7 +1716,7 @@ const Settings = () => {
                     </div>
                   </div>
 
-                  
+
                   {/* Action Buttons */}
                   <div className="flex gap-3">
                     <Button
@@ -1772,13 +1753,13 @@ const Settings = () => {
                 Your KYC verification could not be completed.
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4">
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-red-800 font-medium mb-2">Reason:</p>
                 <p className="text-sm text-red-700">{verificationFailureReason}</p>
               </div>
-              
+
               <div className="space-y-2">
                 <h4 className="text-sm font-medium text-gray-900">Please ensure:</h4>
                 <ul className="text-sm text-gray-600 space-y-1">
@@ -1789,15 +1770,15 @@ const Settings = () => {
                 </ul>
               </div>
             </div>
-            
+
             <DialogFooter className="flex gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setShowVerificationFailedModal(false)}
               >
                 Close
               </Button>
-              <Button 
+              <Button
                 onClick={() => {
                   setShowVerificationFailedModal(false);
                   // Reset form for retry

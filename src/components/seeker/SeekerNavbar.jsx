@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Menu, 
-  Bell, 
-  User, 
+import {
+  Menu,
+  Bell,
+  User,
   LogOut,
   X
 } from 'lucide-react';
@@ -14,7 +14,7 @@ const getTimeAgo = (dateString) => {
   const date = new Date(dateString);
   const now = new Date();
   const seconds = Math.floor((now - date) / 1000);
-  
+
   if (seconds < 60) return 'Just now';
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
@@ -38,10 +38,10 @@ const SeekerNavbar = ({ onMenuToggle }) => {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [user, setUser] = useState({});
   const DEFAULT_AVATAR = "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face";
-  
+
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   // Safely parse user from localStorage
   useEffect(() => {
     try {
@@ -61,13 +61,13 @@ const SeekerNavbar = ({ onMenuToggle }) => {
       setNotificationsLoading(true);
       const authToken = localStorage.getItem('authToken');
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      
+
       if (!authToken || !userData._id) {
         return;
       }
 
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-      const response = await fetch(`${baseUrl}/api/notifications`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${baseUrl}/notifications`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'x-user-id': userData._id
@@ -93,13 +93,13 @@ const SeekerNavbar = ({ onMenuToggle }) => {
     try {
       const authToken = localStorage.getItem('authToken');
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      
+
       if (!authToken || !userData._id) {
         return;
       }
 
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-      const response = await fetch(`${baseUrl}/api/notifications/${notificationId}/read`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${baseUrl}/notifications/${notificationId}/read`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -121,13 +121,13 @@ const SeekerNavbar = ({ onMenuToggle }) => {
     try {
       const authToken = localStorage.getItem('authToken');
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      
+
       if (!authToken || !userData._id) {
         return;
       }
 
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-      const response = await fetch(`${baseUrl}/api/notifications/mark-all-read`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${baseUrl}/notifications/mark-all-read`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -149,13 +149,13 @@ const SeekerNavbar = ({ onMenuToggle }) => {
     try {
       const authToken = localStorage.getItem('authToken');
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      
+
       if (!authToken || !userData._id) {
         return;
       }
 
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-      const response = await fetch(`${baseUrl}/api/notifications/${notificationId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${baseUrl}/notifications/${notificationId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -175,16 +175,16 @@ const SeekerNavbar = ({ onMenuToggle }) => {
   // Fetch notifications on mount and set up polling
   useEffect(() => {
     fetchNotifications();
-    
+
     // Poll for new notifications every 30 seconds
     const pollInterval = setInterval(fetchNotifications, 30000);
-    
+
     // Track intervals for cleanup
     if (!window.lyvoIntervals) {
       window.lyvoIntervals = [];
     }
     window.lyvoIntervals.push(pollInterval);
-    
+
     return () => {
       clearInterval(pollInterval);
       // Remove from tracking array
@@ -199,10 +199,11 @@ const SeekerNavbar = ({ onMenuToggle }) => {
 
   // Listen for notification events
   useEffect(() => {
-    const handleNewNotification = () => {
+    const handleNewNotification = (event) => {
+      console.log('🔔 SeekerNavbar received new-notification event:', event.detail);
       fetchNotifications();
     };
-    
+
     window.addEventListener('new-notification', handleNewNotification);
     return () => window.removeEventListener('new-notification', handleNewNotification);
   }, []);
@@ -214,7 +215,7 @@ const SeekerNavbar = ({ onMenuToggle }) => {
       if (event.target.closest('[data-logout-button]') || event.target.closest('[data-profile-button]')) {
         return;
       }
-      
+
       if (!event.target.closest('.dropdown-container')) {
         setShowProfileMenu(false);
         setShowNotifications(false);
@@ -251,14 +252,14 @@ const SeekerNavbar = ({ onMenuToggle }) => {
 
           {/* Logo */}
           <Link to="/seeker-dashboard" className="flex items-center space-x-2">
-            <motion.div 
+            <motion.div
               className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden"
               whileHover={{ scale: 1.05 }}
               transition={{ duration: 0.2 }}
             >
-              <img 
-                src="/Lyvo_no_bg.png" 
-                alt="Lyvo Logo" 
+              <img
+                src="/Lyvo_no_bg.png"
+                alt="Lyvo Logo"
                 className="w-full h-full object-contain"
               />
             </motion.div>
@@ -334,16 +335,14 @@ const SeekerNavbar = ({ onMenuToggle }) => {
                         notifications.map((notification) => (
                           <div
                             key={notification._id}
-                            className={`p-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors ${
-                              !notification.is_read ? 'bg-blue-50' : ''
-                            }`}
+                            className={`p-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors ${!notification.is_read ? 'bg-blue-50' : ''
+                              }`}
                           >
                             <div className="flex items-start space-x-3">
-                              <div className={`w-2 h-2 rounded-full mt-2 ${
-                                notification.type === 'booking_approved' ? 'bg-green-500' :
+                              <div className={`w-2 h-2 rounded-full mt-2 ${notification.type === 'booking_approved' ? 'bg-green-500' :
                                 notification.type === 'booking_rejected' ? 'bg-red-500' :
-                                notification.type === 'booking_request' ? 'bg-blue-500' : 'bg-yellow-500'
-                              }`} />
+                                  notification.type === 'booking_request' ? 'bg-blue-500' : 'bg-yellow-500'
+                                }`} />
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-gray-900">
                                   {notification.title}
@@ -392,7 +391,7 @@ const SeekerNavbar = ({ onMenuToggle }) => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <motion.div 
+              <motion.div
                 className="relative w-8 h-8 rounded-full overflow-hidden shadow-md"
                 whileHover={{ scale: 1.08 }}
                 transition={{ duration: 0.2 }}

@@ -4,6 +4,7 @@ import OwnerNavbar from './OwnerNavbar';
 import OwnerSidebar from './OwnerSidebar';
 import OwnerFooter from './OwnerFooter';
 import { Toaster } from '../ui/toaster';
+import NotificationListener from '../NotificationListener';
 
 const OwnerLayout = ({ children, hideFooter = false }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -97,7 +98,7 @@ const OwnerLayout = ({ children, hideFooter = false }) => {
             setShowGovtIdPrompt(computeShowKycPrompt(fresh));
           }
         }
-      } catch (_) {}
+      } catch (_) { }
     };
     check();
     // Listen for user updates (e.g., after KYC upload)
@@ -112,7 +113,7 @@ const OwnerLayout = ({ children, hideFooter = false }) => {
       <div className="hidden lg:block">
         <OwnerSidebar onClose={closeSidebar} />
       </div>
-      
+
       {/* Main Content */}
       <div className="lg:ml-64">
         {/* Navbar */}
@@ -158,7 +159,7 @@ const OwnerLayout = ({ children, hideFooter = false }) => {
       {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
         {sidebarOpen && (
-          <motion.div 
+          <motion.div
             className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 lg:hidden"
             variants={overlayVariants}
             initial="hidden"
@@ -173,7 +174,7 @@ const OwnerLayout = ({ children, hideFooter = false }) => {
       <AnimatePresence>
         {sidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
-            <motion.div 
+            <motion.div
               className="absolute inset-y-0 left-0 w-64 max-w-[80vw]"
               variants={sidebarVariants}
               initial="hidden"
@@ -185,9 +186,11 @@ const OwnerLayout = ({ children, hideFooter = false }) => {
           </div>
         )}
       </AnimatePresence>
-      
+
+      {/* Toast notifications */}
       {/* Toast notifications */}
       <Toaster />
+      <NotificationListener />
     </div>
   );
 };

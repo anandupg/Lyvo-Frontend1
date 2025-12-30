@@ -5,6 +5,7 @@ import { AnimatePresence } from "framer-motion";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import Chatbot from "./components/Chatbot";
+
 import { Toaster } from "./components/ui/toaster";
 import Home from "./pages/Home";
 import { getUserFromStorage, getAuthToken, getUserRole, isPathAllowedForUser, getRedirectUrl } from "./utils/authUtils";
@@ -37,10 +38,16 @@ import SeekerPropertyDetails from "./pages/seeker/SeekerPropertyDetails";
 import SeekerDashboardDetails from "./pages/seeker/SeekerDashboardDetails";
 import PostBookingDashboard from "./pages/seeker/PostBookingDashboard";
 import BasicRoomDashboard from "./pages/seeker/BasicRoomDashboard";
-import RoomDetailsView from "./pages/seeker/RoomDetailsView";
+import SeekerRoomDetails from "./pages/seeker/SeekerRoomDetails";
 import RoomDebug from "./pages/seeker/RoomDebug";
 import KycUpload from "./pages/seeker/KycUpload";
 import SeekerMessages from "./pages/seeker/SeekerMessages";
+import TenantDashboard from "./pages/tenant/TenantDashboard";
+import TenantPayments from "./pages/tenant/TenantPayments";
+import TenantMaintenance from "./pages/tenant/TenantMaintenance";
+import TenantAgreement from "./pages/tenant/TenantAgreement";
+import TenantDetails from "./pages/tenant/TenantDetails";
+import ExpenseSplit from "./pages/tenant/ExpenseSplit";
 // Import owner pages and components
 import OwnerDashboard from "./pages/owner/OwnerDashboard";
 import OwnerProperties from "./pages/owner/Properties";
@@ -64,11 +71,27 @@ import BookingDetails from "./pages/owner/BookingDetails";
 import Tenants from "./pages/owner/Tenants";
 import EditProperty from "./pages/owner/EditProperty";
 import OwnerAnalytics from "./pages/owner/OwnerAnalytics";
+import OwnerMaintenance from "./pages/owner/OwnerMaintenance";
+import OwnerPayments from "./pages/owner/OwnerPayments";
+import OwnerTenantDetails from "./pages/owner/OwnerTenantDetails";
 
 // Protected Route Component for Admin
 const ProtectedAdminRoute = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
+
+  // Global Logout Handler
+  useEffect(() => {
+    const handleLogout = () => {
+      console.log('Global Logout Triggered');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    };
+
+    window.addEventListener('lyvo-logout', handleLogout);
+    return () => window.removeEventListener('lyvo-logout', handleLogout);
+  }, []);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -79,7 +102,7 @@ const ProtectedAdminRoute = ({ children }) => {
         try {
           const userData = JSON.parse(user);
           console.log('ProtectedAdminRoute: User role check:', userData.role);
-          
+
           // Check if user has admin role (role === 2)
           if (userData.role === 2) {
             setIsAuthorized(true);
@@ -132,7 +155,7 @@ const ProtectedOwnerRoute = ({ children }) => {
 
       if (token && user) {
         const userRole = getUserRole(user);
-        
+
         // Check if user has owner role (role === 3)
         if (userRole === 3) {
           setIsAuthorized(true);
@@ -179,7 +202,7 @@ const ProtectedSeekerRoute = ({ children }) => {
 
       if (token && user) {
         const userRole = getUserRole(user);
-        
+
         // Check if user has seeker role (role === 1)
         if (userRole === 1) {
           setIsAuthorized(true);
@@ -228,7 +251,7 @@ const ProtectedUserRoute = ({ children }) => {
         try {
           const userData = JSON.parse(user);
           console.log('ProtectedUserRoute: User role check:', userData.role);
-          
+
           // Check if user has regular user role (role === 1)
           if (userData.role === 1) {
             setIsAuthorized(true);
@@ -292,9 +315,9 @@ const RootAuthCheck = ({ children }) => {
         try {
           const userData = JSON.parse(user);
           const currentPath = window.location.pathname;
-          
+
           console.log('RootAuthCheck: User logged in with role:', userData.role, 'on path:', currentPath);
-          
+
           // Only redirect if user is on root path and logged in
           if (currentPath === '/') {
             if (userData.role === 2) {
@@ -321,7 +344,7 @@ const RootAuthCheck = ({ children }) => {
       } else {
         console.log('RootAuthCheck: No user logged in');
       }
-      
+
       setIsChecking(false);
     };
 
@@ -373,7 +396,7 @@ function AppRoutesWithLoader() {
               <SeekerDashboard />
             </ProtectedSeekerRoute>
           } />
-          
+
           {/* Seeker routes - protected with role-based authentication */}
           <Route path="/seeker-dashboard" element={
             <ProtectedSeekerRoute>
@@ -422,9 +445,9 @@ function AppRoutesWithLoader() {
               <PostBookingDashboard />
             </ProtectedSeekerRoute>
           } />
-          <Route path="/room/:roomId" element={
+          <Route path="/seeker/room/:roomId" element={
             <ProtectedSeekerRoute>
-              <RoomDetailsView />
+              <SeekerRoomDetails />
             </ProtectedSeekerRoute>
           } />
           <Route path="/seeker-kyc" element={
@@ -435,6 +458,36 @@ function AppRoutesWithLoader() {
           <Route path="/seeker-messages" element={
             <ProtectedSeekerRoute>
               <SeekerMessages />
+            </ProtectedSeekerRoute>
+          } />
+          <Route path="/tenant-dashboard" element={
+            <ProtectedSeekerRoute>
+              <TenantDashboard />
+            </ProtectedSeekerRoute>
+          } />
+          <Route path="/tenant-payments" element={
+            <ProtectedSeekerRoute>
+              <TenantPayments />
+            </ProtectedSeekerRoute>
+          } />
+          <Route path="/tenant-maintenance" element={
+            <ProtectedSeekerRoute>
+              <TenantMaintenance />
+            </ProtectedSeekerRoute>
+          } />
+          <Route path="/tenant-agreement" element={
+            <ProtectedSeekerRoute>
+              <TenantAgreement />
+            </ProtectedSeekerRoute>
+          } />
+          <Route path="/tenant-roommates" element={
+            <ProtectedSeekerRoute>
+              <TenantDetails />
+            </ProtectedSeekerRoute>
+          } />
+          <Route path="/tenant-expenses" element={
+            <ProtectedSeekerRoute>
+              <ExpenseSplit />
             </ProtectedSeekerRoute>
           } />
           <Route path="/debug/rooms" element={
@@ -526,9 +579,24 @@ function AppRoutesWithLoader() {
               <Tenants />
             </ProtectedOwnerRoute>
           } />
+          <Route path="/owner/tenants/:tenantId" element={
+            <ProtectedOwnerRoute>
+              <OwnerTenantDetails />
+            </ProtectedOwnerRoute>
+          } />
           <Route path="/owner-analytics" element={
             <ProtectedOwnerRoute>
               <OwnerAnalytics />
+            </ProtectedOwnerRoute>
+          } />
+          <Route path="/owner-maintenance" element={
+            <ProtectedOwnerRoute>
+              <OwnerMaintenance />
+            </ProtectedOwnerRoute>
+          } />
+          <Route path="/owner-payments" element={
+            <ProtectedOwnerRoute>
+              <OwnerPayments />
             </ProtectedOwnerRoute>
           } />
 
@@ -591,12 +659,18 @@ function AppContent() {
   // Check if current route is an admin, owner, or seeker route
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isOwnerRoute = location.pathname.startsWith('/owner');
-  const isSeekerRoute = location.pathname.startsWith('/seeker') || 
-                       location.pathname === '/dashboard' || 
-                       location.pathname.startsWith('/room/') || 
-                       location.pathname.startsWith('/booking-dashboard/') || 
-                       location.pathname.startsWith('/seeker-dashboard') || 
-                       location.pathname === '/my-room';
+  const isSeekerRoute = location.pathname.startsWith('/seeker') ||
+    location.pathname === '/dashboard' ||
+    location.pathname.startsWith('/seeker/room/') ||
+    location.pathname.startsWith('/booking-dashboard/') ||
+    location.pathname.startsWith('/seeker-dashboard') ||
+    location.pathname === '/my-room' ||
+    location.pathname === '/tenant-dashboard' ||
+    location.pathname === '/tenant-payments' ||
+    location.pathname === '/tenant-maintenance' ||
+    location.pathname === '/tenant-agreement' ||
+    location.pathname === '/tenant-roommates' ||
+    location.pathname === '/tenant-expenses';
 
   // Global authentication check - Simplified to prevent loops
   useEffect(() => {
@@ -607,7 +681,7 @@ function AppContent() {
       if (token && user) {
         const currentPath = location.pathname;
         const userRole = getUserRole(user);
-        
+
         // Global auth check - only redirect seekers away from admin/owner routes
 
         // Only redirect if user is on a route that doesn't match their role
@@ -626,6 +700,7 @@ function AppContent() {
     <div className="App min-h-screen bg-gradient-to-br from-slate-50 to-stone-100">
       {/* Only render main Navbar and Footer for non-admin, non-owner, and non-seeker routes */}
       {!isAdminRoute && !isOwnerRoute && !isSeekerRoute && <Navbar />}
+
       <AppRoutesWithLoader />
       {!isAdminRoute && !isOwnerRoute && !isSeekerRoute && <Footer />}
       {/* Only render Chatbot for non-admin, non-owner, and non-seeker routes */}

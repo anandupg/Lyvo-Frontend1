@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SeekerNavbar from './SeekerNavbar';
 import SeekerSidebar from './SeekerSidebar';
 import SeekerFooter from './SeekerFooter';
+import NotificationListener from '../NotificationListener';
 
 const SeekerLayout = ({ children, hideFooter = false, hideNavbar = false }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -81,7 +82,7 @@ const SeekerLayout = ({ children, hideFooter = false, hideNavbar = false }) => {
         setShowProfilePrompt(missing);
         setBlockBrowsing(missing);
       }
-    } catch {}
+    } catch { }
   };
 
   // Check on mount
@@ -109,7 +110,7 @@ const SeekerLayout = ({ children, hideFooter = false, hideNavbar = false }) => {
       <div className="hidden lg:block">
         <SeekerSidebar onClose={closeSidebar} />
       </div>
-      
+
       {/* Main Content */}
       <div className="lg:ml-64">
         {/* Navbar */}
@@ -197,7 +198,7 @@ const SeekerLayout = ({ children, hideFooter = false, hideNavbar = false }) => {
             <div className="min-h-[60vh] flex items-center justify-center p-6">
               <div className="max-w-md w-full bg-white border border-blue-200 rounded-xl p-6 text-center">
                 <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-blue-100 flex items-center justify-center">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                 </div>
                 <h2 className="text-lg font-semibold text-gray-900 mb-1">Complete Your Profile</h2>
                 <p className="text-sm text-gray-600 mb-4">Please fill in phone, age, occupation, and gender to continue.</p>
@@ -217,6 +218,7 @@ const SeekerLayout = ({ children, hideFooter = false, hideNavbar = false }) => {
 
         {/* Footer */}
         {!hideFooter && <SeekerFooter />}
+        <NotificationListener />
       </div>
     </div>
   );

@@ -30,11 +30,11 @@ const VerifyEmail = () => {
         const response = await apiClient.get(`/user/verify-email/${token}`, {
           timeout: 10000 // 10 second timeout
         });
-        
+
         console.log('Verification response:', response);
         console.log('Response status:', response.status);
         console.log('Response data:', response.data);
-        
+
         // Check if verification is successful
         if (response.data && response.data.message && response.data.message.includes('verified successfully')) {
           setVerificationStatus('success');
@@ -102,11 +102,11 @@ const VerifyEmail = () => {
               >
                 <div className="w-12 h-12 animate-spin text-red-500 mx-auto border-4 border-red-200 border-t-red-500 rounded-full"></div>
               </motion.div>
-              
+
               <h3 className="text-xl font-bold text-gray-900 mb-4 font-display">
                 Processing Verification
               </h3>
-              
+
               <p className="text-sm text-blue-700 mb-6">
                 We're verifying your email address...
               </p>
@@ -155,11 +155,11 @@ const VerifyEmail = () => {
                     >
                       <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
                     </motion.div>
-                    
+
                     <h3 className="text-2xl font-bold text-gray-900 mb-4 font-display">
                       🎉 Email Verified Successfully!
                     </h3>
-                    
+
                     <p className="text-gray-700 mb-6">
                       {message}
                     </p>
@@ -187,20 +187,20 @@ const VerifyEmail = () => {
                       animate={{ scale: 1 }}
                       className="mb-6"
                     >
-                      <AlertCircle className="w-16 h-16 text-red-500 mx-auto" />
+                      <AlertCircle className="w-16 h-16 text-blue-500 mx-auto" />
                     </motion.div>
-                    
+
                     <h3 className="text-2xl font-bold text-gray-900 mb-4 font-display">
-                      ❌ Verification Failed
+                      🔐 Login Using Your Account
                     </h3>
-                    
-                    <p className="text-red-700 mb-6">
-                      {errorMessage}
+
+                    <p className="text-gray-700 mb-6">
+                      Your account may already be verified or the verification link has expired.
                     </p>
 
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                      <p className="text-sm text-red-700 font-medium">
-                        ⚠️ Please check your email for a valid verification link or try signing up again.
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                      <p className="text-sm text-blue-700 font-medium">
+                        💡 Try logging in with your email and password. If you don't have an account, you can sign up.
                       </p>
                     </div>
 
@@ -209,12 +209,12 @@ const VerifyEmail = () => {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={handleCloseModal}
-                        className="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white py-3 px-4 rounded-lg font-semibold shadow-sm hover:from-red-600 hover:to-pink-600 transition-all duration-200 flex items-center justify-center gap-2"
+                        className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-3 px-4 rounded-lg font-semibold shadow-sm hover:from-blue-600 hover:to-indigo-600 transition-all duration-200 flex items-center justify-center gap-2"
                       >
                         <LogIn className="w-5 h-5" />
                         Go to Login
                       </motion.button>
-                      
+
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}

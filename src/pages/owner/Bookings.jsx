@@ -29,13 +29,26 @@ const OwnerBookings = () => {
   const [viewMode, setViewMode] = useState('table'); // table | cards
   const [expandedCards, setExpandedCards] = useState(new Set());
 
-  const fetchBookings = async () => {
+  useEffect(() => {
+    fetchBookings();
+
+    // Set up polling for automatic updates
+    const intervalId = setInterval(() => {
+      console.log('[AUTO-REFRESH] Polling for new bookings...');
+      fetchBookings(true); // pass true to indicate silent refresh
+    }, 30000); // Poll every 30 seconds
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  const fetchBookings = async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) setLoading(true);
+      if (isSilent) setIsRefreshing(true);
       setError('');
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const token = localStorage.getItem('authToken');
-      const resp = await fetch(`${baseUrl}/api/owner/bookings`, {
+      const resp = await fetch(`${baseUrl}/property/owner/bookings`, {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -48,24 +61,24 @@ const OwnerBookings = () => {
       const data = await resp.json();
       setBookings(Array.isArray(data.bookings) ? data.bookings : []);
     } catch (e) {
-      setError(e.message || 'Failed to load bookings');
+      if (!isSilent) setError(e.message || 'Failed to load bookings');
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
+      if (isSilent) setIsRefreshing(false);
     }
   };
-
-  useEffect(() => {
-    fetchBookings();
-  }, []);
 
 
   const filteredBookings = useMemo(() => {
     const q = query.trim().toLowerCase();
     return bookings
       .filter((b) => {
-        if (statusFilter === 'all') return true;
+        if (statusFilter === 'all') return b.status !== 'checked_in';
         if (statusFilter === 'pending') {
           return ['pending_approval', 'payment_pending', 'pending'].includes(b.status);
+        }
+        if (statusFilter === 'confirmed') {
+          return ['confirmed', 'checked_in'].includes(b.status);
         }
         return b.status === statusFilter;
       })
@@ -80,8 +93,8 @@ const OwnerBookings = () => {
   }, [bookings, query, statusFilter]);
 
   const stats = useMemo(() => {
-    const total = bookings.length;
-    const confirmed = bookings.filter(b => b.status === 'confirmed').length;
+    const total = bookings.filter(b => b.status !== 'checked_in').length;
+    const confirmed = bookings.filter(b => ['confirmed', 'checked_in'].includes(b.status)).length;
     const pending = bookings.filter(b => ['pending_approval', 'payment_pending', 'pending'].includes(b.status)).length;
     const cancelled = bookings.filter(b => b.status === 'cancelled').length;
     const rejected = bookings.filter(b => b.status === 'rejected').length;
@@ -119,17 +132,21 @@ const OwnerBookings = () => {
 
   const getStatusColor = (status, cancelledBy = null) => {
     switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
+      case 'confirmed':
+      case 'approved': return 'bg-green-100 text-green-800 border-green-200';
+      case 'checked_in': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
       case 'cancelled': return 'bg-gray-100 text-gray-800 border-gray-200';
       case 'pending_approval': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      default: return 'bg-blue-100 text-blue-800 border-blue-200';
+      default: return 'bg-purple-100 text-purple-800 border-purple-200';
     }
   };
 
   const getStatusIcon = (status, cancelledBy = null) => {
     switch (status) {
-      case 'confirmed': return <CheckCircle className="w-4 h-4" />;
+      case 'confirmed':
+      case 'approved': return <CheckCircle className="w-4 h-4" />;
+      case 'checked_in': return <MapPin className="w-4 h-4" />;
       case 'rejected': return <XCircle className="w-4 h-4" />;
       case 'cancelled': return <XCircle className="w-4 h-4" />;
       case 'pending_approval': return <Clock className="w-4 h-4" />;
@@ -139,7 +156,9 @@ const OwnerBookings = () => {
 
   const getStatusText = (status, cancelledBy = null) => {
     switch (status) {
-      case 'confirmed': return 'Confirmed';
+      case 'confirmed':
+      case 'approved': return 'Approved';
+      case 'checked_in': return 'Checked In';
       case 'rejected': return 'Rejected';
       case 'cancelled': return cancelledBy === 'user' ? 'Cancelled by User' : 'Cancelled';
       case 'pending_approval': return 'Pending Approval';
@@ -155,33 +174,37 @@ const OwnerBookings = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Bookings Management</h1>
-              <p className="text-gray-600">Manage and review all property bookings</p>
+              <div className="flex items-center gap-2">
+                <p className="text-gray-600">Manage and review all property bookings</p>
+                <span className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 text-green-700 text-[10px] font-bold uppercase tracking-wider rounded border border-green-100 animate-pulse">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                  Live Updates
+                </span>
+              </div>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               {/* View Mode Toggle */}
               <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode('table')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    viewMode === 'table' 
-                      ? 'bg-white text-gray-900 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'table'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                    }`}
                 >
                   Table
                 </button>
                 <button
                   onClick={() => setViewMode('cards')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    viewMode === 'cards' 
-                      ? 'bg-white text-gray-900 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'cards'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                    }`}
                 >
                   Cards
                 </button>
               </div>
-              
+
               {/* Action Buttons */}
               <div className="flex items-center gap-2">
                 <button
@@ -205,17 +228,16 @@ const OwnerBookings = () => {
 
         {/* Enhanced Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-          <div 
-            className={`bg-gradient-to-br from-blue-50 to-blue-100 border rounded-xl p-6 hover:shadow-lg transition-shadow cursor-pointer ${
-              statusFilter === 'all' 
-                ? 'border-blue-400 ring-2 ring-blue-200' 
-                : 'border-blue-200'
-            }`}
+          <div
+            className={`bg-gradient-to-br from-blue-50 to-blue-100 border rounded-xl p-6 hover:shadow-lg transition-shadow cursor-pointer ${statusFilter === 'all'
+              ? 'border-blue-400 ring-2 ring-blue-200'
+              : 'border-blue-200'
+              }`}
             onClick={() => setStatusFilter('all')}
           >
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm font-medium text-blue-600 mb-1">Total Bookings</div>
+                <div className="text-sm font-medium text-blue-600 mb-1">Active Bookings</div>
                 <div className="text-3xl font-bold text-blue-900">{stats.total}</div>
               </div>
               <div className="w-12 h-12 bg-blue-200 rounded-lg flex items-center justify-center">
@@ -223,13 +245,12 @@ const OwnerBookings = () => {
               </div>
             </div>
           </div>
-          
-          <div 
-            className={`bg-gradient-to-br from-green-50 to-green-100 border rounded-xl p-6 hover:shadow-lg transition-shadow cursor-pointer ${
-              statusFilter === 'confirmed' 
-                ? 'border-green-400 ring-2 ring-green-200' 
-                : 'border-green-200'
-            }`}
+
+          <div
+            className={`bg-gradient-to-br from-green-50 to-green-100 border rounded-xl p-6 hover:shadow-lg transition-shadow cursor-pointer ${statusFilter === 'confirmed'
+              ? 'border-green-400 ring-2 ring-green-200'
+              : 'border-green-200'
+              }`}
             onClick={() => setStatusFilter('confirmed')}
           >
             <div className="flex items-center justify-between">
@@ -242,13 +263,12 @@ const OwnerBookings = () => {
               </div>
             </div>
           </div>
-          
-          <div 
-            className={`bg-gradient-to-br from-yellow-50 to-yellow-100 border rounded-xl p-6 hover:shadow-lg transition-shadow relative cursor-pointer ${
-              statusFilter === 'pending' 
-                ? 'border-yellow-400 ring-2 ring-yellow-200' 
-                : 'border-yellow-200'
-            }`}
+
+          <div
+            className={`bg-gradient-to-br from-yellow-50 to-yellow-100 border rounded-xl p-6 hover:shadow-lg transition-shadow relative cursor-pointer ${statusFilter === 'pending'
+              ? 'border-yellow-400 ring-2 ring-yellow-200'
+              : 'border-yellow-200'
+              }`}
             onClick={() => setStatusFilter('pending')}
           >
             {/* Pending Approval Badge */}
@@ -270,13 +290,12 @@ const OwnerBookings = () => {
               </div>
             </div>
           </div>
-          
-          <div 
-            className={`bg-gradient-to-br from-gray-50 to-gray-100 border rounded-xl p-6 hover:shadow-lg transition-shadow cursor-pointer ${
-              statusFilter === 'cancelled' 
-                ? 'border-gray-400 ring-2 ring-gray-200' 
-                : 'border-gray-200'
-            }`}
+
+          <div
+            className={`bg-gradient-to-br from-gray-50 to-gray-100 border rounded-xl p-6 hover:shadow-lg transition-shadow cursor-pointer ${statusFilter === 'cancelled'
+              ? 'border-gray-400 ring-2 ring-gray-200'
+              : 'border-gray-200'
+              }`}
             onClick={() => setStatusFilter('cancelled')}
           >
             <div className="flex items-center justify-between">
@@ -289,13 +308,12 @@ const OwnerBookings = () => {
               </div>
             </div>
           </div>
-          
-          <div 
-            className={`bg-gradient-to-br from-red-50 to-red-100 border rounded-xl p-6 hover:shadow-lg transition-shadow cursor-pointer ${
-              statusFilter === 'rejected' 
-                ? 'border-red-400 ring-2 ring-red-200' 
-                : 'border-red-200'
-            }`}
+
+          <div
+            className={`bg-gradient-to-br from-red-50 to-red-100 border rounded-xl p-6 hover:shadow-lg transition-shadow cursor-pointer ${statusFilter === 'rejected'
+              ? 'border-red-400 ring-2 ring-red-200'
+              : 'border-red-200'
+              }`}
             onClick={() => setStatusFilter('rejected')}
           >
             <div className="flex items-center justify-between">
@@ -323,7 +341,7 @@ const OwnerBookings = () => {
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
               />
             </div>
-            
+
             {/* Active Filter Indicator */}
             {statusFilter !== 'all' && (
               <div className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-lg">
@@ -439,13 +457,13 @@ const OwnerBookings = () => {
                           </td>
                           <td className="px-3 py-3 text-right">
                             <button
-                              onClick={() => navigate(`/owner-bookings/${booking._id}`, { 
-                                state: { 
-                                  userId: booking.userId, 
-                                  ownerId: booking.ownerId, 
-                                  propertyId: booking.propertyId, 
-                                  roomId: booking.roomId 
-                                } 
+                              onClick={() => navigate(`/owner-bookings/${booking._id}`, {
+                                state: {
+                                  userId: booking.userId,
+                                  ownerId: booking.ownerId,
+                                  propertyId: booking.propertyId,
+                                  roomId: booking.roomId
+                                }
                               })}
                               className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium"
                             >
@@ -466,7 +484,7 @@ const OwnerBookings = () => {
               {filteredBookings.map((booking) => {
                 const dateInfo = formatDate(booking.createdAt || booking.bookedAt);
                 const isExpanded = expandedCards.has(booking._id);
-                
+
                 return (
                   <div key={booking._id} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                     <div className="p-6">
@@ -557,13 +575,13 @@ const OwnerBookings = () => {
                           {isExpanded ? 'Show Less' : 'Show More'}
                         </button>
                         <button
-                          onClick={() => navigate(`/owner-bookings/${booking._id}`, { 
-                            state: { 
-                              userId: booking.userId, 
-                              ownerId: booking.ownerId, 
-                              propertyId: booking.propertyId, 
-                              roomId: booking.roomId 
-                            } 
+                          onClick={() => navigate(`/owner-bookings/${booking._id}`, {
+                            state: {
+                              userId: booking.userId,
+                              ownerId: booking.ownerId,
+                              propertyId: booking.propertyId,
+                              roomId: booking.roomId
+                            }
                           })}
                           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                         >

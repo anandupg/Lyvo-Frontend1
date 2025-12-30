@@ -10,7 +10,7 @@ class ChatService {
     this.isConnected = false;
     this.currentChatId = null;
     this.eventListeners = new Map();
-    this.apiBaseUrl = 'http://localhost:3004';
+    this.apiBaseUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
   }
 
   /**
@@ -22,7 +22,7 @@ class ChatService {
     }
 
     console.log('🔌 Connecting to chat service...');
-    
+
     this.socket = io(this.apiBaseUrl, {
       auth: { token },
       transports: ['websocket', 'polling'],
@@ -95,6 +95,18 @@ class ChatService {
   }
 
   /**
+   * Send a notification (for testing or real-time alerts)
+   */
+  sendNotification(data) {
+    if (this.socket && this.isConnected) {
+      console.log('📨 Sending notification:', data);
+      this.socket.emit('send_notification', data);
+    } else {
+      console.warn('⚠️ Cannot send notification: not connected');
+    }
+  }
+
+  /**
    * Send a message
    */
   sendMessage(content, contentType = 'text', metadata = {}) {
@@ -142,7 +154,7 @@ class ChatService {
     if (this.socket) {
       this.socket.on(event, callback);
     }
-    
+
     // Store for reconnection
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, []);
@@ -157,7 +169,7 @@ class ChatService {
     if (this.socket) {
       this.socket.off(event, callback);
     }
-    
+
     if (this.eventListeners.has(event)) {
       const listeners = this.eventListeners.get(event);
       const index = listeners.indexOf(callback);

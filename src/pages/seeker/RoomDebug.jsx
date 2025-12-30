@@ -15,9 +15,9 @@ const RoomDebug = () => {
     try {
       setLoading(true);
       const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-      
+
       console.log('Fetching rooms from:', `${baseUrl}/api/debug/rooms`);
-      
+
       const response = await fetch(`${baseUrl}/api/debug/rooms`, {
         method: 'GET',
         headers: {
@@ -34,7 +34,7 @@ const RoomDebug = () => {
 
       const data = await response.json();
       console.log('Rooms data:', data);
-      
+
       if (data.success && data.rooms) {
         setRooms(data.rooms);
       } else {
@@ -89,7 +89,7 @@ const RoomDebug = () => {
               Back to Dashboard
             </button>
           </div>
-          
+
           <div className="mb-4">
             <p className="text-gray-600">Found {rooms.length} rooms in the database</p>
           </div>
@@ -107,7 +107,7 @@ const RoomDebug = () => {
                     <h3 className="font-semibold text-gray-900">Room {room.room_number}</h3>
                     <p className="text-sm text-gray-600">Type: {room.room_type}</p>
                   </div>
-                  
+
                   <div className="space-y-2 text-sm">
                     <div>
                       <span className="font-medium text-gray-600">Room ID:</span>
@@ -119,17 +119,16 @@ const RoomDebug = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-600">Status:</span>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        room.approved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
+                      <span className={`text-xs px-2 py-1 rounded-full ${room.approved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
                         {room.approval_status}
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="mt-4">
                     <button
-                      onClick={() => navigate(`/room/${room._id}`)}
+                      onClick={() => navigate(`/seeker/room/${room._id}`)}
                       className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm"
                     >
                       View Room Details

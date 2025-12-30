@@ -15,7 +15,7 @@ const PropertiesPage = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
-  const propertyServiceUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3003';
+  const propertyServiceUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -26,19 +26,31 @@ const PropertiesPage = () => {
         const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
         const userId = user._id || user.id || '';
 
-        const resp = await fetch(`${propertyServiceUrl}/api/admin/properties?page=1&limit=200`, {
+        // Unified backend path: /api/property/admin/properties
+        const url = `${propertyServiceUrl}/property/admin/properties?page=1&limit=200`;
+        console.log('Fetching Admin Properties from:', url);
+        console.log('Using Auth Token:', authToken ? 'Yes' : 'No');
+        console.log('User ID:', userId);
+
+        const resp = await fetch(url, {
           headers: {
             'Authorization': authToken ? `Bearer ${authToken}` : '',
             'x-user-id': userId
           }
         });
+
+        console.log('Response Status:', resp.status);
         const data = await resp.json();
+        console.log('Response Data:', data);
+
         if (!resp.ok || data.success !== true) {
           throw new Error(data.message || 'Failed to fetch properties');
         }
         const propertiesData = Array.isArray(data.data) ? data.data : [];
+        console.log('Set Properties:', propertiesData.length);
         setProperties(propertiesData);
       } catch (e) {
+        console.error('Fetch Error:', e);
         setError(e.message);
       } finally {
         setLoading(false);
@@ -54,8 +66,8 @@ const PropertiesPage = () => {
       const location = `${p.address?.street || ''} ${p.address?.city || ''} ${p.address?.state || ''}`.toLowerCase();
       const matchesSearch = !term || title.includes(term) || location.includes(term) || (p.owner?.name || '').toLowerCase().includes(term);
       const matchesStatus = filterStatus === 'all' || (p.approval_status || 'pending') === filterStatus || (p.status || 'active') === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
+      return matchesSearch && matchesStatus;
+    });
   }, [properties, searchTerm, filterStatus]);
 
   const groupedByOwner = useMemo(() => {
@@ -71,17 +83,17 @@ const PropertiesPage = () => {
   // Calculate actual statistics
   const stats = useMemo(() => {
     const totalProperties = properties.length;
-    
+
     // Active listings: properties with approval_status = 'approved' and status = 'active'
-    const activeListings = properties.filter(p => 
+    const activeListings = properties.filter(p =>
       (p.approval_status === 'approved' || p.status === 'active') && p.status !== 'inactive'
     ).length;
-    
+
     // Pending approval: properties with approval_status = 'pending'
-    const pendingApproval = properties.filter(p => 
+    const pendingApproval = properties.filter(p =>
       p.approval_status === 'pending'
     ).length;
-    
+
     // Total revenue: sum of all room rents from all properties (monthly)
     let totalRevenue = 0;
     properties.forEach(property => {
@@ -93,7 +105,7 @@ const PropertiesPage = () => {
         });
       }
     });
-    
+
     // Format revenue
     const formatRevenue = (amount) => {
       if (amount >= 10000000) { // >= 1 crore
@@ -105,7 +117,7 @@ const PropertiesPage = () => {
       }
       return `₹${amount}`;
     };
-    
+
     return {
       totalProperties,
       activeListings,
@@ -148,11 +160,11 @@ const PropertiesPage = () => {
         ...p,
         rooms: (p.rooms || []).map(r => r._id === roomId ? { ...r, ...data.data } : r)
       })));
-      
+
       // Show success modal
       setSuccessMessage(`Room ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
       setShowSuccessModal(true);
-      
+
       // Auto-close success modal after 3 seconds
       setTimeout(() => {
         setShowSuccessModal(false);
@@ -163,8 +175,8 @@ const PropertiesPage = () => {
   };
 
   const handleSelectProperty = (propertyId) => {
-    setSelectedProperties(prev => 
-      prev.includes(propertyId) 
+    setSelectedProperties(prev =>
+      prev.includes(propertyId)
         ? prev.filter(id => id !== propertyId)
         : [...prev, propertyId]
     );
@@ -187,15 +199,15 @@ const PropertiesPage = () => {
             <h1 className="text-3xl font-bold text-gray-900">Property Management</h1>
             <p className="text-gray-600 mt-1">Manage all owner properties, view details, and approve or reject rooms</p>
           </div>
-        {error && (
-          <div className="p-3 rounded-md bg-red-50 text-red-700 border border-red-200">{error}</div>
-        )}
+          {error && (
+            <div className="p-3 rounded-md bg-red-50 text-red-700 border border-red-200">{error}</div>
+          )}
 
-        {loading && (
-          <div className="p-3 rounded-md bg-gray-50 text-gray-700 border border-gray-200">Loading properties…</div>
-        )}
+          {loading && (
+            <div className="p-3 rounded-md bg-gray-50 text-gray-700 border border-gray-200">Loading properties…</div>
+          )}
 
-          
+
         </div>
 
         {/* Stats Cards */}
@@ -336,15 +348,15 @@ const PropertiesPage = () => {
                 {list.map((property, index) => {
                   const statusBadge = getStatusBadge(property.approval_status || 'pending');
                   const rooms = property.rooms || [];
-                  const firstRoomImage = rooms.find(r => r.room_image)?.room_image;
+                  const displayImage = property.images?.front || rooms.find(r => r.room_image)?.room_image;
                   const pendingRooms = rooms.filter(r => (r.approval_status || 'pending') === 'pending').length;
                   const approvedRooms = rooms.filter(r => (r.approval_status || 'pending') === 'approved').length;
-            
-            return (
-              <motion.div
+
+                  return (
+                    <motion.div
                       key={property._id}
                       initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
+                      animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: index * 0.05 }}
                       className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group"
                       onClick={() => {
@@ -352,61 +364,61 @@ const PropertiesPage = () => {
                         console.log('Navigating to:', `/admin-property-details/${property._id}`);
                         navigate(`/admin-property-details/${property._id}`);
                       }}
-              >
-                {/* Property Image */}
-                <div className="relative h-48 bg-gray-200">
-                        {firstRoomImage ? (
+                    >
+                      {/* Property Image */}
+                      <div className="relative h-48 bg-gray-200">
+                        {displayImage ? (
                           <img
-                            src={firstRoomImage}
+                            src={displayImage}
                             alt={property.property_name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gray-100">
                             <Building className="w-12 h-12 text-gray-400" />
-                  </div>
+                          </div>
                         )}
                         <div className="absolute top-3 right-3">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusBadge.color}`}>
-                      {statusBadge.text}
-                    </span>
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusBadge.color}`}>
+                            {statusBadge.text}
+                          </span>
                         </div>
                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                             <Eye className="w-8 h-8 text-white" />
                           </div>
-                  </div>
-                </div>
+                        </div>
+                      </div>
 
-                {/* Property Details */}
-                <div className="p-4">
+                      {/* Property Details */}
+                      <div className="p-4">
                         <div className="flex items-start justify-between mb-2">
                           <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">{property.property_name}</h3>
                         </div>
-                  
-                  <div className="flex items-center text-sm text-gray-500 mb-3">
+
+                        <div className="flex items-center text-sm text-gray-500 mb-3">
                           <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
                           <span className="truncate">{`${property.address?.city || ''}, ${property.address?.state || ''}`}</span>
-                  </div>
+                        </div>
 
                         <div className="space-y-2 mb-4">
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">Total Rooms</span>
                             <span className="font-semibold text-gray-900">{rooms.length}</span>
-                      </div>
+                          </div>
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">Approved</span>
                             <span className="font-semibold text-green-600">{approvedRooms}</span>
-                      </div>
+                          </div>
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">Pending</span>
                             <span className="font-semibold text-yellow-600">{pendingRooms}</span>
-                    </div>
-                  </div>
+                          </div>
+                        </div>
 
                         {/* Quick Actions */}
                         <div className="flex items-center justify-between pt-3 border-t">
-                    <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -418,14 +430,14 @@ const PropertiesPage = () => {
                             >
                               <Eye className="w-3 h-3 mr-1" />
                               View Details
-                      </button>
-                    </div>
+                            </button>
+                          </div>
                           <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
             </div>
           ))}

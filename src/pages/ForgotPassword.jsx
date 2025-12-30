@@ -17,7 +17,7 @@ const ForgotPassword = () => {
     setLoading(true);
     setError(null);
     setSuccess(false);
-    
+
     try {
       const response = await axios.post(`${API_URL}/forgot-password`, { email });
       setSuccess(true);
@@ -40,8 +40,8 @@ const ForgotPassword = () => {
               </div>
               <span className="text-xl font-bold text-gray-900"><span className="text-red-600">Lyvo</span><span className="text-black">+</span></span>
             </Link>
-            <Link 
-              to="/login" 
+            <Link
+              to="/login"
               className="text-sm text-gray-600 hover:text-red-500 transition-colors"
             >
               Back to Login
@@ -93,7 +93,7 @@ const ForgotPassword = () => {
                     </div>
                   </motion.div>
                 )}
-                
+
                 {success && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
@@ -166,7 +166,7 @@ const ForgotPassword = () => {
                   <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
                     <CheckCircle className="w-10 h-10 text-green-600" />
                   </div>
-                  
+
                   <div className="space-y-3">
                     <h3 className="text-xl font-semibold text-gray-900">
                       Check Your Email
@@ -206,8 +206,8 @@ const ForgotPassword = () => {
                     <p className="text-sm text-gray-600">
                       Remember your password?
                     </p>
-                    <Link 
-                      to="/login" 
+                    <Link
+                      to="/login"
                       className="inline-flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-700 transition-colors"
                     >
                       <ArrowLeft className="w-4 h-4" />

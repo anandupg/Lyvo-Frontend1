@@ -3,14 +3,14 @@ import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import OwnerLayout from '../../components/owner/OwnerLayout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select.jsx';
-import { 
-  Building, 
-  MapPin, 
-  DollarSign, 
-  Users, 
-  Home, 
-  Car, 
-  Wifi, 
+import {
+  Building,
+  MapPin,
+  DollarSign,
+  Users,
+  Home,
+  Car,
+  Wifi,
   Snowflake,
   Utensils,
   Dumbbell,
@@ -84,7 +84,7 @@ const EditProperty = () => {
     property_name: '',
     description: '',
     property_mode: 'room',
-    
+
     // Address Information
     address: {
       street: '',
@@ -95,10 +95,10 @@ const EditProperty = () => {
     },
     latitude: '',
     longitude: '',
-    
+
     // Pricing
     security_deposit: '',
-    
+
     // Amenities
     amenities: {
       parking4w: false,
@@ -106,7 +106,7 @@ const EditProperty = () => {
       kitchen: false,
       powerBackup: false
     },
-    
+
     // Rules and Policies
     rules: {
       petsAllowed: false,
@@ -114,7 +114,7 @@ const EditProperty = () => {
       visitorsAllowed: true,
       cookingAllowed: true
     },
-    
+
     // Property Images
     images: {
       front: '',
@@ -129,14 +129,14 @@ const EditProperty = () => {
       hall: null,
       kitchen: null
     },
-    
+
     // Outside Toilet
     toilet_outside: false,
     outside_toilet_image: '',
-    
+
     // Documents
     land_tax_receipt: '',
-    
+
     // Status
     status: 'active'
   });
@@ -152,8 +152,7 @@ const EditProperty = () => {
           return;
         }
 
-        const propertyServiceUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-        const response = await fetch(`${propertyServiceUrl}/api/properties/${id}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/owner/properties/${id}`, {
           headers: {
             'Authorization': `Bearer ${authToken}`
           }
@@ -164,7 +163,7 @@ const EditProperty = () => {
           if (result.success) {
             const propertyData = result.data;
             setProperty(propertyData);
-            
+
             // Populate form data
             setFormData({
               property_name: propertyData.property_name || '',
@@ -305,7 +304,7 @@ const EditProperty = () => {
   const openDocumentPreview = (docUrl, fileName) => {
     const isPdf = fileName.toLowerCase().endsWith('.pdf');
     console.log('Opening document preview:', { docUrl, fileName, isPdf });
-    
+
     // Test if the URL is accessible
     fetch(docUrl, { method: 'HEAD' })
       .then(response => {
@@ -317,7 +316,7 @@ const EditProperty = () => {
       .catch(error => {
         console.error('Error checking document URL:', error);
       });
-    
+
     setPreviewDoc({
       url: docUrl,
       name: fileName,
@@ -329,13 +328,13 @@ const EditProperty = () => {
   const handleRequiredImageUpload = (type, event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    
+
     const entry = {
       file,
       preview: URL.createObjectURL(file),
       name: file.name
     };
-    
+
     setFormData(prev => ({
       ...prev,
       requiredImages: { ...prev.requiredImages, [type]: entry }
@@ -355,14 +354,14 @@ const EditProperty = () => {
 
   const handleImageUpload = (field, file) => {
     if (!file) return;
-    
+
     if (field === 'gallery') {
       const imageData = {
         file,
         preview: URL.createObjectURL(file),
         name: file.name
       };
-      
+
       setFormData(prev => ({
         ...prev,
         images: {
@@ -376,7 +375,7 @@ const EditProperty = () => {
         preview: URL.createObjectURL(file),
         name: file.name
       };
-      
+
       setFormData(prev => ({
         ...prev,
         images: {
@@ -421,13 +420,13 @@ const EditProperty = () => {
       }
 
       const propertyServiceUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-      
+
       // Prepare form data for API (like AddProperty)
       const formDataToSend = new FormData();
 
       // Clone data and strip file objects
       const payload = { ...formData };
-      
+
       // Structure the data for the backend
       const updateData = {
         ...payload,
@@ -435,10 +434,10 @@ const EditProperty = () => {
           security_deposit: formData.security_deposit
         }
       };
-      
+
       // Remove the flat pricing fields from the root level
       delete updateData.security_deposit;
-      
+
       // Add property data as JSON string
       formDataToSend.append('propertyData', JSON.stringify(updateData));
 
@@ -469,12 +468,12 @@ const EditProperty = () => {
       if (formData.outside_toilet_image && formData.outside_toilet_image.file) {
         formDataToSend.append('outsideToiletImage', formData.outside_toilet_image.file);
       }
-      
+
       // Add documents
       if (formData.land_tax_receipt?.file) {
         formDataToSend.append('landTaxReceipt', formData.land_tax_receipt.file);
       }
-      
+
       // Handle additional documents if they exist
       if (formData.documents && Array.isArray(formData.documents)) {
         formData.documents.forEach((documentData, index) => {
@@ -483,14 +482,14 @@ const EditProperty = () => {
           }
         });
       }
-      
+
       console.log('FormData entries for update:');
       for (let [key, value] of formDataToSend.entries()) {
         console.log(key, value);
       }
-      
-      const response = await fetch(`${propertyServiceUrl}/api/properties/${id}`, {
-        method: 'PATCH',
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/owner/properties/${id}`, {
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${authToken}`
         },
@@ -629,11 +628,10 @@ const EditProperty = () => {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center space-x-2 sm:space-x-3 py-3 px-3 sm:px-4 border-b-2 font-medium text-sm whitespace-nowrap min-w-0 ${
-                        activeTab === tab.id
+                      className={`flex items-center space-x-2 sm:space-x-3 py-3 px-3 sm:px-4 border-b-2 font-medium text-sm whitespace-nowrap min-w-0 ${activeTab === tab.id
                           ? 'border-red-500 text-red-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
+                        }`}
                     >
                       <Icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
                       <span>{tab.label}</span>
@@ -654,7 +652,7 @@ const EditProperty = () => {
                 className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6"
               >
                 <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">Basic Information & Pricing</h3>
-                
+
                 {/* Basic Info Section */}
                 <div className="mb-6">
                   <h4 className="text-sm font-medium text-gray-800 mb-4">Property Details</h4>
@@ -736,7 +734,7 @@ const EditProperty = () => {
                 className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6"
               >
                 <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">Location & Map</h3>
-                
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   {/* Address Form */}
                   <div className="space-y-4">
@@ -871,38 +869,37 @@ const EditProperty = () => {
                 className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6"
               >
                 <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">Amenities & Rules</h3>
-                
+
                 {/* Amenities Section */}
                 <div className="mb-8">
                   <h4 className="text-sm font-medium text-gray-800 mb-4">Property Amenities</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {[
-                    { key: 'parking4w', label: '4-Wheeler Parking', icon: Car },
-                    { key: 'parking2w', label: '2-Wheeler Parking', icon: Car },
-                    { key: 'kitchen', label: 'Kitchen', icon: Utensils },
-                    { key: 'powerBackup', label: 'Power Backup', icon: Snowflake }
-                  ].map((amenity) => {
-                    const Icon = amenity.icon;
-                    return (
-                      <label
-                        key={amenity.key}
-                        className={`flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                          formData.amenities[amenity.key]
-                            ? 'border-red-500 bg-red-50 text-red-700'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={formData.amenities[amenity.key]}
-                          onChange={() => handleAmenityChange(amenity.key)}
-                          className="sr-only"
-                        />
-                        <Icon className="w-6 h-6 mb-2" />
-                        <span className="text-sm font-medium text-center">{amenity.label}</span>
-                      </label>
-                    );
-                  })}
+                    {[
+                      { key: 'parking4w', label: '4-Wheeler Parking', icon: Car },
+                      { key: 'parking2w', label: '2-Wheeler Parking', icon: Car },
+                      { key: 'kitchen', label: 'Kitchen', icon: Utensils },
+                      { key: 'powerBackup', label: 'Power Backup', icon: Snowflake }
+                    ].map((amenity) => {
+                      const Icon = amenity.icon;
+                      return (
+                        <label
+                          key={amenity.key}
+                          className={`flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${formData.amenities[amenity.key]
+                              ? 'border-red-500 bg-red-50 text-red-700'
+                              : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.amenities[amenity.key]}
+                            onChange={() => handleAmenityChange(amenity.key)}
+                            className="sr-only"
+                          />
+                          <Icon className="w-6 h-6 mb-2" />
+                          <span className="text-sm font-medium text-center">{amenity.label}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -962,7 +959,7 @@ const EditProperty = () => {
                       ].filter(({ key }) => key !== 'kitchen' || formData.amenities.kitchen).map(({ key, label }) => {
                         const hasImage = formData.requiredImages[key] || formData.images[key];
                         const imageSrc = formData.requiredImages[key]?.preview || formData.images[key];
-                        
+
                         return (
                           <div key={key} className="">
                             <div className="text-xs font-medium text-gray-700 mb-2">
@@ -973,23 +970,23 @@ const EditProperty = () => {
                                 <div className="text-xs text-gray-500 text-center px-2">
                                   {imageLoading[key] ? 'Uploading...' : `Upload ${label}`}
                                 </div>
-                                <input 
-                                  type="file" 
-                                  accept="image/*" 
-                                  className="hidden" 
-                                  onChange={(e) => handleRequiredImageUpload(key, e)} 
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleRequiredImageUpload(key, e)}
                                 />
                               </label>
                             ) : (
                               <div className="relative group">
-                                <img 
-                                  src={imageSrc} 
-                                  alt={`${label} View`} 
-                                  className="w-full h-28 object-cover rounded-lg border" 
+                                <img
+                                  src={imageSrc}
+                                  alt={`${label} View`}
+                                  className="w-full h-28 object-cover rounded-lg border"
                                 />
-                                <button 
-                                  type="button" 
-                                  onClick={() => removeRequiredImage(key)} 
+                                <button
+                                  type="button"
+                                  onClick={() => removeRequiredImage(key)}
                                   className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                                 >
                                   <X className="w-3 h-3" />
@@ -1034,14 +1031,14 @@ const EditProperty = () => {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           {formData.images.gallery.map((imageData, index) => (
                             <div key={index} className="relative group">
-                              <img 
-                                src={typeof imageData === 'string' ? imageData : imageData.preview} 
-                                alt={`Gallery ${index + 1}`} 
-                                className="w-full h-28 object-cover rounded-lg border" 
+                              <img
+                                src={typeof imageData === 'string' ? imageData : imageData.preview}
+                                alt={`Gallery ${index + 1}`}
+                                className="w-full h-28 object-cover rounded-lg border"
                               />
-                              <button 
-                                type="button" 
-                                onClick={() => removeImage('gallery', index)} 
+                              <button
+                                type="button"
+                                onClick={() => removeImage('gallery', index)}
                                 className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                               >
                                 <X className="w-3 h-3" />
@@ -1052,124 +1049,124 @@ const EditProperty = () => {
                       )}
                     </div>
 
-                  {/* Outside Toilet */}
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        checked={formData.toilet_outside}
-                        onChange={(e) => handleInputChange('toilet_outside', e.target.checked)}
-                        className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-                      />
-                      <span className="text-sm font-medium text-gray-900">Outside Toilet Available</span>
-                    </div>
-                    
-                    {formData.toilet_outside && (
-                      <div className="flex items-center space-x-4">
-                        <div className="w-24 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
-                          {formData.outside_toilet_image ? (
-                            <img
-                              src={typeof formData.outside_toilet_image === 'string' ? formData.outside_toilet_image : formData.outside_toilet_image.preview}
-                              alt="Outside Toilet"
-                              className="w-full h-full object-cover rounded-lg"
+                    {/* Outside Toilet */}
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          checked={formData.toilet_outside}
+                          onChange={(e) => handleInputChange('toilet_outside', e.target.checked)}
+                          className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                        />
+                        <span className="text-sm font-medium text-gray-900">Outside Toilet Available</span>
+                      </div>
+
+                      {formData.toilet_outside && (
+                        <div className="flex items-center space-x-4">
+                          <div className="w-24 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
+                            {formData.outside_toilet_image ? (
+                              <img
+                                src={typeof formData.outside_toilet_image === 'string' ? formData.outside_toilet_image : formData.outside_toilet_image.preview}
+                                alt="Outside Toilet"
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                            ) : (
+                              <Camera className="w-6 h-6 text-gray-400" />
+                            )}
+                          </div>
+                          <div className="flex space-x-2">
+                            <input
+                              ref={(el) => (fileInputRefs.current.outside_toilet_image = el)}
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleImageUpload('outside_toilet_image', e.target.files[0])}
+                              className="hidden"
                             />
-                          ) : (
-                            <Camera className="w-6 h-6 text-gray-400" />
-                          )}
-                        </div>
-                        <div className="flex space-x-2">
-                          <input
-                            ref={(el) => (fileInputRefs.current.outside_toilet_image = el)}
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleImageUpload('outside_toilet_image', e.target.files[0])}
-                            className="hidden"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => fileInputRefs.current.outside_toilet_image?.click()}
-                            disabled={imageLoading.outside_toilet_image}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                          >
-                            Upload Image
-                          </button>
-                          {formData.outside_toilet_image && (
                             <button
                               type="button"
-                              onClick={() => removeImage('outside_toilet_image')}
-                              className="px-4 py-2 text-red-600 border border-red-600 rounded-lg hover:bg-red-50 text-sm"
+                              onClick={() => fileInputRefs.current.outside_toilet_image?.click()}
+                              disabled={imageLoading.outside_toilet_image}
+                              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                             >
-                              Remove
+                              Upload Image
                             </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Documents Section */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-800 mb-4">Property Documents</h4>
-                  <div className="space-y-4">
-                    <div>
-                      <h5 className="text-sm font-medium text-gray-700 mb-3">Land Tax Receipt</h5>
-                      <div className="flex items-center space-x-4">
-                        <div className="w-24 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center">
-                          {formData.land_tax_receipt ? (
-                            <img
-                              src={typeof formData.land_tax_receipt === 'string' ? formData.land_tax_receipt : formData.land_tax_receipt.preview}
-                              alt="Land Tax Receipt"
-                              className="w-full h-full object-cover rounded-lg"
-                            />
-                          ) : (
-                            <>
-                              <FileText className="w-6 h-6 text-gray-400 mb-1" />
-                              <span className="text-xs text-gray-500 text-center">Land Tax Receipt</span>
-                            </>
-                          )}
-                        </div>
-                        <div className="flex space-x-2">
-                          <input
-                            ref={(el) => (fileInputRefs.current.land_tax_receipt = el)}
-                            type="file"
-                            accept="image/*,.pdf"
-                            onChange={(e) => handleImageUpload('land_tax_receipt', e.target.files[0])}
-                            className="hidden"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => fileInputRefs.current.land_tax_receipt?.click()}
-                            disabled={imageLoading.land_tax_receipt}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                          >
-                            Upload Document
-                          </button>
-                          {formData.land_tax_receipt && (
-                            <>
+                            {formData.outside_toilet_image && (
                               <button
                                 type="button"
-                                onClick={() => openDocumentPreview(formData.land_tax_receipt, 'Land Tax Receipt.pdf')}
-                                className="w-10 h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
-                                title="Preview Document"
+                                onClick={() => removeImage('outside_toilet_image')}
+                                className="px-4 py-2 text-red-600 border border-red-600 rounded-lg hover:bg-red-50 text-sm"
                               >
-                                <Eye className="w-4 h-4" />
+                                Remove
                               </button>
-                              <a
-                                href={typeof formData.land_tax_receipt === 'string' ? formData.land_tax_receipt : formData.land_tax_receipt.preview}
-                                download="Land Tax Receipt.pdf"
-                                className="w-10 h-10 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
-                                title="Download Document"
-                              >
-                                <Download className="w-4 h-4" />
-                              </a>
-                            </>
-                          )}
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Documents Section */}
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-800 mb-4">Property Documents</h4>
+                    <div className="space-y-4">
+                      <div>
+                        <h5 className="text-sm font-medium text-gray-700 mb-3">Land Tax Receipt</h5>
+                        <div className="flex items-center space-x-4">
+                          <div className="w-24 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center">
+                            {formData.land_tax_receipt ? (
+                              <img
+                                src={typeof formData.land_tax_receipt === 'string' ? formData.land_tax_receipt : formData.land_tax_receipt.preview}
+                                alt="Land Tax Receipt"
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                            ) : (
+                              <>
+                                <FileText className="w-6 h-6 text-gray-400 mb-1" />
+                                <span className="text-xs text-gray-500 text-center">Land Tax Receipt</span>
+                              </>
+                            )}
+                          </div>
+                          <div className="flex space-x-2">
+                            <input
+                              ref={(el) => (fileInputRefs.current.land_tax_receipt = el)}
+                              type="file"
+                              accept="image/*,.pdf"
+                              onChange={(e) => handleImageUpload('land_tax_receipt', e.target.files[0])}
+                              className="hidden"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => fileInputRefs.current.land_tax_receipt?.click()}
+                              disabled={imageLoading.land_tax_receipt}
+                              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                            >
+                              Upload Document
+                            </button>
+                            {formData.land_tax_receipt && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => openDocumentPreview(formData.land_tax_receipt, 'Land Tax Receipt.pdf')}
+                                  className="w-10 h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+                                  title="Preview Document"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <a
+                                  href={typeof formData.land_tax_receipt === 'string' ? formData.land_tax_receipt : formData.land_tax_receipt.preview}
+                                  download="Land Tax Receipt.pdf"
+                                  className="w-10 h-10 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
+                                  title="Download Document"
+                                >
+                                  <Download className="w-4 h-4" />
+                                </a>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
                 </div>
               </motion.div>
             )}
@@ -1183,8 +1180,8 @@ const EditProperty = () => {
           <div className="bg-white rounded-xl w-full max-w-4xl overflow-hidden shadow-xl">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
               <div className="text-sm font-semibold text-gray-900">Document Preview - {previewDoc.name}</div>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setPreviewDoc(null)}
                 className="px-2 py-1 text-gray-500 hover:text-gray-700 text-sm"
               >
@@ -1194,10 +1191,10 @@ const EditProperty = () => {
             <div className="p-4">
               {previewDoc.type === 'pdf' ? (
                 <div className="w-full h-[70vh] border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
-                  <iframe 
-                    title="PDF Preview" 
+                  <iframe
+                    title="PDF Preview"
                     src={`${previewDoc.url}#toolbar=1&navpanes=1&scrollbar=1`}
-                    className="w-full h-full border-0" 
+                    className="w-full h-full border-0"
                     style={{ minHeight: '600px' }}
                     onLoad={() => {
                       console.log('PDF iframe loaded successfully');
@@ -1209,10 +1206,10 @@ const EditProperty = () => {
                 </div>
               ) : (
                 <div className="w-full h-[70vh] border border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
-                  <img 
-                    src={previewDoc.url} 
-                    alt={previewDoc.name} 
-                    className="w-full max-h-[70vh] object-contain border border-gray-200 rounded-lg" 
+                  <img
+                    src={previewDoc.url}
+                    alt={previewDoc.name}
+                    className="w-full max-h-[70vh] object-contain border border-gray-200 rounded-lg"
                     onError={(e) => {
                       e.target.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
                     }}

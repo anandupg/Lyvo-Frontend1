@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Bell, 
-  User, 
+import {
+  Bell,
+  User,
   Menu,
   LogOut,
   Settings,
@@ -20,9 +20,9 @@ const AdminNavbar = ({ onMenuClick }) => {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
-  
-  const userServiceUrl = import.meta.env.VITE_API_URL || 'http://localhost:4002/api';
-  const propertyServiceUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3003';
+
+  const userServiceUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const propertyServiceUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   // Get user data from main authentication
   const getUserData = () => {
@@ -66,7 +66,7 @@ const AdminNavbar = ({ onMenuClick }) => {
     try {
       const authToken = localStorage.getItem('authToken');
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      
+
       if (!authToken || !userData._id) {
         return;
       }
@@ -79,9 +79,9 @@ const AdminNavbar = ({ onMenuClick }) => {
 
       // Fetch admin notifications from database and real-time data
       const [dbNotificationsRes, usersRes, propertiesRes] = await Promise.all([
-        fetch(`${propertyServiceUrl}/api/notifications`, { headers }),
+        fetch(`${propertyServiceUrl}/notifications`, { headers }),
         fetch(`${userServiceUrl}/user/all`, { headers }),
-        fetch(`${propertyServiceUrl}/api/admin/properties?limit=100`, { headers })
+        fetch(`${propertyServiceUrl}/property/admin/properties?limit=100`, { headers })
       ]);
 
       const dbNotifications = await dbNotificationsRes.json();
@@ -102,8 +102,8 @@ const AdminNavbar = ({ onMenuClick }) => {
               _id: notification._id,
               id: notification._id,
               type: notification.type || 'general',
-              icon: notification.type?.includes('property') ? Building2 : 
-                    notification.type?.includes('user') ? UserPlus : AlertCircle,
+              icon: notification.type?.includes('property') ? Building2 :
+                notification.type?.includes('user') ? UserPlus : AlertCircle,
               title: notification.title,
               message: notification.message,
               time: getTimeAgo(notification.createdAt),
@@ -121,16 +121,16 @@ const AdminNavbar = ({ onMenuClick }) => {
       const pendingProperties = properties.filter(p => p.approval_status === 'pending');
       pendingProperties.slice(0, 3).forEach(prop => {
         const notifId = `pending-prop-${prop._id}`;
-        
+
         // Skip if dismissed
         if (dismissedList.includes(notifId)) {
           return;
         }
-        
-        const existingNotif = notificationsList.find(n => 
+
+        const existingNotif = notificationsList.find(n =>
           n.message && n.message.includes(prop.property_name) && n.type.includes('property')
         );
-        
+
         if (!existingNotif) {
           notificationsList.push({
             id: notifId,
@@ -153,20 +153,20 @@ const AdminNavbar = ({ onMenuClick }) => {
         .filter(u => u.role !== 2 && new Date(u.createdAt) > oneDayAgo)
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         .slice(0, 3);
-      
+
       recentUsers.forEach(user => {
         const notifId = `new-user-${user._id}`;
-        
+
         // Skip if dismissed
         if (dismissedList.includes(notifId)) {
           return;
         }
-        
+
         const roleType = user.role === 1 ? 'Seeker' : user.role === 3 ? 'Owner' : 'User';
-        const existingNotif = notificationsList.find(n => 
+        const existingNotif = notificationsList.find(n =>
           n.message && n.message.includes(user.name) && n.type.includes('user')
         );
-        
+
         if (!existingNotif) {
           notificationsList.push({
             id: notifId,
@@ -189,14 +189,14 @@ const AdminNavbar = ({ onMenuClick }) => {
         const priorityA = a.type === 'property_approval' ? 0 : 1;
         const priorityB = b.type === 'property_approval' ? 0 : 1;
         if (priorityA !== priorityB) return priorityA - priorityB;
-        
+
         // Then sort by date
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
 
       setNotifications(notificationsList);
       setUnreadCount(notificationsList.length);
-      
+
       // Cleanup dismissed list periodically
       cleanupDismissedList();
     } catch (error) {
@@ -238,21 +238,21 @@ const AdminNavbar = ({ onMenuClick }) => {
         // Keep if it starts with known prefixes
         return id.startsWith('pending-prop-') || id.startsWith('new-user-');
       });
-      
+
       // Remove IDs that are older than 7 days (approximate cleanup)
       const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
       const cleanedList = validDismissed.slice(-50); // Keep last 50 dismissed items max
-      
+
       localStorage.setItem('admin_dismissed_notifications', JSON.stringify(cleanedList));
     } catch (error) {
       console.error('Error cleaning up dismissed notifications:', error);
     }
   };
 
-  // Mark notification as read (for database notifications)
-  const markAsRead = async (notificationId, isSystemGenerated) => {
+  // Delete notification
+  const deleteNotification = async (notificationId, isSystemGenerated) => {
     try {
-      // If it's a system-generated notification (not in DB), save to localStorage
+      // If it's a system-generated notification (not in DB), simply add to dismissed list
       if (isSystemGenerated) {
         addToDismissedList(notificationId);
         setNotifications(prev => prev.filter(n => n.id !== notificationId));
@@ -260,16 +260,13 @@ const AdminNavbar = ({ onMenuClick }) => {
         return;
       }
 
-      // For DB notifications, update in database
       const authToken = localStorage.getItem('authToken');
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      
-      if (!authToken || !userData._id) {
-        return;
-      }
 
-      const response = await fetch(`${propertyServiceUrl}/api/notifications/${notificationId}/read`, {
-        method: 'PATCH',
+      if (!authToken || !userData._id) return;
+
+      const response = await fetch(`${propertyServiceUrl}/notifications/${notificationId}`, {
+        method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'x-user-id': userData._id
@@ -277,11 +274,12 @@ const AdminNavbar = ({ onMenuClick }) => {
       });
 
       if (response.ok) {
-        // Refresh notifications
+        setNotifications(prev => prev.filter(n => n._id !== notificationId));
+        setUnreadCount(prev => Math.max(0, prev - 1));
         fetchNotifications();
       }
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error('Error deleting notification:', error);
     }
   };
 
@@ -290,7 +288,7 @@ const AdminNavbar = ({ onMenuClick }) => {
     const date = new Date(dateString);
     const now = new Date();
     const seconds = Math.floor((now - date) / 1000);
-    
+
     if (seconds < 60) return `${seconds}s ago`;
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
@@ -309,10 +307,10 @@ const AdminNavbar = ({ onMenuClick }) => {
     // Clear main authentication data
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
-    
+
     // Dispatch logout event to update navbar
     window.dispatchEvent(new Event('lyvo-logout'));
-    
+
     // Redirect to main login
     navigate('/login');
   };
@@ -326,34 +324,35 @@ const AdminNavbar = ({ onMenuClick }) => {
 
   // Listen for notification events
   useEffect(() => {
-    const handleNewNotification = () => {
+    const handleNewNotification = (event) => {
+      console.log('🔔 AdminNavbar received new-notification event:', event.detail);
       fetchNotifications();
     };
-    
+
     window.addEventListener('new-notification', handleNewNotification);
     return () => window.removeEventListener('new-notification', handleNewNotification);
   }, []);
 
   // Animation variants
   const dropdownVariants = {
-    hidden: { 
-      opacity: 0, 
-      y: -10, 
+    hidden: {
+      opacity: 0,
+      y: -10,
       scale: 0.95,
       transformOrigin: "top right"
     },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
+    visible: {
+      opacity: 1,
+      y: 0,
       scale: 1,
       transition: {
         duration: 0.2,
         ease: "easeOut"
       }
     },
-    exit: { 
-      opacity: 0, 
-      y: -10, 
+    exit: {
+      opacity: 0,
+      y: -10,
       scale: 0.95,
       transition: {
         duration: 0.15,
@@ -363,11 +362,11 @@ const AdminNavbar = ({ onMenuClick }) => {
   };
 
   const buttonHoverVariants = {
-    hover: { 
+    hover: {
       scale: 1.05,
       transition: { duration: 0.1 }
     },
-    tap: { 
+    tap: {
       scale: 0.95,
       transition: { duration: 0.1 }
     }
@@ -392,14 +391,14 @@ const AdminNavbar = ({ onMenuClick }) => {
 
           {/* Logo */}
           <Link to="/admin-dashboard" className="flex items-center space-x-2 sm:space-x-3">
-            <motion.div 
+            <motion.div
               className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center"
               whileHover={{ scale: 1.05 }}
               transition={{ duration: 0.2 }}
             >
-              <img 
-                src="/Lyvo_no_bg.png" 
-                alt="Lyvo Admin" 
+              <img
+                src="/Lyvo_no_bg.png"
+                alt="Lyvo Admin"
                 className="w-full h-full object-contain"
               />
             </motion.div>
@@ -424,7 +423,7 @@ const AdminNavbar = ({ onMenuClick }) => {
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
-                <motion.span 
+                <motion.span
                   className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white px-1"
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
@@ -438,7 +437,7 @@ const AdminNavbar = ({ onMenuClick }) => {
             {/* Notifications Dropdown */}
             <AnimatePresence>
               {isNotificationDropdownOpen && (
-                <motion.div 
+                <motion.div
                   className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
                   variants={dropdownVariants}
                   initial="hidden"
@@ -471,23 +470,21 @@ const AdminNavbar = ({ onMenuClick }) => {
                         return (
                           <motion.div
                             key={notification.id}
-                            className={`relative p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors group ${
-                              notification.type === 'property_approval' ? 'bg-orange-50 hover:bg-orange-100' : ''
-                            }`}
+                            className={`relative p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors group ${notification.type === 'property_approval' ? 'bg-orange-50 hover:bg-orange-100' : ''
+                              }`}
                             whileHover={{ backgroundColor: notification.type === 'property_approval' ? '#fed7aa' : '#f9fafb' }}
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.05, duration: 0.2 }}
                           >
-                            <div 
+                            <div
                               className="flex items-start space-x-3 pr-8"
                               onClick={() => handleNotificationClick(notification)}
                             >
-                              <div className={`p-2 rounded-lg ${
-                                notification.type === 'property_approval' 
-                                  ? 'bg-orange-200 text-orange-700' 
-                                  : 'bg-blue-100 text-blue-600'
-                              }`}>
+                              <div className={`p-2 rounded-lg ${notification.type === 'property_approval'
+                                ? 'bg-orange-200 text-orange-700'
+                                : 'bg-blue-100 text-blue-600'
+                                }`}>
                                 <IconComponent className="w-5 h-5" />
                               </div>
                               <div className="flex-1 min-w-0">
@@ -508,11 +505,11 @@ const AdminNavbar = ({ onMenuClick }) => {
                                 </div>
                               )}
                             </div>
-                            {/* Mark as Read Button */}
+                            {/* Delete Button */}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                markAsRead(notification._id || notification.id, notification.isSystemGenerated);
+                                deleteNotification(notification._id || notification.id, notification.isSystemGenerated);
                               }}
                               className="absolute top-3 right-3 p-1 rounded-full hover:bg-red-100 transition-colors opacity-0 group-hover:opacity-100"
                               title="Dismiss notification"
@@ -552,7 +549,7 @@ const AdminNavbar = ({ onMenuClick }) => {
               whileHover="hover"
               whileTap="tap"
             >
-              <motion.div 
+              <motion.div
                 className="w-7 h-7 sm:w-8 sm:h-8 bg-red-100 rounded-full flex items-center justify-center"
                 whileHover={{ scale: 1.05 }}
                 transition={{ duration: 0.2 }}
@@ -567,7 +564,7 @@ const AdminNavbar = ({ onMenuClick }) => {
             {/* User Dropdown */}
             <AnimatePresence>
               {isProfileDropdownOpen && (
-                <motion.div 
+                <motion.div
                   className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
                   variants={dropdownVariants}
                   initial="hidden"

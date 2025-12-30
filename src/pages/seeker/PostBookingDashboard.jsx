@@ -96,14 +96,14 @@ const PostBookingDashboard = () => {
       setLoading(true);
       const authToken = localStorage.getItem('authToken');
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      
+
       if (!authToken) {
         navigate('/login');
         return;
       }
 
       // Fetch booking details
-      const bookingResponse = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002'}/api/bookings/${bookingId}`, {
+      const bookingResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/bookings/${bookingId}`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
@@ -115,34 +115,69 @@ const PostBookingDashboard = () => {
       }
 
       const bookingData = await bookingResponse.json();
-      setBooking(bookingData.booking);
+      const b = bookingData.booking;
+      setBooking(b);
 
-      // Fetch property details
-      if (bookingData.booking.propertyId) {
-        const propertyResponse = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002'}/api/public/properties/${bookingData.booking.propertyId}`);
-        if (propertyResponse.ok) {
-          const propertyData = await propertyResponse.json();
-          setProperty(propertyData.property);
-          
-          // Find the specific room
-          if (propertyData.property.rooms) {
-            const roomData = propertyData.property.rooms.find(r => r._id === bookingData.booking.roomId);
-            setRoom(roomData);
-          }
+      // Set property details from populated data or snapshot
+      if (b.propertyId && typeof b.propertyId === 'object') {
+        const p = b.propertyId;
+        setProperty({
+          ...p,
+          propertyName: p.property_name || p.propertyName,
+          images: p.images?.gallery?.length ? p.images.gallery : [p.images?.front].filter(Boolean),
+          security_deposit: p.security_deposit || p.securityDeposit
+        });
+      } else {
+        const snap = b.propertySnapshot;
+        if (snap) {
+          setProperty({
+            _id: b.propertyId,
+            propertyName: snap.name,
+            address: snap.address,
+            images: snap.images || [snap.image].filter(Boolean),
+            security_deposit: snap.security_deposit
+          });
         }
       }
 
-      // Fetch owner details (if available)
-      if (bookingData.booking.ownerId) {
-        const ownerResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4002/api'}/user/profile/${bookingData.booking.ownerId}`, {
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'application/json'
-          }
+      // Set room details from populated data or snapshot
+      if (b.roomId && typeof b.roomId === 'object') {
+        const r = b.roomId;
+        setRoom({
+          ...r,
+          roomNumber: r.room_number || r.roomNumber,
+          roomType: r.room_type || r.roomType,
+          roomImage: r.room_image || r.roomImage,
+          rent: r.rent
         });
-        if (ownerResponse.ok) {
-          const ownerData = await ownerResponse.json();
-          setOwner(ownerData);
+      } else {
+        const snap = b.roomSnapshot;
+        if (snap) {
+          setRoom({
+            _id: b.roomId,
+            roomNumber: snap.roomNumber,
+            roomType: snap.roomType,
+            rent: snap.rent,
+            roomSize: snap.roomSize,
+            roomImage: snap.images?.room,
+            toiletImage: snap.images?.toilet,
+            amenities: snap.amenities
+          });
+        }
+      }
+
+      // Set owner details from populated data or snapshot
+      if (b.ownerId && typeof b.ownerId === 'object') {
+        setOwner(b.ownerId);
+      } else {
+        const snap = b.ownerSnapshot;
+        if (snap) {
+          setOwner({
+            id: b.ownerId,
+            name: snap.name,
+            email: snap.email,
+            phone: snap.phone
+          });
         }
       }
 
@@ -156,8 +191,14 @@ const PostBookingDashboard = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'confirmed':
+      case 'approved':
+        return 'bg-green-100 text-green-800';
+      case 'checked_in': return 'bg-blue-100 text-blue-800';
+      case 'pending':
+      case 'pending_approval':
+      case 'payment_pending':
+        return 'bg-yellow-100 text-yellow-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -165,8 +206,14 @@ const PostBookingDashboard = () => {
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'confirmed': return <CheckCircle2 className="w-4 h-4" />;
-      case 'pending': return <Clock className="w-4 h-4" />;
+      case 'confirmed':
+      case 'approved':
+        return <CheckCircle2 className="w-4 h-4" />;
+      case 'checked_in': return <CheckCircle2 className="w-4 h-4 text-blue-600" />;
+      case 'pending':
+      case 'pending_approval':
+      case 'payment_pending':
+        return <Clock className="w-4 h-4" />;
       case 'cancelled': return <AlertCircle className="w-4 h-4" />;
       default: return <Clock className="w-4 h-4" />;
     }
@@ -224,18 +271,18 @@ const PostBookingDashboard = () => {
     try {
       // Generate receipt HTML content
       const receiptContent = generateReceiptHTML();
-      
+
       // Create a new window for printing/downloading
       const printWindow = window.open('', '_blank');
       printWindow.document.write(receiptContent);
       printWindow.document.close();
-      
+
       // Wait for content to load then trigger print
       setTimeout(() => {
         printWindow.print();
         printWindow.close();
       }, 500);
-      
+
       toast({
         title: "Receipt Generated!",
         description: "Your booking receipt has been opened for download/printing",
@@ -254,12 +301,12 @@ const PostBookingDashboard = () => {
   };
 
   const generateReceiptHTML = () => {
-    const monthlyRent = room?.rent || booking.rent || 0;
-    const securityDeposit = property?.security_deposit || booking.securityDeposit || booking.propertySnapshot?.security_deposit || monthlyRent;
-    const totalAmount = monthlyRent + securityDeposit;
+    const monthlyRent = booking.payment?.monthlyRent || room?.rent || booking.roomSnapshot?.rent || 0;
+    const securityDeposit = booking.payment?.securityDeposit || property?.security_deposit || booking.propertySnapshot?.security_deposit || monthlyRent;
+    const totalAmount = booking.payment?.totalAmount || (monthlyRent + securityDeposit);
     const advancePaid = totalAmount * 0.1;
     const remaining = totalAmount * 0.9;
-    
+
     return `
       <!DOCTYPE html>
       <html>
@@ -313,7 +360,7 @@ const PostBookingDashboard = () => {
           </div>
           <div class="info-row">
             <span class="info-label">Address:</span>
-            <span>${property?.address || 'N/A'}</span>
+            <span>${formatAddress(property?.address)}</span>
           </div>
           <div class="info-row">
             <span class="info-label">Room Number:</span>
@@ -397,16 +444,16 @@ const PostBookingDashboard = () => {
 
   const getDirections = () => {
     // Try room coordinates first, then property coordinates
-    const coordinates = (room && room.latitude && room.longitude) 
+    const coordinates = (room && room.latitude && room.longitude)
       ? { lat: room.latitude, lng: room.longitude, type: 'room' }
       : (property && property.latitude && property.longitude)
-      ? { lat: property.latitude, lng: property.longitude, type: 'property' }
-      : null;
+        ? { lat: property.latitude, lng: property.longitude, type: 'property' }
+        : null;
 
     if (coordinates) {
       const url = `https://www.google.com/maps/dir/?api=1&destination=${coordinates.lat},${coordinates.lng}`;
       window.open(url, '_blank');
-      
+
       toast({
         title: "Directions Opened",
         description: `Opening directions to ${coordinates.type === 'room' ? 'your room' : 'the property'}`,
@@ -458,11 +505,11 @@ const PostBookingDashboard = () => {
       // Generate a simple pattern-based QR code
       const dataString = JSON.stringify(bookingData);
       const pattern = generateQRPattern(dataString, size);
-      
+
       // Draw the QR pattern
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, size, size);
-      
+
       ctx.fillStyle = '#FFFFFF';
       for (let i = 0; i < size; i += 10) {
         for (let j = 0; j < size; j += 10) {
@@ -475,7 +522,7 @@ const PostBookingDashboard = () => {
       // Convert to data URL
       const dataURL = canvas.toDataURL('image/png');
       setQrCodeDataURL(dataURL);
-      
+
       toast({
         title: "QR Code Generated!",
         description: "Your booking QR code is ready",
@@ -495,7 +542,7 @@ const PostBookingDashboard = () => {
     const pattern = [];
     const moduleSize = 10;
     const modules = size / moduleSize;
-    
+
     // Initialize pattern
     for (let i = 0; i < modules; i++) {
       pattern[i] = [];
@@ -503,52 +550,52 @@ const PostBookingDashboard = () => {
         pattern[i][j] = false;
       }
     }
-    
+
     // Add corner markers
     const addCornerMarker = (startX, startY) => {
       for (let i = 0; i < 7; i++) {
         for (let j = 0; j < 7; j++) {
           if (startX + i < modules && startY + j < modules) {
-            pattern[startX + i][startY + j] = (i === 0 || i === 6 || j === 0 || j === 6 || 
-                                             (i >= 2 && i <= 4 && j >= 2 && j <= 4));
+            pattern[startX + i][startY + j] = (i === 0 || i === 6 || j === 0 || j === 6 ||
+              (i >= 2 && i <= 4 && j >= 2 && j <= 4));
           }
         }
       }
     };
-    
+
     // Add corner markers
     addCornerMarker(0, 0);
     addCornerMarker(modules - 7, 0);
     addCornerMarker(0, modules - 7);
-    
+
     // Add data pattern based on string hash
     let hash = 0;
     for (let i = 0; i < data.length; i++) {
       hash = ((hash << 5) - hash + data.charCodeAt(i)) & 0xffffffff;
     }
-    
+
     // Fill remaining modules with pseudo-random pattern
     for (let i = 0; i < modules; i++) {
       for (let j = 0; j < modules; j++) {
         // Skip corner markers
-        if ((i < 7 && j < 7) || 
-            (i >= modules - 7 && j < 7) || 
-            (i < 7 && j >= modules - 7)) {
+        if ((i < 7 && j < 7) ||
+          (i >= modules - 7 && j < 7) ||
+          (i < 7 && j >= modules - 7)) {
           continue;
         }
-        
+
         // Skip timing patterns
         if (i === 6 || j === 6) {
           pattern[i][j] = (i + j) % 2 === 0;
           continue;
         }
-        
+
         // Add pseudo-random pattern
         const seed = (hash + i * 31 + j * 17) % 1000;
         pattern[i][j] = seed % 2 === 0;
       }
     }
-    
+
     return pattern;
   };
 
@@ -592,6 +639,14 @@ const PostBookingDashboard = () => {
     });
   };
 
+  const formatAddress = (address) => {
+    if (!address) return 'N/A';
+    if (typeof address === 'string') return address;
+    const { street, city, state, pincode, landmark } = address;
+    const parts = [street, landmark, city, state, pincode].filter(Boolean);
+    return parts.join(', ');
+  };
+
   const getDaysRemaining = () => {
     if (!booking?.checkInDate) return 0;
     const today = new Date();
@@ -600,28 +655,22 @@ const PostBookingDashboard = () => {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  const getBookingProgress = () => {
-    if (!booking) return 0;
-    const steps = ['payment', 'confirmation', 'check-in', 'stay'];
-    const currentStep = booking.status === 'confirmed' ? 2 : booking.status === 'pending' ? 1 : 0;
-    return ((currentStep + 1) / steps.length) * 100;
-  };
 
   const canCancelBooking = () => {
     if (!booking) return false;
-    
+
     console.log('🔍 Cancel Booking Debug:', {
       status: booking.status,
       checkInDate: booking.checkInDate,
       canCancel: true
     });
-    
+
     // Allow cancellation for pending bookings (not yet approved)
     if (['pending', 'pending_approval', 'payment_pending'].includes(booking.status)) {
       console.log('✅ Can cancel: Pending booking');
       return true;
     }
-    
+
     // For confirmed bookings, check if check-in is more than 24 hours away
     if (booking.status === 'confirmed') {
       const checkInDate = new Date(booking.checkInDate);
@@ -635,7 +684,7 @@ const PostBookingDashboard = () => {
       });
       return daysUntilCheckIn > 1;
     }
-    
+
     // Cannot cancel rejected or already cancelled bookings
     console.log('❌ Cannot cancel: Status not allowed');
     return false;
@@ -661,9 +710,9 @@ const PostBookingDashboard = () => {
     try {
       setIsCancelling(true);
       const token = localStorage.getItem('authToken');
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-      
-      const response = await fetch(`${baseUrl}/api/bookings/${booking._id}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+      const response = await fetch(`${baseUrl}/property/bookings/${booking._id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -677,7 +726,7 @@ const PostBookingDashboard = () => {
           description: "Your booking has been cancelled successfully",
           variant: "default",
         });
-        
+
         // Navigate back to seeker dashboard
         setTimeout(() => {
           navigate('/seeker-dashboard');
@@ -709,9 +758,9 @@ const PostBookingDashboard = () => {
     try {
       setIsCheckingIn(true);
       const token = localStorage.getItem('authToken');
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-      
-      const response = await fetch(`${baseUrl}/api/bookings/${booking._id}/check-in`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+      const response = await fetch(`${baseUrl}/property/user/check-in/${booking._id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -792,15 +841,18 @@ const PostBookingDashboard = () => {
     );
   }
 
-  // Check if booking is confirmed - if status is confirmed/approved, owner has accepted
-  const isBookingConfirmed = booking.status === 'confirmed' || booking.status === 'approved';
-  
+  // Check if booking is confirmed - if status is confirmed/approved/checked_in, owner has accepted
+  const isBookingConfirmed = booking.status === 'confirmed' || booking.status === 'approved' || booking.status === 'checked_in';
+
+  // Check if seeker can set or update check-in date
+  const canUpdateCheckInDate = (booking.status === 'pending_approval' || booking.status === 'confirmed' || booking.status === 'approved' || booking.status === 'pending' || booking.status === 'payment_pending') && booking.status !== 'checked_in';
+
   // If booking is confirmed, owner has accepted (confirmed status implies owner approval)
-  const isOwnerAccepted = isBookingConfirmed || 
-                         booking.ownerAccepted === true || 
-                         booking.ownerApproval === 'approved' || 
-                         booking.ownerApproval === 'accepted';
-  
+  const isOwnerAccepted = isBookingConfirmed ||
+    booking.ownerAccepted === true ||
+    booking.ownerApproval === 'approved' ||
+    booking.ownerApproval === 'accepted';
+
   // Debug logging to see actual booking data
   console.log('Booking data for debugging:', {
     status: booking.status,
@@ -810,64 +862,62 @@ const PostBookingDashboard = () => {
     isOwnerAccepted,
     allBookingFields: Object.keys(booking)
   });
-  
+
   if (!isBookingConfirmed) {
     return (
       <SeekerLayout>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center max-w-md mx-auto px-4">
             <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Booking Not Ready</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Booking Pending Approval</h2>
             <p className="text-gray-600 mb-4">
-              This dashboard is only available for confirmed bookings where the owner has accepted your request.
+              Your booking is currently waiting for the owner's approval. Please set your check-in date below to help the owner process your request.
             </p>
-            
+
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 text-left">
-              <h3 className="font-semibold text-yellow-800 mb-2">Current Status:</h3>
-              <div className="space-y-1 text-sm">
+              <h3 className="font-semibold text-yellow-800 mb-2">Booking Status:</h3>
+              <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Booking Status:</span>
-                  <span className={`font-semibold capitalize ${
-                    booking.status === 'confirmed' || booking.status === 'approved' 
-                      ? 'text-green-600' 
-                      : 'text-yellow-600'
-                  }`}>
-                    {booking.status}
-                  </span>
+                  <span className="text-gray-600">Current Status:</span>
+                  <span className="font-semibold text-yellow-600 capitalize">{booking.status}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Owner Acceptance:</span>
-                  <span className={`font-semibold ${
-                    isOwnerAccepted ? 'text-green-600' : 'text-yellow-600'
-                  }`}>
-                    {isOwnerAccepted ? 'Accepted' : 'Pending'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Payment Status:</span>
-                  <span className={`font-semibold ${
-                    booking.payment?.paymentStatus === 'completed' 
-                      ? 'text-green-600' 
-                      : 'text-yellow-600'
-                  }`}>
-                    {booking.payment?.paymentStatus || 'Pending'}
-                  </span>
-                </div>
+                {booking.checkInDate && (
+                  <div className="flex justify-between border-t border-yellow-200 pt-2">
+                    <span className="text-gray-600">Check-in Date:</span>
+                    <span className="font-semibold text-purple-600">{formatDate(booking.checkInDate)}</span>
+                  </div>
+                )}
+                {!booking.checkInDate && (
+                  <div className="flex justify-between border-t border-yellow-200 pt-2">
+                    <span className="text-gray-600">Check-in Date:</span>
+                    <span className="text-red-500 italic">Not set yet</span>
+                  </div>
+                )}
               </div>
             </div>
-            
-            <div className="space-y-3">
+
+            {booking.checkInDate && (
+              <p className="text-sm text-gray-500 mb-6 italic">
+                You've set your check-in date. The owner will review and approve your booking shortly.
+              </p>
+            )}
+
+            <div className="space-y-4">
+              {canUpdateCheckInDate && (
+                <button
+                  onClick={openCheckInModal}
+                  className="w-full bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center font-bold shadow-lg"
+                >
+                  <Calendar className="w-5 h-5 mr-2" />
+                  {booking.checkInDate ? 'Update Check-in Date' : 'Set Check-in Date'}
+                </button>
+              )}
+
               <button
                 onClick={() => navigate('/seeker-dashboard')}
                 className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Back to Dashboard
-              </button>
-              <button
-                onClick={() => navigate('/seeker-bookings')}
-                className="w-full bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                View My Bookings
               </button>
             </div>
           </div>
@@ -909,69 +959,90 @@ const PostBookingDashboard = () => {
                     <span>Ready for Check-in</span>
                   </div>
                 </div>
-                
-                {/* Check-in Card and Actions */}
-                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mt-4">
-                  {/* Check-in Card */}
-                  <div className="bg-white/70 rounded-lg p-3 flex-shrink-0">
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="w-4 h-4 text-blue-600" />
-                      <span className="text-xs sm:text-sm font-medium text-gray-600">Check-in</span>
+
+                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mt-6">
+                  {/* Your Room Preview */}
+                  <div className="flex items-center gap-4 bg-white/80 p-3 rounded-xl border border-white shadow-sm w-full lg:w-auto">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden flex-shrink-0 shadow-sm border border-gray-100">
+                      <img
+                        src={room?.roomImage || room?.room_image || room?.toilet_image || room?.toiletImage || room?.images?.room || room?.images?.toilet || (Array.isArray(property?.images) ? property.images[0] : property?.images?.front) || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=100&h=100&fit=crop'}
+                        alt="Room"
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                    <p className="text-sm sm:text-lg font-semibold text-gray-900">
-                      {booking.checkInDate ? formatDate(booking.checkInDate) : 'Not Set'}
-                    </p>
-                    {booking.checkInDate && (
-                      <p className="text-xs text-green-600 font-medium mt-1">
-                        ✓ Check-in Date Marked
-                      </p>
-                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] uppercase tracking-wider text-blue-600 font-bold truncate">{property?.propertyName || 'Property Name'}</p>
+                      <h3 className="text-lg font-bold text-gray-900 leading-tight">Room {room?.roomNumber || 'N/A'}</h3>
+                      <div className="flex items-center gap-3 mt-1 text-sm text-gray-600">
+                        <span className="flex items-center gap-1"><Bed className="w-3 h-3" /> {room?.roomType || 'Standard'}</span>
+                        <span className="flex items-center gap-1 font-bold text-green-600">₹{booking.payment?.monthlyRent || room?.rent}/mo</span>
+                      </div>
+                    </div>
                   </div>
-                  
-                  {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full lg:w-auto">
-                    {/* Check-in button for confirmed bookings */}
-                    {booking && booking.status === 'confirmed' && (
+
+                  {/* Actions & Dates */}
+                  <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+                    {/* Check-in Card */}
+                    <div className="bg-white/70 rounded-xl p-3 border border-white shadow-sm flex-1 sm:flex-initial min-w-[140px]">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <Calendar className="w-4 h-4 text-purple-600" />
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-tight">Check-in</span>
+                      </div>
+                      <p className="text-sm sm:text-lg font-bold text-gray-900">
+                        {booking.checkInDate ? formatDate(booking.checkInDate) : 'Not Set'}
+                      </p>
+                      {booking.checkInDate && (
+                        <p className="text-[10px] text-green-600 font-bold mt-1 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Confirmed Arrival
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full lg:w-auto">
+                      {/* Check-in button for confirmed bookings */}
+                      {canUpdateCheckInDate && (
+                        <button
+                          onClick={openCheckInModal}
+                          className="bg-purple-600 text-white px-4 py-2.5 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center text-sm font-medium min-h-[40px]"
+                        >
+                          <Calendar className="w-4 h-4 mr-1" />
+                          {booking.checkInDate ? 'Update Check-in' : 'Set Check-in'}
+                        </button>
+                      )}
+
+                      {canCancelBooking() && booking.status !== 'checked_in' && (
+                        <button
+                          onClick={cancelBooking}
+                          disabled={isCancelling}
+                          className="bg-red-600 text-white px-4 py-2.5 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center text-sm font-medium min-h-[40px] disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isCancelling ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
+                              <span>Cancelling...</span>
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="w-4 h-4 mr-1" />
+                              <span>Cancel Booking</span>
+                            </>
+                          )}
+                        </button>
+                      )}
                       <button
-                        onClick={openCheckInModal}
-                        className="bg-purple-600 text-white px-4 py-2.5 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center text-sm font-medium min-h-[40px]"
+                        onClick={shareBooking}
+                        className="bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center text-sm font-medium min-h-[40px]"
                       >
-                        <LogIn className="w-4 h-4 mr-1" />
-                        Mark Check-in
+                        <Share2 className="w-4 h-4 mr-1" />
+                        Share
                       </button>
-                    )}
-                    
-                    {canCancelBooking() && (
-                      <button
-                        onClick={cancelBooking}
-                        disabled={isCancelling}
-                        className="bg-red-600 text-white px-4 py-2.5 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center text-sm font-medium min-h-[40px] disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isCancelling ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
-                            <span>Cancelling...</span>
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="w-4 h-4 mr-1" />
-                            <span>Cancel Booking</span>
-                          </>
-                        )}
-                      </button>
-                    )}
-                    <button
-                      onClick={shareBooking}
-                      className="bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center text-sm font-medium min-h-[40px]"
-                    >
-                      <Share2 className="w-4 h-4 mr-1" />
-                      Share
-                    </button>
+                    </div>
                   </div>
                 </div>
               </div>
-              
-                <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-end space-y-3 sm:space-y-0 sm:space-x-3 lg:space-x-0 lg:space-y-3">
+
+              <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-end space-y-3 sm:space-y-0 sm:space-x-3 lg:space-x-0 lg:space-y-3">
                 <span className={`inline-flex items-center px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium ${getStatusColor(booking.status)}`}>
                   {getStatusIcon(booking.status)}
                   <span className="ml-2 capitalize">{booking.status}</span>
@@ -1011,11 +1082,10 @@ const PostBookingDashboard = () => {
                     <div>
                       <label className="text-sm font-medium text-gray-500">Payment Status</label>
                       <p className="text-lg font-semibold text-gray-900">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          booking.payment?.paymentStatus === 'completed' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${booking.payment?.paymentStatus === 'completed'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                          }`}>
                           {booking.payment?.paymentStatus === 'completed' ? (
                             <CheckCircle className="w-3 h-3 mr-1" />
                           ) : (
@@ -1035,29 +1105,7 @@ const PostBookingDashboard = () => {
                       </p>
                     </div>
                   </div>
-                  
-                  {/* Booking Progress */}
-                  <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t">
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Booking Progress</h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs sm:text-sm font-medium text-gray-600">Overall Progress</span>
-                        <span className="text-xs sm:text-sm font-medium text-gray-900">{Math.round(getBookingProgress())}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${getBookingProgress()}%` }}
-                        ></div>
-                      </div>
-                      <div className="flex justify-between text-xs text-gray-500">
-                        <span>Payment</span>
-                        <span>Confirmation</span>
-                        <span>Check-in</span>
-                        <span>Stay</span>
-                      </div>
-                    </div>
-                  </div>
+
 
                   {/* Booking Confirmation Summary */}
                   <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t">
@@ -1119,136 +1167,46 @@ const PostBookingDashboard = () => {
                     </div>
                   </div>
                   <div className="p-4 sm:p-6">
-                    {/* Property Images */}
-                    {property.images && property.images.length > 0 && (
-                      <div className="mb-4 sm:mb-6">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Property Images</h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
-                          {property.images.slice(0, 4).map((image, index) => (
-                            <div key={index} className="aspect-square rounded-lg overflow-hidden">
-                              <img 
-                                src={image} 
-                                alt={`Property ${index + 1}`}
-                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
-                              />
-                            </div>
-                          ))}
+                    <div className="flex flex-col md:flex-row gap-6">
+                      {/* Single Main Room Image */}
+                      {(room?.roomImage || room?.images?.[0]) && (
+                        <div className="w-full md:w-1/3 aspect-video md:aspect-square rounded-xl overflow-hidden shadow-sm">
+                          <img
+                            src={room.roomImage || room.room_image || room.toilet_image || room.toiletImage || room.images?.room || room.images?.toilet || (Array.isArray(property?.images) ? property.images[0] : property?.images?.front)}
+                            alt="Your Room"
+                            className="w-full h-full object-cover"
+                          />
                         </div>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Property Name</label>
-                        <p className="text-lg font-semibold text-gray-900">{property.propertyName}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Property Type</label>
-                        <p className="text-lg font-semibold text-gray-900">{property.propertyType || 'PG'}</p>
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="text-sm font-medium text-gray-500">Address</label>
-                        <div className="flex items-center space-x-2">
-                          <p className="text-lg font-semibold text-gray-900">{property.address}</p>
-                          <button
-                            onClick={getDirections}
-                            className="text-blue-600 hover:text-blue-700"
-                          >
-                            <MapIcon className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                      {room && (
-                        <>
-                          <div>
-                            <label className="text-sm font-medium text-gray-500">Room Number</label>
-                            <p className="text-lg font-semibold text-gray-900">Room {room.roomNumber}</p>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-gray-500">Room Type</label>
-                            <p className="text-lg font-semibold text-gray-900">{room.roomType}</p>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-gray-500">Room Size</label>
-                            <p className="text-lg font-semibold text-gray-900">{room.roomSize} sq ft</p>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-gray-500">Monthly Rent</label>
-                            <p className="text-lg font-semibold text-gray-900">{formatCurrency(room.rent)}</p>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-gray-500">Max Occupancy</label>
-                            <p className="text-lg font-semibold text-gray-900">{room.maxOccupancy || property.maxOccupancy} people</p>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-gray-500">Available From</label>
-                            <p className="text-lg font-semibold text-gray-900">{formatDate(room.availableFrom)}</p>
-                          </div>
-                        </>
                       )}
-                    </div>
 
-                    {/* Property Description */}
-                    {property.description && (
-                      <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">Description</h3>
-                        <p className="text-sm sm:text-base text-gray-600 leading-relaxed">{property.description}</p>
-                      </div>
-                    )}
-
-                    {/* Detailed Room Information */}
-                    {room && (
-                      <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Your Room Details</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="bg-blue-50 rounded-lg p-3">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <Bed className="w-4 h-4 text-blue-600" />
-                              <span className="text-sm font-medium text-blue-800">Room Information</span>
-                            </div>
-                            <div className="space-y-1 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Room Number:</span>
-                                <span className="font-semibold">Room {room.roomNumber}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Room Type:</span>
-                                <span className="font-semibold">{room.roomType}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Size:</span>
-                                <span className="font-semibold">{room.roomSize} sq ft</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Max Occupancy:</span>
-                                <span className="font-semibold">{room.maxOccupancy || property.maxOccupancy} people</span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="bg-green-50 rounded-lg p-3">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <DollarSign className="w-4 h-4 text-green-600" />
-                              <span className="text-sm font-medium text-green-800">Pricing & Terms</span>
-                            </div>
-                            <div className="space-y-1 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Monthly Rent:</span>
-                                <span className="font-semibold">{formatCurrency(room.rent)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Security Deposit:</span>
-                                <span className="font-semibold">{formatCurrency(booking.securityDeposit)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Available From:</span>
-                                <span className="font-semibold">{formatDate(room.availableFrom)}</span>
-                              </div>
-                            </div>
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Property</label>
+                          <p className="text-base font-semibold text-gray-900">{property.propertyName}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Room</label>
+                          <p className="text-base font-semibold text-gray-900">Room {room.roomNumber} ({room.roomType})</p>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Address</label>
+                          <div className="flex items-center space-x-2">
+                            <p className="text-base font-semibold text-gray-900 leading-tight">{formatAddress(property.address)}</p>
+                            <button onClick={getDirections} className="text-blue-600 hover:text-blue-700">
+                              <MapIcon className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Monthly Rent</label>
+                          <p className="text-base font-semibold text-green-600">{formatCurrency(room.rent)}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Security Deposit</label>
+                          <p className="text-base font-semibold text-gray-900">{formatCurrency(booking.payment?.securityDeposit || property?.security_deposit)}</p>
+                        </div>
                       </div>
-                    )}
+                    </div>
 
                     {/* Property Amenities */}
                     {property.amenities && expandedSections.amenities && (
@@ -1346,7 +1304,7 @@ const PostBookingDashboard = () => {
                         <div>
                           <h3 className="font-semibold text-gray-900">Cancellation Policy</h3>
                           <p className="text-gray-600">
-                            {booking.status === 'pending' 
+                            {booking.status === 'pending'
                               ? 'You can cancel your pending booking at any time before owner approval.'
                               : 'You can cancel your booking up to 24 hours before check-in. Cancellation after this period may incur charges.'}
                           </p>
@@ -1389,7 +1347,7 @@ const PostBookingDashboard = () => {
                       {expandedSections.contact ? <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" /> : <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />}
                     </button>
                   </div>
-                  
+
                   {expandedSections.contact && (
                     <div className="space-y-3 sm:space-y-4">
                       <div className="text-center">
@@ -1399,7 +1357,7 @@ const PostBookingDashboard = () => {
                         <p className="text-sm sm:text-base font-semibold text-gray-900">{owner.name || 'Owner Name'}</p>
                         <p className="text-xs sm:text-sm text-gray-600">{owner.email}</p>
                       </div>
-                      
+
                       {owner.phone && (
                         <div className="flex items-center justify-between p-2 sm:p-3 bg-gray-50 rounded-lg">
                           <div className="flex items-center space-x-2">
@@ -1414,16 +1372,16 @@ const PostBookingDashboard = () => {
                           </button>
                         </div>
                       )}
-                      
+
                       <div className="grid grid-cols-2 gap-2">
-                        <button 
+                        <button
                           onClick={contactOwner}
                           className="bg-blue-600 text-white py-2 px-2 sm:px-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center text-xs sm:text-sm"
                         >
                           <Phone className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                           Call
                         </button>
-                        <button 
+                        <button
                           onClick={() => window.open(`mailto:${owner.email}`, '_self')}
                           className="bg-green-600 text-white py-2 px-2 sm:px-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center text-xs sm:text-sm"
                         >
@@ -1445,7 +1403,7 @@ const PostBookingDashboard = () => {
               >
                 <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Quick Actions</h3>
                 <div className="space-y-2 sm:space-y-3">
-                  <button 
+                  <button
                     onClick={generateReceipt}
                     disabled={isGeneratingReceipt}
                     className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center disabled:opacity-50"
@@ -1457,24 +1415,24 @@ const PostBookingDashboard = () => {
                     )}
                     {isGeneratingReceipt ? 'Generating...' : 'Download Receipt'}
                   </button>
-                  <button 
+                  <button
                     onClick={getDirections}
                     className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
                   >
                     <Navigation className="w-4 h-4 mr-2" />
                     Get Directions
                   </button>
-                  
-                  <button 
+
+                  <button
                     onClick={shareBooking}
                     className="w-full bg-orange-600 text-white py-2 px-4 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center"
                   >
                     <Share2 className="w-4 h-4 mr-2" />
                     Share Booking
                   </button>
-                  
+
                   {canCancelBooking() && (
-                    <button 
+                    <button
                       onClick={cancelBooking}
                       disabled={isCancelling}
                       className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1493,8 +1451,8 @@ const PostBookingDashboard = () => {
                     </button>
                   )}
                 </div>
-                
-                
+
+
               </motion.div>
 
               {/* Payment Summary */}
@@ -1516,69 +1474,68 @@ const PostBookingDashboard = () => {
                     {expandedSections.payment ? <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" /> : <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />}
                   </button>
                 </div>
-                
+
                 {expandedSections.payment && (() => {
-                  const monthlyRent = room?.rent || booking.rent || 0;
-                  const securityDeposit = property?.security_deposit || booking.securityDeposit || booking.propertySnapshot?.security_deposit || monthlyRent;
+                  const monthlyRent = booking.payment?.monthlyRent || room?.rent || booking.roomSnapshot?.rent || 0;
+                  const securityDeposit = booking.payment?.securityDeposit || property?.security_deposit || booking.propertySnapshot?.security_deposit || monthlyRent;
                   const totalAmount = monthlyRent + securityDeposit;
-                  const advancePaid = totalAmount * 0.1;
-                  const remaining = totalAmount * 0.9;
-                  
+                  const advancePaid = booking.payment?.totalAmount || (totalAmount * 0.1); // Use actual advance paid if recorded
+                  const remaining = totalAmount - advancePaid;
+
                   return (
-                  <div className="space-y-2 sm:space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-xs sm:text-sm text-gray-600">Monthly Rent</span>
-                      <span className="text-xs sm:text-sm font-semibold">{formatCurrency(monthlyRent)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs sm:text-sm text-gray-600">Security Deposit</span>
-                      <span className="text-xs sm:text-sm font-semibold">{formatCurrency(securityDeposit)}</span>
-                    </div>
-                    <hr />
-                    <div className="flex justify-between font-bold text-sm sm:text-base">
-                      <span>Total Amount</span>
-                      <span className="text-blue-600">{formatCurrency(totalAmount)}</span>
-                    </div>
-                    <hr />
-                    <div className="flex justify-between text-sm sm:text-base">
-                      <span className="text-green-700 font-semibold">Advance Paid (10%)</span>
-                      <span className="font-bold text-green-600">{formatCurrency(advancePaid)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm sm:text-base">
-                      <span className="text-orange-700 font-semibold">Remaining (90%)</span>
-                      <span className="font-bold text-orange-600">{formatCurrency(remaining)}</span>
-                    </div>
-                    
-                    {/* Payment Status */}
-                    <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs sm:text-sm font-medium text-gray-600">Payment Status</span>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          booking.payment?.paymentStatus === 'completed' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {booking.payment?.paymentStatus === 'completed' ? (
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                          ) : (
-                            <Clock className="w-3 h-3 mr-1" />
-                          )}
-                          {booking.payment?.paymentStatus || 'Pending'}
-                        </span>
+                    <div className="space-y-2 sm:space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-xs sm:text-sm text-gray-600">Monthly Rent</span>
+                        <span className="text-xs sm:text-sm font-semibold">{formatCurrency(monthlyRent)}</span>
                       </div>
-                      {booking.payment?.transactionId && (
-                        <div className="mt-2 flex items-center justify-between">
-                          <span className="text-xs text-gray-500">Transaction ID</span>
-                          <button
-                            onClick={() => copyToClipboard(booking.payment.transactionId, 'Transaction ID')}
-                            className="text-xs text-blue-600 hover:text-blue-700 font-mono break-all"
-                          >
-                            {booking.payment.transactionId.slice(0, 8)}...
-                          </button>
+                      <div className="flex justify-between">
+                        <span className="text-xs sm:text-sm text-gray-600">Security Deposit</span>
+                        <span className="text-xs sm:text-sm font-semibold">{formatCurrency(securityDeposit)}</span>
+                      </div>
+                      <hr />
+                      <div className="flex justify-between font-bold text-sm sm:text-base">
+                        <span>Total Amount</span>
+                        <span className="text-blue-600">{formatCurrency(totalAmount)}</span>
+                      </div>
+                      <hr />
+                      <div className="flex justify-between text-sm sm:text-base">
+                        <span className="text-green-700 font-semibold">Advance Paid (10%)</span>
+                        <span className="font-bold text-green-600">{formatCurrency(advancePaid)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm sm:text-base">
+                        <span className="text-orange-700 font-semibold">Remaining (90%)</span>
+                        <span className="font-bold text-orange-600">{formatCurrency(remaining)}</span>
+                      </div>
+
+                      {/* Payment Status */}
+                      <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs sm:text-sm font-medium text-gray-600">Payment Status</span>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${booking.payment?.paymentStatus === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                            {booking.payment?.paymentStatus === 'completed' ? (
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                            ) : (
+                              <Clock className="w-3 h-3 mr-1" />
+                            )}
+                            {booking.payment?.paymentStatus || 'Pending'}
+                          </span>
                         </div>
-                      )}
+                        {booking.payment?.transactionId && (
+                          <div className="mt-2 flex items-center justify-between">
+                            <span className="text-xs text-gray-500">Transaction ID</span>
+                            <button
+                              onClick={() => copyToClipboard(booking.payment.transactionId, 'Transaction ID')}
+                              className="text-xs text-blue-600 hover:text-blue-700 font-mono break-all"
+                            >
+                              {booking.payment.transactionId.slice(0, 8)}...
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
                   );
                 })()}
               </motion.div>
@@ -1602,7 +1559,7 @@ const PostBookingDashboard = () => {
                     {expandedSections.documents ? <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" /> : <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />}
                   </button>
                 </div>
-                
+
                 {expandedSections.documents && (
                   <div className="space-y-2 sm:space-y-3">
                     <button className="w-full bg-blue-600 text-white py-2 px-3 sm:px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center text-xs sm:text-sm">
@@ -1657,21 +1614,48 @@ const PostBookingDashboard = () => {
               <div className="mb-6">
                 {/* Booking Details */}
                 {booking && (
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                    <h4 className="font-medium text-gray-900 mb-2">Booking Details</h4>
-                    <div className="space-y-1 text-sm text-gray-600">
-                      <div className="flex justify-between">
-                        <span>Property:</span>
-                        <span className="font-medium">{property?.propertyName || 'N/A'}</span>
+                  <div className="bg-gray-50 rounded-xl p-5 mb-6 border border-gray-100 shadow-sm">
+                    <div className="flex gap-4 mb-4">
+                      <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 shadow-sm">
+                        <img
+                          src={room?.roomImage || room?.room_image || property?.images?.[0] || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=200&h=200&fit=crop'}
+                          className="w-full h-full object-cover"
+                          alt="Room Preview"
+                        />
                       </div>
-                      <div className="flex justify-between">
-                        <span>Room:</span>
-                        <span className="font-medium">Room {room?.roomNumber || 'N/A'}</span>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-gray-900">{property?.propertyName || 'N/A'}</h4>
+                        <p className="text-sm text-gray-600 flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3" />
+                          {formatAddress(property?.address)}
+                        </p>
+                        <div className="flex items-center gap-3 mt-2">
+                          <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                            Room {room?.roomNumber || 'N/A'}
+                          </span>
+                          <span className="bg-purple-50 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                            {room?.roomType || 'Standard'}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Current Check-in:</span>
-                        <span className="font-medium">{formatDate(booking.checkInDate)}</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Monthly Rent</p>
+                        <p className="text-sm font-bold text-green-600">{formatCurrency(booking.payment?.monthlyRent || room?.rent)}</p>
                       </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Security Deposit</p>
+                        <p className="text-sm font-bold text-gray-900">{formatCurrency(booking.payment?.securityDeposit)}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center text-sm">
+                      <span className="text-gray-500">Current Check-in:</span>
+                      <span className={`font-bold ${booking.checkInDate ? 'text-purple-600' : 'text-orange-500 italic'}`}>
+                        {booking.checkInDate ? formatDate(booking.checkInDate) : 'Not specified'}
+                      </span>
                     </div>
                   </div>
                 )}

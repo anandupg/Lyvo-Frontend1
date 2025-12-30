@@ -6,13 +6,13 @@ import Chatbot from '../../components/Chatbot';
 import LeafletMap from '../../components/maps/LeafletMap';
 import UniversalSearchInput from '../../components/search/UniversalSearchInput';
 import locationService from '../../services/locationService';
-import { 
+import {
   Search,
-  Heart, 
-  Calendar, 
-  MapPin, 
-  Star, 
-  Users, 
+  Heart,
+  Calendar,
+  MapPin,
+  Star,
+  Users,
   Building,
   Clock,
   CheckCircle,
@@ -27,7 +27,7 @@ const SeekerDashboard = () => {
   const [upcomingBookings, setUpcomingBookings] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
   const [isFirstLogin, setIsFirstLogin] = useState(false);
-  
+
   // Location Search States
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState(null);
@@ -49,10 +49,10 @@ const SeekerDashboard = () => {
   const handleLocationSelect = (locationData) => {
     setSelectedLocation(locationData);
     setSearchQuery(locationData.name);
-    
+
     // Add to recent searches
     addToRecentSearches(locationData);
-    
+
     // Search for nearby PGs
     searchNearbyPGs(locationData.lat, locationData.lng, radius);
   };
@@ -71,7 +71,7 @@ const SeekerDashboard = () => {
     };
 
     // Remove if already exists (to avoid duplicates)
-    const filteredSearches = recentSearches.filter(search => 
+    const filteredSearches = recentSearches.filter(search =>
       search.lat !== locationData.lat || search.lng !== locationData.lng
     );
 
@@ -84,26 +84,34 @@ const SeekerDashboard = () => {
   const getCurrentLocation = async () => {
     setIsSearching(true);
     setLocationError(null);
-    
+
     try {
       const locationData = await locationService.getCurrentLocation('leaflet');
-      
+
       setCurrentLocation({
         lat: locationData.lat,
         lng: locationData.lng,
         accuracy: locationData.accuracy,
         timestamp: locationData.timestamp
       });
-      
+
       // Use the location handler
       handleLocationSelect(locationData);
-      
+
     } catch (error) {
       console.error('Error getting current location:', error);
       setLocationError(error.message);
     } finally {
       setIsSearching(false);
     }
+  };
+
+  // Helper to format address
+  const formatAddress = (addr) => {
+    if (!addr) return 'Address not available';
+    if (typeof addr === 'string') return addr;
+    const { street, city, state, pincode, landmark } = addr;
+    return [street, landmark, city, state, pincode].filter(Boolean).join(', ');
   };
 
   // Calculate distance between two coordinates using Haversine formula
@@ -114,7 +122,7 @@ const SeekerDashboard = () => {
   const searchNearbyPGs = async (lat, lng, radiusKm = radius) => {
     try {
       // Fetch real properties from the database
-      const response = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002'}/api/public/properties`, {
+      const response = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:5000/api/property'}/public/properties`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -133,7 +141,7 @@ const SeekerDashboard = () => {
       }
 
       const data = await response.json();
-      const properties = data.properties || [];
+      const properties = data.data || [];
 
       // Transform properties to match the expected format and filter by radius
       const nearbyProperties = properties
@@ -142,8 +150,8 @@ const SeekerDashboard = () => {
           const dKm = getDistanceKm(lat, lng, property.latitude, property.longitude);
           return {
             id: property._id,
-            name: property.propertyName || 'Unnamed Property',
-            address: property.address || 'Address not available',
+            name: property.property_name || property.propertyName || 'Unnamed Property',
+            address: formatAddress(property.address),
             lat: property.latitude,
             lng: property.longitude,
             price: property.rent ? `₹${property.rent.toLocaleString()}` : 'Price not available',
@@ -153,7 +161,7 @@ const SeekerDashboard = () => {
             amenities: property.amenities ? Object.entries(property.amenities).filter(([key, value]) => value === true).map(([key]) => key) : [],
             propertyType: property.propertyType || 'PG',
             totalRooms: property.totalRooms || property.maxOccupancy || 'N/A',
-            images: property.images || [],
+            images: property.images ? [property.images.front, property.images.hall, ...(property.images.gallery || [])].filter(Boolean) : [],
             ownerName: property.ownerName || 'Unknown Owner',
           };
         })
@@ -161,7 +169,7 @@ const SeekerDashboard = () => {
         .sort((a, b) => a._distanceKm - b._distanceKm); // Sort by distance
 
       setNearbyPGs(nearbyProperties);
-      
+
       // Update recent searches with PG count
       updateRecentSearchPGCount(lat, lng, nearbyProperties.length);
     } catch (error) {
@@ -172,8 +180,8 @@ const SeekerDashboard = () => {
 
   // Update recent search with PG count
   const updateRecentSearchPGCount = (lat, lng, pgCount) => {
-    setRecentSearches(prevSearches => 
-      prevSearches.map(search => 
+    setRecentSearches(prevSearches =>
+      prevSearches.map(search =>
         Math.abs(search.lat - lat) < 0.001 && Math.abs(search.lng - lng) < 0.001
           ? { ...search, pgCount }
           : search
@@ -186,17 +194,17 @@ const SeekerDashboard = () => {
     const R = 6371; // Earth's radius in kilometers
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLng/2) * Math.sin(dLng/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
 
   // Load all properties on map initialization
   const loadAllPropertiesOnMap = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002'}/api/public/properties`, {
+      const response = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:5000/api/property'}/public/properties`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -215,7 +223,7 @@ const SeekerDashboard = () => {
       }
 
       const data = await response.json();
-      const properties = data.properties || [];
+      const properties = data.data || [];
 
       // Transform properties to match the expected format
       const allProperties = properties
@@ -223,8 +231,8 @@ const SeekerDashboard = () => {
         .map((property) => {
           return {
             id: property._id,
-            name: property.propertyName || 'Unnamed Property',
-            address: property.address || 'Address not available',
+            name: property.property_name || property.propertyName || 'Unnamed Property',
+            address: formatAddress(property.address),
             lat: property.latitude,
             lng: property.longitude,
             price: property.rent ? `₹${property.rent.toLocaleString()}` : 'Price not available',
@@ -265,47 +273,46 @@ const SeekerDashboard = () => {
   };
 
 
-  // Check if user has confirmed booking and redirect to PostBookingDashboard
-  const checkAndRedirectToBookingDashboard = async () => {
+  // Check if user has confirmed booking or active tenancy and redirect
+  const checkAndRedirectToDashboard = async () => {
     try {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       const userId = userData.id || userData._id || userData.userId;
-      
+
       if (!userId) return;
 
-      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-      const response = await fetch(`${baseUrl}/api/bookings/user?userId=${userId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const token = localStorage.getItem('authToken');
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
 
-      if (response.ok) {
-        const data = await response.json();
-        const bookings = data.bookings || [];
-        
-        // Find the most recent confirmed booking
-        const confirmedBookings = bookings.filter(booking => 
-          booking.status === 'confirmed' && 
-          booking.payment?.paymentStatus === 'completed'
-        );
-        
-        if (confirmedBookings.length > 0) {
-          // Get the most recent confirmed booking
-          const latestBooking = confirmedBookings.sort((a, b) => 
-            new Date(b.createdAt) - new Date(a.createdAt)
-          )[0];
-          
-          console.log('User has confirmed booking, redirecting to BasicRoomDashboard:', latestBooking._id);
-          navigate(`/my-room`);
-          return true; // Indicates redirect happened
+      // 1. Check for Active Tenancy (Higher Priority)
+      const tenantBaseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:5000/api/property';
+      try {
+        const tenantResponse = await fetch(`${tenantBaseUrl}/user/tenant-status`, {
+          method: 'GET',
+          headers
+        });
+
+        if (tenantResponse.ok) {
+          const tenantData = await tenantResponse.json();
+          if (tenantData.success && tenantData.isTenant) {
+            console.log('User has active tenancy, redirecting to TenantDashboard');
+            navigate('/tenant-dashboard');
+            return true;
+          }
         }
+      } catch (err) {
+        console.error('Error checking tenant status:', err);
       }
+
+      // 2. Check for Confirmed Booking (Optional: could redirect to a "Booking Confirmed" view, but user wants to stay on Seeker Dashboard)
+      // Removed redirect to /my-room here to keep user on seeker dashboard until checked-in.
     } catch (error) {
-      console.error('Error checking booking status for redirect:', error);
+      console.error('Error checking dashboard redirect status:', error);
     }
-    return false; // No redirect happened
+    return false;
   };
 
   useEffect(() => {
@@ -317,7 +324,7 @@ const SeekerDashboard = () => {
       const userId = userData._id || userData.id;
       const lastLoginKey = `lastLogin_${userId}`;
       const lastLogin = localStorage.getItem(lastLoginKey);
-      
+
       if (!lastLogin) {
         // First time logging in
         setIsFirstLogin(true);
@@ -333,8 +340,8 @@ const SeekerDashboard = () => {
 
     checkFirstLogin();
 
-    // Check if user has confirmed booking and redirect
-    checkAndRedirectToBookingDashboard().then((redirected) => {
+    // Check if user has confirmed booking or active tenancy and redirect
+    checkAndRedirectToDashboard().then((redirected) => {
       if (!redirected) {
         // Only fetch data if no redirect happened
         // Clear mock sections until real endpoints exist
@@ -353,7 +360,7 @@ const SeekerDashboard = () => {
       if (event.detail.status === 'confirmed' || event.detail.status === 'approved') {
         // Redirect to PostBookingDashboard when booking is confirmed
         setTimeout(() => {
-          checkAndRedirectToBookingDashboard();
+          checkAndRedirectToDashboard();
         }, 1000); // Small delay to ensure booking is saved
       }
     };
@@ -372,7 +379,7 @@ const SeekerDashboard = () => {
   // Fetch property recommendations from the database
   const fetchPropertyRecommendations = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002'}/api/public/properties`, {
+      const response = await fetch(`${import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:5000/api/property'}/public/properties`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -391,8 +398,8 @@ const SeekerDashboard = () => {
       }
 
       const data = await response.json();
-      const properties = data.properties || [];
-      
+      const properties = data.data || [];
+
       console.log('=== RAW PROPERTIES DATA ===');
       console.log('Total properties from API:', properties.length);
       properties.forEach((property, index) => {
@@ -416,12 +423,12 @@ const SeekerDashboard = () => {
         .slice(0, 4)
         .map((property, index) => ({
           id: property._id,
-          name: property.propertyName || 'Unnamed Property',
-          location: property.address || 'Address not available',
+          name: property.property_name || property.propertyName || 'Unnamed Property',
+          location: formatAddress(property.address),
           price: property.rent ? `₹${property.rent.toLocaleString()}` : 'Price not available',
           rating: 4.5, // Default rating
-          image: property.images && property.images.length > 0 
-            ? property.images[0] 
+          image: (property.images?.front || property.images?.hall || (property.images?.gallery && property.images.gallery[0]))
+            ? (property.images?.front || property.images?.hall || property.images?.gallery?.[0])
             : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop',
           distance: `${(index + 1) * 2}.${index + 1} km`, // Mock distance for now
           matchScore: 95 - (index * 5), // Decreasing match score
@@ -450,7 +457,7 @@ const SeekerDashboard = () => {
       console.log('=== END RECOMMENDATIONS ===');
     } catch (error) {
       console.error('Error fetching property recommendations:', error);
-      
+
       setRecommendations([]);
     }
   };
@@ -461,25 +468,27 @@ const SeekerDashboard = () => {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const userId = user.userId || user._id;
       console.log('Fetching favorites for userId:', userId);
-      
+
       if (!userId) {
         console.log('No userId found in localStorage');
         return;
       }
 
-        const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-      const url = `${baseUrl}/api/favorites/user?userId=${userId}`;
+      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:5000/api/property';
+      const url = `${baseUrl}/favorites`;
       console.log('Favorites API URL:', url);
+      const token = localStorage.getItem('authToken');
 
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
       });
 
       console.log('Favorites API response status:', response.status);
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('Favorites data received:', data);
@@ -501,25 +510,27 @@ const SeekerDashboard = () => {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const userId = user.userId || user._id;
       console.log('Fetching bookings for userId:', userId);
-      
+
       if (!userId) {
         console.log('No userId found in localStorage');
         return;
       }
 
-        const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:3002';
-      const url = `${baseUrl}/api/bookings/user?userId=${userId}`;
+      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:5000/api/property';
+      const url = `${baseUrl}/user/bookings`;
       console.log('Bookings API URL:', url);
+      const token = localStorage.getItem('authToken');
 
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
       });
 
       console.log('Bookings API response status:', response.status);
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('Bookings data received:', data);
@@ -575,14 +586,14 @@ const SeekerDashboard = () => {
             {isFirstLogin ? 'Welcome' : 'Welcome back'}, {user.name || 'User'}! 👋
           </h1>
           <p className="text-gray-600">
-            {isFirstLogin 
-              ? "Welcome to Lyvo+! Let's help you find your perfect co-living space." 
+            {isFirstLogin
+              ? "Welcome to Lyvo+! Let's help you find your perfect co-living space."
               : "Ready to find your perfect PG? Here's what's happening with your account."
             }
           </p>
         </motion.div>
 
-      
+
         {/* Location Search Area */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -595,7 +606,7 @@ const SeekerDashboard = () => {
               <MapPin className="w-5 h-5 mr-2 text-red-600" />
               Find PGs Near You
             </h2>
-            
+
             {/* Map Info */}
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-600">Interactive Map:</span>
@@ -698,7 +709,7 @@ const SeekerDashboard = () => {
               height="320px"
               showRadius={!!selectedLocation}
             />
-            
+
             {/* Map Info */}
             <div className="mt-2 text-xs text-gray-500">
               <span className="text-green-600">✓ Leaflet Map Loaded</span>
@@ -840,11 +851,10 @@ const SeekerDashboard = () => {
                           {pg.matchScore}% Match
                         </div>
                         {pg.rooms && pg.rooms.length > 0 && (
-                          <div className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            pg.rooms.filter(room => room.room_status === 'available' && room.isAvailable).length > 0
-                              ? 'bg-green-600 text-white'
-                              : 'bg-orange-600 text-white'
-                          }`}>
+                          <div className={`text-xs px-2 py-1 rounded-full font-medium ${pg.rooms.filter(room => room.room_status === 'available' && room.isAvailable).length > 0
+                            ? 'bg-green-600 text-white'
+                            : 'bg-orange-600 text-white'
+                            }`}>
                             {pg.rooms.filter(room => room.room_status === 'available' && room.isAvailable).length > 0
                               ? 'Rooms Available'
                               : 'Fully Booked'
@@ -991,7 +1001,7 @@ const SeekerDashboard = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Chatbot */}
       <Chatbot />
     </SeekerLayout>
