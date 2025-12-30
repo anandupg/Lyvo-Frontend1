@@ -8,5 +8,8 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0', // Allow external connections
     open: true
+  },
+  build: {
+    outDir: 'dist'
   }
 }) 
