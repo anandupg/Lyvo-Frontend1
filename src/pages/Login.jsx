@@ -55,7 +55,7 @@ const Login = () => {
                 size: 'large',
                 text: 'signin_with',
                 shape: 'rectangular',
-                width: '100%',
+                width: '380',
               }
             );
           } catch (error) {
@@ -320,8 +320,8 @@ const Login = () => {
           </AnimatePresence>
 
           {/* Google Sign-In Button */}
-          <div className="mb-6">
-            <div id="google-signin-button" className="w-full"></div>
+          <div className="mb-6 flex justify-center">
+            <div id="google-signin-button"></div>
             {googleLoading && (
               <div className="mt-3 text-center">
                 <div className="inline-flex items-center text-sm text-gray-600">
