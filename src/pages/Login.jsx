@@ -158,7 +158,24 @@ const Login = () => {
 
       // Then check if seeker needs profile completion
       const needsCompletion = u && u.role === 1 && (!u.phone || !u.location || u.age === undefined || u.age === null || u.age === '' || !u.occupation || !u.gender);
+
+      // DEBUG: Log breakdown of completion check
+      if (u && u.role === 1) {
+        console.log('Login (Google): Profile Completion Check:', {
+          needsCompletion,
+          currentUser: u,
+          checks: {
+            phone: !u.phone,
+            location: !u.location,
+            age: u.age === undefined || u.age === null || u.age === '',
+            occupation: !u.occupation,
+            gender: !u.gender
+          }
+        });
+      }
+
       if (needsCompletion) {
+        console.log('Login (Google): Redirecting to /seeker-profile due to incomplete profile');
         navigate('/seeker-profile');
         return;
       }
@@ -256,7 +273,24 @@ const Login = () => {
 
       // Then check if seeker needs profile completion
       const needsCompletion = u && u.role === 1 && (!u.phone || !u.location || u.age === undefined || u.age === null || u.age === '' || !u.occupation || !u.gender);
+
+      // DEBUG: Log breakdown of completion check
+      if (u && u.role === 1) {
+        console.log('Login (Email): Profile Completion Check:', {
+          needsCompletion,
+          currentUser: u,
+          checks: {
+            phone: !u.phone,
+            location: !u.location,
+            age: u.age === undefined || u.age === null || u.age === '',
+            occupation: !u.occupation,
+            gender: !u.gender
+          }
+        });
+      }
+
       if (needsCompletion) {
+        console.log('Login (Email): Redirecting to /seeker-profile due to incomplete profile');
         navigate('/seeker-profile');
         return;
       }
