@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Edit, Save, X, User, MapPin, Phone, Mail, Calendar, Shield, AlertCircle, Camera, Lock, Eye, EyeOff } from "lucide-react";
+import { Edit, Save, X, User, MapPin, Phone, Mail, Calendar, Shield, AlertCircle, Camera, Lock, Eye, EyeOff, LayoutDashboard } from "lucide-react";
 import apiClient from "../../utils/apiClient";
 import { getRedirectUrl } from "../../utils/authUtils";
 import ProfilePictureUpload from "../../components/ProfilePictureUpload";
@@ -471,60 +471,69 @@ const SeekerProfile = () => {
               transition={{ duration: 0.6, delay: 0.1 }}
             >
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-                <div className="relative h-48 bg-gradient-to-r from-red-500/10 via-red-600/10 to-red-700/10">
+                <div className="relative min-h-[16rem] md:h-48 bg-gradient-to-r from-red-500/10 via-red-600/10 to-red-700/10 flex flex-col justify-end md:block">
                   <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent" />
-                  <div className="absolute bottom-6 left-8 flex items-end space-x-6">
-                    <div className="relative group">
-                      <ProfilePictureUpload
-                        currentImage={profileData.profilePicture}
-                        onImageUpdate={handleProfilePictureUpdate}
-                        className="w-24 h-24"
-                      />
-                      {profileData.isVerified && (
-                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
-                          <Shield className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-gray-900 pb-2">
-                      <h1 className="text-3xl font-bold mb-1">{profileData.name || 'User'}</h1>
-                      <p className="text-gray-600 flex items-center space-x-2">
-                        <Calendar className="w-4 h-4" />
-                        <span>Joined {profileData.joinDate || 'Recently'}</span>
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="absolute top-6 right-8 flex space-x-3">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => {
-                        const targetUrl = getRedirectUrl(user);
-                        if (targetUrl === '/seeker-profile' || targetUrl === '/onboarding') {
-                          // Fallback if logic still thinks profile incomplete, force dashboard
-                          navigate('/seeker-dashboard');
-                        } else {
-                          navigate(targetUrl);
-                        }
-                      }}
-                      className="bg-white/90 backdrop-blur-sm text-gray-700 px-4 py-2 rounded-xl font-medium flex items-center space-x-2 shadow-lg hover:bg-white transition-all duration-300"
-                    >
-                      <User className="w-4 h-4" />
-                      <span>Dashboard</span>
-                    </motion.button>
+                  <div className="absolute top-4 right-4 md:top-6 md:right-8 z-10">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setIsEditing(!isEditing)}
-                      className="bg-white/90 backdrop-blur-sm text-gray-700 px-4 py-2 rounded-xl font-medium flex items-center space-x-2 shadow-lg hover:bg-white transition-all duration-300"
+                      className="bg-white/90 backdrop-blur-sm text-gray-700 px-3 py-1.5 md:px-4 md:py-2 rounded-xl font-medium flex items-center space-x-2 shadow-lg hover:bg-white transition-all duration-300 text-sm md:text-base"
                     >
                       {isEditing ? <X className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
                       <span>{isEditing ? "Cancel" : "Edit"}</span>
                     </motion.button>
                   </div>
+
+                  <div className="relative p-6 pt-12 md:p-0 md:absolute md:bottom-6 md:left-8 flex flex-col md:flex-row items-center md:items-end space-y-3 md:space-y-0 md:space-x-6 w-full md:w-auto">
+                    <div className="relative group">
+                      <ProfilePictureUpload
+                        currentImage={profileData.profilePicture}
+                        onImageUpdate={handleProfilePictureUpdate}
+                        className="w-20 h-20 md:w-24 md:h-24"
+                      />
+                      {profileData.isVerified && (
+                        <div className="absolute -top-2 -right-2 w-5 h-5 md:w-6 md:h-6 bg-green-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
+                          <Shield className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-gray-900 pb-0 md:pb-2 text-center md:text-left">
+                      <h1 className="text-2xl md:text-3xl font-bold mb-1">{profileData.name || 'User'}</h1>
+                      <p className="text-gray-600 flex items-center justify-center md:justify-start space-x-2 text-sm md:text-base">
+                        <Calendar className="w-4 h-4" />
+                        <span>Joined {profileData.joinDate || 'Recently'}</span>
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
+            </motion.div>
+
+            {/* Dashboard Redirect Button - Responsive Location */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="mb-8 flex justify-end"
+            >
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  const targetUrl = getRedirectUrl(user);
+                  if (targetUrl === '/seeker-profile' || targetUrl === '/onboarding') {
+                    navigate('/seeker-dashboard');
+                  } else {
+                    navigate(targetUrl);
+                  }
+                }}
+                className="w-full sm:w-auto bg-gradient-to-r from-red-600 to-red-700 text-white px-8 py-3 rounded-xl font-bold flex items-center justify-center space-x-2 shadow-lg shadow-red-500/30 hover:shadow-red-500/40 transition-all duration-300"
+              >
+                <LayoutDashboard className="w-5 h-5" />
+                <span>Go to Dashboard</span>
+              </motion.button>
             </motion.div>
 
             <div className="grid lg:grid-cols-3 gap-8">
@@ -534,10 +543,11 @@ const SeekerProfile = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.2 }}
                 >
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold text-gray-900">Personal Information</h2>
-                      <div className="flex items-center space-x-2">
+
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 md:p-8">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                      <h2 className="text-xl md:text-2xl font-bold text-gray-900">Personal Information</h2>
+                      <div className="flex items-center space-x-2 self-start sm:self-auto">
                         <div className="flex items-center space-x-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
                           <Shield className="w-4 h-4" />
                           <span>Verified</span>
