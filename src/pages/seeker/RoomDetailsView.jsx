@@ -11,9 +11,10 @@ import 'leaflet/dist/leaflet.css';
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
+
+import apiClient from '../../utils/apiClient';
 
 const RoomDetailsView = () => {
   const { roomId } = useParams();
@@ -341,17 +342,10 @@ const RoomDetailsView = () => {
     try {
       setLoadingTenants(true);
       setLoadingTenants(true);
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await apiClient.get(`/property/public/rooms/${roomId}/tenants`);
 
-      const response = await fetch(`${baseUrl}/property/public/rooms/${roomId}/tenants`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
         setTenants(data.tenants || []);
         console.log('Tenant details:', data.tenants);
       } else {

@@ -6,9 +6,7 @@ import {
 } from 'lucide-react';
 import SeekerLayout from '../../components/seeker/SeekerLayout';
 import { useTenantStatus } from '../../hooks/useTenantStatus';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import apiClient from '../../utils/apiClient';
 
 const TenantDetails = () => {
     const { tenantData, loading: tenantLoading } = useTenantStatus();
@@ -23,9 +21,8 @@ const TenantDetails = () => {
                 setLoading(true);
                 const token = localStorage.getItem('authToken');
                 const roomId = tenantData.roomId?._id || tenantData.roomId;
-                const response = await axios.get(
-                    `${API_URL}/property/public/rooms/${roomId}/tenants`,
-                    { headers: { Authorization: `Bearer ${token}` } }
+                const response = await apiClient.get(
+                    `/property/public/rooms/${roomId}/tenants`
                 );
 
                 // De-duplicate roommates by userId

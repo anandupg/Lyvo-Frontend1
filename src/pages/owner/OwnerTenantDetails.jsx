@@ -7,7 +7,8 @@ import {
     Shield, FileText, CheckCircle, XCircle, ArrowLeft,
     CreditCard, Clock, AlertTriangle, Eye
 } from 'lucide-react';
-import axios from 'axios';
+
+import apiClient from '../../utils/apiClient';
 
 const OwnerTenantDetails = () => {
     const { tenantId } = useParams();
@@ -19,11 +20,7 @@ const OwnerTenantDetails = () => {
     useEffect(() => {
         const fetchDetails = async () => {
             try {
-                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-                const token = localStorage.getItem('authToken');
-                const response = await axios.get(`${API_URL}/property/tenants/${tenantId}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const response = await apiClient.get(`/property/tenants/${tenantId}`);
                 if (response.data.success) {
                     setTenant(response.data.tenant);
                 }

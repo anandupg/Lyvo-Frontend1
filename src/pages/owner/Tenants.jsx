@@ -7,6 +7,7 @@ import {
   User, Phone, Mail, MapPin, Calendar, DollarSign, Home,
   Bed, Building, Eye, Clock, LogOut
 } from 'lucide-react';
+import apiClient from '../../utils/apiClient';
 
 const Tenants = () => {
   const navigate = useNavigate();
@@ -24,20 +25,14 @@ const Tenants = () => {
     try {
       setLoading(true);
       setError('');
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const token = localStorage.getItem('authToken');
-      const resp = await fetch(`${baseUrl}/property/owner/tenants`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
-      });
-      if (!resp.ok) {
-        const text = await resp.text();
-        throw new Error(text || `HTTP ${resp.status}`);
+      const response = await apiClient.get('/property/owner/tenants');
+
+      if (response.status === 200) {
+        const data = response.data;
+        setTenants(Array.isArray(data.tenants) ? data.tenants : []);
+      } else {
+        throw new Error(`HTTP ${response.status}`);
       }
-      const data = await resp.json();
-      setTenants(Array.isArray(data.tenants) ? data.tenants : []);
     } catch (e) {
       setError(e.message || 'Failed to load tenants');
     } finally {
@@ -115,18 +110,11 @@ const Tenants = () => {
 
     try {
       setCheckingOut(true);
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const token = localStorage.getItem('authToken');
+      setCheckingOut(true);
 
-      const resp = await fetch(`${baseUrl}/property/tenants/${selectedTenant._id}/check-out`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
-      });
+      const response = await apiClient.post(`/property/tenants/${selectedTenant._id}/check-out`);
 
-      if (!resp.ok) {
+      if (response.status !== 200) {
         throw new Error('Failed to check out tenant');
       }
 

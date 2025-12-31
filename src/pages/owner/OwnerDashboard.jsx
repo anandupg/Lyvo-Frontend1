@@ -17,6 +17,7 @@ import {
   ArrowDownRight,
   MessageCircle
 } from 'lucide-react';
+import apiClient from '../../utils/apiClient';
 
 const OwnerDashboard = () => {
   const navigate = useNavigate();
@@ -76,72 +77,33 @@ const OwnerDashboard = () => {
       setTenantLoading(true);
       setTenantError(null);
 
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        console.warn('No auth token found for tenant fetch');
-        setTenantError('Authentication required');
-        return;
-      }
-
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      console.log('Fetching tenants from:', `${baseUrl}/property/owner/tenants`);
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-      const response = await fetch(`${baseUrl}/property/owner/tenants`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
+      const response = await apiClient.get('/property/owner/tenants');
 
       console.log('Tenant fetch response status:', response.status);
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
         console.log('Tenant fetch response data:', data);
 
         if (data.success) {
           const count = data.count || 0;
           setTenantCount(count);
           console.log(`Successfully fetched ${count} tenants`);
-
-          // Clear any previous errors
           setTenantError(null);
         } else {
           console.warn('API returned success: false', data.message);
           setTenantError(data.message || 'Failed to fetch tenant data');
         }
       } else {
-        const errorText = await response.text();
-        console.error('Tenant fetch failed:', response.status, errorText);
-
-        if (response.status === 401) {
-          setTenantError('Authentication failed. Please log in again.');
-        } else if (response.status === 404) {
-          // No tenants found - this is not an error, just empty data
-          setTenantCount(0);
-          setTenantError(null);
-          console.log('No tenants found for this owner');
-        } else if (response.status >= 500) {
-          setTenantError('Server error. Please try again later.');
-        } else {
-          setTenantError(`Failed to fetch tenants (${response.status})`);
-        }
+        setTenantError(`Failed to fetch tenants (${response.status})`);
       }
     } catch (error) {
       console.error('Network error fetching tenant count:', error);
-
-      if (error.name === 'AbortError') {
-        setTenantError('Request timed out. Please try again.');
-      } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        setTenantError('Network error. Please check your connection.');
+      if (error.response && error.response.status === 404) {
+        setTenantCount(0);
+        setTenantError(null);
       } else {
-        setTenantError('Unexpected error occurred');
+        setTenantError('Failed to fetch tenants');
       }
     } finally {
       setTenantLoading(false);
@@ -170,28 +132,13 @@ const OwnerDashboard = () => {
   // Fetch owner's properties
   const fetchProperties = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        console.warn('No auth token found for properties fetch');
-        return;
-      }
-
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${baseUrl}/property/owner/properties`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      const response = await apiClient.get('/property/owner/properties');
+      if (response.status === 200) {
+        const data = response.data;
         if (data.success && data.data) {
           setProperties(data.data);
           console.log(`Successfully fetched ${data.data.length} properties`);
         }
-      } else {
-        console.error('Failed to fetch properties:', response.status);
       }
     } catch (error) {
       console.error('Error fetching properties:', error);
@@ -201,28 +148,13 @@ const OwnerDashboard = () => {
   // Fetch owner's bookings
   const fetchBookings = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        console.warn('No auth token found for bookings fetch');
-        return;
-      }
-
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${baseUrl}/property/owner/bookings`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      const response = await apiClient.get('/property/owner/bookings');
+      if (response.status === 200) {
+        const data = response.data;
         if (data.success && data.bookings) {
           setBookings(data.bookings);
           console.log(`Successfully fetched ${data.bookings.length} bookings`);
         }
-      } else {
-        console.error('Failed to fetch bookings:', response.status);
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);

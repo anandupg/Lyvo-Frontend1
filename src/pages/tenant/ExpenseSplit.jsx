@@ -6,10 +6,7 @@ import {
 } from 'lucide-react';
 import SeekerLayout from '../../components/seeker/SeekerLayout';
 import { useTenantStatus } from '../../hooks/useTenantStatus';
-import axios from 'axios';
-import { useToast } from '../../hooks/use-toast';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import apiClient from '../../utils/apiClient';
 
 const ExpenseSplit = () => {
     const { tenantData, loading: tenantLoading, error: tenantError } = useTenantStatus();
@@ -66,9 +63,9 @@ const ExpenseSplit = () => {
             const roomId = tenantData.roomId?._id || tenantData.roomId;
 
             // Fetch Roommates
-            const roommatesRes = await axios.get(
-                `${API_URL}/property/public/rooms/${roomId}/tenants`,
-                { headers: { Authorization: `Bearer ${token}` } }
+            // Fetch Roommates
+            const roommatesRes = await apiClient.get(
+                `/property/public/rooms/${roomId}/tenants`
             );
 
             // De-duplicate roommates by userId
@@ -87,9 +84,9 @@ const ExpenseSplit = () => {
             setRoommates(uniqueTenants);
 
             // Fetch Expenses
-            const expensesRes = await axios.get(
-                `${API_URL}/property/expenses`,
-                { headers: { Authorization: `Bearer ${token}` } }
+            // Fetch Expenses
+            const expensesRes = await apiClient.get(
+                `/property/expenses`
             );
             setExpenses(expensesRes.data.expenses || []);
 
@@ -123,8 +120,8 @@ const ExpenseSplit = () => {
 
         try {
             const token = localStorage.getItem('authToken');
-            await axios.post(
-                `${API_URL}/property/expenses`,
+            await apiClient.post(
+                `/property/expenses`,
                 {
                     description: formData.description,
                     totalAmount: parseFloat(formData.totalAmount),
@@ -132,8 +129,7 @@ const ExpenseSplit = () => {
                     date: formData.date,
                     targetUpiId: formData.targetUpiId,
                     splits: splits
-                },
-                { headers: { Authorization: `Bearer ${token}` } }
+                }
             );
 
             // Save UPI ID for future use
@@ -186,10 +182,9 @@ const ExpenseSplit = () => {
     const settleExpense = async (expenseId) => {
         try {
             const token = localStorage.getItem('authToken');
-            await axios.post(
-                `${API_URL}/property/expenses/${expenseId}/settle`,
-                {},
-                { headers: { Authorization: `Bearer ${token}` } }
+            await apiClient.post(
+                `/property/expenses/${expenseId}/settle`,
+                {}
             );
             toast({
                 title: "Success",
