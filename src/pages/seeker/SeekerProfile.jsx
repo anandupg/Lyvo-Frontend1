@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Edit, Save, X, User, MapPin, Phone, Mail, Calendar, Shield, AlertCircle, Camera, Lock, Eye, EyeOff } from "lucide-react";
 import apiClient from "../../utils/apiClient";
+import { getRedirectUrl } from "../../utils/authUtils";
 import ProfilePictureUpload from "../../components/ProfilePictureUpload";
 import SeekerLayout from "../../components/seeker/SeekerLayout";
 
@@ -493,7 +494,25 @@ const SeekerProfile = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="absolute top-6 right-8">
+
+                  <div className="absolute top-6 right-8 flex space-x-3">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => {
+                        const targetUrl = getRedirectUrl(user);
+                        if (targetUrl === '/seeker-profile' || targetUrl === '/onboarding') {
+                          // Fallback if logic still thinks profile incomplete, force dashboard
+                          navigate('/seeker-dashboard');
+                        } else {
+                          navigate(targetUrl);
+                        }
+                      }}
+                      className="bg-white/90 backdrop-blur-sm text-gray-700 px-4 py-2 rounded-xl font-medium flex items-center space-x-2 shadow-lg hover:bg-white transition-all duration-300"
+                    >
+                      <User className="w-4 h-4" />
+                      <span>Dashboard</span>
+                    </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -828,9 +847,9 @@ const SeekerProfile = () => {
               </div>
             )}
           </div>
-        </motion.div>
+        </motion.div >
       )}
-    </SeekerLayout>
+    </SeekerLayout >
   );
 };
 
