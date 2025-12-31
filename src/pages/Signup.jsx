@@ -51,6 +51,29 @@ const Signup = () => {
       script.defer = true;
       document.head.appendChild(script);
 
+      const renderGoogleButton = () => {
+        if (window.google && document.getElementById('google-signin-button')) {
+          // Calculate width - max 380px, but responsive for mobile
+          const containerWidth = document.getElementById('google-btn-container')?.offsetWidth || 380;
+          const buttonWidth = Math.min(containerWidth, 380);
+
+          try {
+            window.google.accounts.id.renderButton(
+              document.getElementById('google-signin-button'),
+              {
+                theme: 'outline',
+                size: 'large',
+                text: 'signup_with',
+                shape: 'rectangular',
+                width: buttonWidth.toString(),
+              }
+            );
+          } catch (error) {
+            console.error('Error rendering Google button:', error);
+          }
+        }
+      };
+
       script.onload = () => {
         if (window.google) {
           try {
@@ -61,16 +84,10 @@ const Signup = () => {
               cancel_on_tap_outside: true,
             });
 
-            window.google.accounts.id.renderButton(
-              document.getElementById('google-signin-button'),
-              {
-                theme: 'outline',
-                size: 'large',
-                text: 'signup_with',
-                shape: 'rectangular',
-                width: '380',
-              }
-            );
+            renderGoogleButton();
+
+            // Handle resize
+            window.addEventListener('resize', renderGoogleButton);
           } catch (error) {
             console.error('Error initializing Google Sign-In:', error);
           }
@@ -79,6 +96,11 @@ const Signup = () => {
 
       script.onerror = () => {
         console.error('Failed to load Google Sign-In script');
+      };
+
+      // Cleanup resize listener
+      return () => {
+        window.removeEventListener('resize', renderGoogleButton);
       };
     };
 
@@ -617,16 +639,16 @@ const Signup = () => {
           </AnimatePresence>
 
           {/* Google Sign-In Button */}
-          <div className="mb-6 flex justify-center">
-            <div id="google-signin-button"></div>
-            {googleLoading && (
-              <div className="mt-3 text-center">
-                <div className="inline-flex items-center text-sm text-gray-600">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500 mr-2"></div>
-                  Signing in with Google...
-                </div>
+          <div className="mb-6 flex justify-center w-full" id="google-btn-container">
+            {googleLoading ? (
+              <div className="w-full h-[40px] flex items-center justify-center bg-white border border-gray-300 rounded-sm">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500 mr-3"></div>
+                <span className="text-sm text-gray-600 font-medium">Signing in...</span>
               </div>
+            ) : (
+              <div id="google-signin-button" className="w-full flex justify-center"></div>
             )}
+
             {!import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.VITE_GOOGLE_CLIENT_ID === 'your-google-client-id' && (
               <div className="mt-3 text-center">
                 <div className="text-xs text-gray-500">

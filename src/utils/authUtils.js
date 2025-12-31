@@ -158,10 +158,18 @@ export const getRedirectUrl = (user) => {
       console.log('getRedirectUrl: Redirecting owner to /owner-dashboard');
       return '/owner-dashboard';
     case 1: // Seeker
+      // If user is pending behavioral questions, send to onboarding
       if (user.isNewUser && !user.hasCompletedBehaviorQuestions) {
         console.log('getRedirectUrl: Redirecting new seeker to /seeker-onboarding');
         return '/seeker-onboarding';
       }
+
+      // If user is a tenant with active booking, send to tenant dashboard
+      if (user.isTenant) {
+        console.log('getRedirectUrl: User is an active tenant, redirecting to /tenant-dashboard');
+        return '/tenant-dashboard';
+      }
+
       console.log('getRedirectUrl: Redirecting seeker to /seeker-dashboard');
       return '/seeker-dashboard';
     default:
