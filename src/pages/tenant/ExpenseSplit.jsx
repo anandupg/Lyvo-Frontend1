@@ -7,6 +7,7 @@ import {
 import SeekerLayout from '../../components/seeker/SeekerLayout';
 import { useTenantStatus } from '../../hooks/useTenantStatus';
 import apiClient from '../../utils/apiClient';
+import { useToast } from '../../hooks/use-toast';
 
 const ExpenseSplit = () => {
     const { tenantData, loading: tenantLoading, error: tenantError } = useTenantStatus();
