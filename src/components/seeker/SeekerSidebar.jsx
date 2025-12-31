@@ -303,88 +303,98 @@ const SeekerSidebar = ({ onClose }) => {
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-        {navigation.map((item, index) => (
-          <motion.div
-            key={item.name}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 + index * 0.05, duration: 0.3 }}
-            variants={navItemVariants}
-            whileHover="hover"
-            whileTap="tap"
-          >
-            <Link
-              to={item.href}
-              className={`group relative flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-300 ${isActive(item.href)
-                ? 'bg-gradient-to-r from-red-50 to-red-100 text-red-700 border-r-4 border-red-500 shadow-lg'
-                : 'text-gray-700 hover:bg-gradient-to-r hover:from-red-50/50 hover:to-red-100/50 hover:text-red-700 hover:shadow-md'
-                }`}
+        {(tenantLoading || bookingLoading) ? (
+          // Skeleton Loader
+          Array(5).fill(0).map((_, i) => (
+            <div key={i} className="flex items-center px-4 py-3 rounded-xl space-x-3">
+              <div className="w-6 h-6 bg-gray-200 rounded-lg animate-pulse" />
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-24" />
+            </div>
+          ))
+        ) : (
+          navigation.map((item, index) => (
+            <motion.div
+              key={item.name}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 + index * 0.05, duration: 0.3 }}
+              variants={navItemVariants}
+              whileHover="hover"
+              whileTap="tap"
             >
-              {/* Animated background glow */}
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-red-400/20 to-red-600/20 rounded-xl opacity-0 group-hover:opacity-100"
-                transition={{ duration: 0.3 }}
-              />
-
-              <motion.div
-                className="relative z-10 flex items-center w-full"
-                whileHover={{ x: 2 }}
-                transition={{ duration: 0.2 }}
+              <Link
+                to={item.href}
+                className={`group relative flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-300 ${isActive(item.href)
+                  ? 'bg-gradient-to-r from-red-50 to-red-100 text-red-700 border-r-4 border-red-500 shadow-lg'
+                  : 'text-gray-700 hover:bg-gradient-to-r hover:from-red-50/50 hover:to-red-100/50 hover:text-red-700 hover:shadow-md'
+                  }`}
               >
+                {/* Animated background glow */}
                 <motion.div
-                  className={`mr-4 h-6 w-6 flex items-center justify-center rounded-lg transition-all duration-300 ${isActive(item.href)
-                    ? 'bg-red-100 text-red-600'
-                    : 'text-gray-400 group-hover:bg-red-100 group-hover:text-red-600'
-                    }`}
-                  whileHover={{
-                    scale: 1.1,
-                    rotate: [0, -5, 5, 0],
-                    transition: { duration: 0.3 }
-                  }}
+                  className="absolute inset-0 bg-gradient-to-r from-red-400/20 to-red-600/20 rounded-xl opacity-0 group-hover:opacity-100"
+                  transition={{ duration: 0.3 }}
+                />
+
+                <motion.div
+                  className="relative z-10 flex items-center w-full"
+                  whileHover={{ x: 2 }}
+                  transition={{ duration: 0.2 }}
                 >
-                  <item.icon className="h-4 w-4" />
-                </motion.div>
-
-                <span className="flex-1 font-semibold">{item.name}</span>
-
-                {isActive(item.href) && (
                   <motion.div
-                    className="flex items-center space-x-2"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1, duration: 0.3 }}
+                    className={`mr-4 h-6 w-6 flex items-center justify-center rounded-lg transition-all duration-300 ${isActive(item.href)
+                      ? 'bg-red-100 text-red-600'
+                      : 'text-gray-400 group-hover:bg-red-100 group-hover:text-red-600'
+                      }`}
+                    whileHover={{
+                      scale: 1.1,
+                      rotate: [0, -5, 5, 0],
+                      transition: { duration: 0.3 }
+                    }}
                   >
-                    <motion.div
-                      className="w-2 h-2 bg-red-500 rounded-full"
-                      animate={{
-                        scale: [1, 1.3, 1],
-                        opacity: [1, 0.7, 1]
-                      }}
-                      transition={{
-                        duration: 1.5,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                    />
-                    <motion.div
-                      className="w-1 h-1 bg-red-400 rounded-full"
-                      animate={{
-                        scale: [1, 1.2, 1],
-                        opacity: [0.8, 0.4, 0.8]
-                      }}
-                      transition={{
-                        duration: 1.5,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                        delay: 0.3
-                      }}
-                    />
+                    <item.icon className="h-4 w-4" />
                   </motion.div>
-                )}
-              </motion.div>
-            </Link>
-          </motion.div>
-        ))}
+
+                  <span className="flex-1 font-semibold">{item.name}</span>
+
+                  {isActive(item.href) && (
+                    <motion.div
+                      className="flex items-center space-x-2"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1, duration: 0.3 }}
+                    >
+                      <motion.div
+                        className="w-2 h-2 bg-red-500 rounded-full"
+                        animate={{
+                          scale: [1, 1.3, 1],
+                          opacity: [1, 0.7, 1]
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}
+                      />
+                      <motion.div
+                        className="w-1 h-1 bg-red-400 rounded-full"
+                        animate={{
+                          scale: [1, 1.2, 1],
+                          opacity: [0.8, 0.4, 0.8]
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: 0.3
+                        }}
+                      />
+                    </motion.div>
+                  )}
+                </motion.div>
+              </Link>
+            </motion.div>
+          ))
+        )}
       </nav>
 
       {/* Logout Button */}
