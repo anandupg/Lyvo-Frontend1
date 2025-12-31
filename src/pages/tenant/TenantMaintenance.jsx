@@ -7,10 +7,7 @@ import {
 import SeekerLayout from '../../components/seeker/SeekerLayout';
 import { useTenantStatus } from '../../hooks/useTenantStatus';
 
-import axios from 'axios';
-import { getAuthToken } from '../../utils/authUtils';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import apiClient from '../../utils/apiClient';
 
 const TenantMaintenance = () => {
     const { tenantData, loading: statusLoading } = useTenantStatus();
@@ -28,10 +25,7 @@ const TenantMaintenance = () => {
 
     const fetchRequests = async () => {
         try {
-            const token = getAuthToken();
-            const response = await axios.get(`${API_URL}/maintenance/tenant`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await apiClient.get('/maintenance/tenant');
             setRequests(response.data);
         } catch (error) {
             console.error('Error fetching requests:', error);
@@ -60,10 +54,7 @@ const TenantMaintenance = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const token = getAuthToken();
-            await axios.post(`${API_URL}/maintenance`, formData, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await apiClient.post('/maintenance', formData);
             await fetchRequests();
             setFormData({
                 title: '',
@@ -87,10 +78,7 @@ const TenantMaintenance = () => {
 
     const confirmCancel = async () => {
         try {
-            const token = getAuthToken();
-            await axios.patch(`${API_URL}/maintenance/${cancelModal.id}`, { status: 'cancelled' }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await apiClient.patch(`/maintenance/${cancelModal.id}`, { status: 'cancelled' });
             await fetchRequests();
             setCancelModal({ open: false, id: null });
         } catch (error) {
