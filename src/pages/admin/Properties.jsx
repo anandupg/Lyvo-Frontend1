@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Home, Search, Filter, MoreVertical, Edit, Trash2, Eye, MapPin, DollarSign, Users, Star, Calendar, CheckCircle2, XCircle, User, Building, ArrowRight } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { motion } from 'framer-motion';
+import apiClient from '../../utils/apiClient';
 
 const PropertiesPage = () => {
   const navigate = useNavigate();
@@ -15,7 +16,6 @@ const PropertiesPage = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
-  const propertyServiceUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -27,23 +27,22 @@ const PropertiesPage = () => {
         const userId = user._id || user.id || '';
 
         // Unified backend path: /api/property/admin/properties
-        const url = `${propertyServiceUrl}/property/admin/properties?page=1&limit=200`;
+        const url = `/property/admin/properties?page=1&limit=200`;
         console.log('Fetching Admin Properties from:', url);
         console.log('Using Auth Token:', authToken ? 'Yes' : 'No');
         console.log('User ID:', userId);
 
-        const resp = await fetch(url, {
+        const resp = await apiClient.get(url, {
           headers: {
-            'Authorization': authToken ? `Bearer ${authToken}` : '',
             'x-user-id': userId
           }
         });
 
         console.log('Response Status:', resp.status);
-        const data = await resp.json();
+        const data = resp.data;
         console.log('Response Data:', data);
 
-        if (!resp.ok || data.success !== true) {
+        if (resp.status !== 200 || data.success !== true) {
           throw new Error(data.message || 'Failed to fetch properties');
         }
         const propertiesData = Array.isArray(data.data) ? data.data : [];
@@ -143,17 +142,13 @@ const PropertiesPage = () => {
       const authToken = localStorage.getItem('authToken');
       const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
       const userId = user._id || user.id || '';
-      const resp = await fetch(`${propertyServiceUrl}/api/admin/rooms/${roomId}/approval`, {
-        method: 'POST',
+      const resp = await apiClient.post(`/admin/rooms/${roomId}/approval`, { action }, {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authToken ? `Bearer ${authToken}` : '',
           'x-user-id': userId
-        },
-        body: JSON.stringify({ action })
+        }
       });
-      const data = await resp.json();
-      if (!resp.ok || data.success !== true) {
+      const data = resp.data;
+      if (resp.status !== 200 || data.success !== true) {
         throw new Error(data.message || 'Failed to update room');
       }
       setProperties(prev => prev.map(p => ({
@@ -211,7 +206,7 @@ const PropertiesPage = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

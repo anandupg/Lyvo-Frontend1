@@ -34,6 +34,7 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import { motion } from 'framer-motion';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import apiClient from '../../utils/apiClient';
 import L from 'leaflet';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -68,7 +69,6 @@ const AdminPropertyDetails = () => {
   const [adminMessage, setAdminMessage] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
 
-  const propertyServiceUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   // Calculate hasCoords early to avoid reference errors
   const hasCoords = property && typeof property.latitude === 'number' && typeof property.longitude === 'number' &&
@@ -87,15 +87,14 @@ const AdminPropertyDetails = () => {
         console.log('Current URL:', window.location.href);
 
         // Unified path: /property/admin/properties/:id
-        const resp = await fetch(`${propertyServiceUrl}/property/admin/properties/${propertyId}`, {
+        const resp = await apiClient.get(`/property/admin/properties/${propertyId}`, {
           headers: {
-            'Authorization': authToken ? `Bearer ${authToken}` : '',
             'x-user-id': userId
           }
         });
-        const data = await resp.json();
+        const data = resp.data;
         console.log('Admin property response:', data);
-        if (!resp.ok || data.success !== true) {
+        if (resp.status !== 200 || data.success !== true) {
           throw new Error(data.message || 'Failed to fetch property');
         }
 
@@ -123,21 +122,17 @@ const AdminPropertyDetails = () => {
       console.log('Auth token:', authToken ? 'Present' : 'Missing');
       console.log('User ID:', userId);
 
-      const resp = await fetch(`${propertyServiceUrl}/property/admin/rooms/${roomId}/approve`, {
-        method: 'PUT',
+      const resp = await apiClient.put(`/property/admin/rooms/${roomId}/approve`, { status: action === 'approve' ? 'approved' : 'rejected' }, {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authToken ? `Bearer ${authToken}` : '',
           'x-user-id': userId
-        },
-        body: JSON.stringify({ status: action === 'approve' ? 'approved' : 'rejected' })
+        }
       });
 
       console.log('Response status:', resp.status);
-      const data = await resp.json();
+      const data = resp.data;
       console.log('Response data:', data);
 
-      if (!resp.ok || data.success !== true) {
+      if (resp.status !== 200 || data.success !== true) {
         throw new Error(data.message || 'Failed to update room');
       }
 
@@ -178,16 +173,14 @@ const AdminPropertyDetails = () => {
       const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
       const userId = user._id || user.id || '';
 
-      const resp = await fetch(`${propertyServiceUrl}/property/admin/properties/${propertyId}`, {
-        method: 'DELETE',
+      const resp = await apiClient.delete(`/property/admin/properties/${propertyId}`, {
         headers: {
-          'Authorization': authToken ? `Bearer ${authToken}` : '',
           'x-user-id': userId
         }
       });
 
-      const data = await resp.json();
-      if (!resp.ok || data.success !== true) {
+      const data = resp.data;
+      if (resp.status !== 200 || data.success !== true) {
         throw new Error(data.message || 'Failed to delete property');
       }
 
@@ -213,16 +206,14 @@ const AdminPropertyDetails = () => {
       const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
       const userId = user._id || user.id || '';
 
-      const resp = await fetch(`${propertyServiceUrl}/property/admin/rooms/${roomId}`, {
-        method: 'DELETE',
+      const resp = await apiClient.delete(`/property/admin/rooms/${roomId}`, {
         headers: {
-          'Authorization': authToken ? `Bearer ${authToken}` : '',
           'x-user-id': userId
         }
       });
 
-      const data = await resp.json();
-      if (!resp.ok || data.success !== true) {
+      const data = resp.data;
+      if (resp.status !== 200 || data.success !== true) {
         throw new Error(data.message || 'Failed to delete room');
       }
 
@@ -249,18 +240,14 @@ const AdminPropertyDetails = () => {
       const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
       const userId = user._id || user.id || '';
 
-      const resp = await fetch(`${propertyServiceUrl}/property/admin/properties/${propertyId}/approve`, {
-        method: 'PUT',
+      const resp = await apiClient.put(`/property/admin/properties/${propertyId}/approve`, { status: action === 'approve' ? 'approved' : 'rejected' }, {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authToken ? `Bearer ${authToken}` : '',
           'x-user-id': userId
-        },
-        body: JSON.stringify({ status: action === 'approve' ? 'approved' : 'rejected' })
+        }
       });
 
-      const data = await resp.json();
-      if (!resp.ok || data.success !== true) {
+      const data = resp.data;
+      if (resp.status !== 200 || data.success !== true) {
         throw new Error(data.message || 'Failed to update property');
       }
 
@@ -289,18 +276,14 @@ const AdminPropertyDetails = () => {
       const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
       const userId = user._id || user.id || '';
 
-      const resp = await fetch(`${propertyServiceUrl}/property/admin/message`, {
-        method: 'POST',
+      const resp = await apiClient.post(`/property/admin/message`, { propertyId: propertyId, message: adminMessage.trim() }, {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authToken ? `Bearer ${authToken}` : '',
           'x-user-id': userId
-        },
-        body: JSON.stringify({ propertyId: propertyId, message: adminMessage.trim() })
+        }
       });
 
-      const data = await resp.json();
-      if (!resp.ok || data.success !== true) {
+      const data = resp.data;
+      if (resp.status !== 200 || data.success !== true) {
         throw new Error(data.message || 'Failed to send message');
       }
 
@@ -454,8 +437,8 @@ const AdminPropertyDetails = () => {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-8">
               {/* Property Images */}
@@ -470,8 +453,8 @@ const AdminPropertyDetails = () => {
                     Property Images
                   </h2>
                 </div>
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 sm:p-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {property.images?.front && (
                       <div>
                         <h3 className="text-sm font-medium text-gray-700 mb-2">Front View</h3>
@@ -506,7 +489,7 @@ const AdminPropertyDetails = () => {
                   {property.images?.gallery && property.images.gallery.length > 0 && (
                     <div className="mt-6">
                       <h3 className="text-sm font-medium text-gray-700 mb-2">Gallery</h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                         {property.images.gallery.map((image, index) => (
                           <img key={index} src={image} alt={`Gallery ${index + 1}`} className="w-full h-32 object-cover rounded-lg" />
                         ))}
@@ -529,8 +512,8 @@ const AdminPropertyDetails = () => {
                     Property Details
                   </h2>
                 </div>
-                <div className="p-6 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-4 sm:p-6 space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
                       <h3 className="text-sm font-medium text-gray-700 mb-2">Description</h3>
                       <p className="text-gray-900">{property.description || 'No description provided'}</p>
@@ -551,7 +534,7 @@ const AdminPropertyDetails = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div>
                       <h3 className="text-sm font-medium text-gray-700 mb-2">Security Deposit</h3>
                       <p className="text-2xl font-bold text-gray-900">₹{property.security_deposit?.toLocaleString() || '0'}</p>
@@ -581,7 +564,7 @@ const AdminPropertyDetails = () => {
                   {property.amenities && Object.keys(property.amenities).length > 0 && (
                     <div>
                       <h3 className="text-sm font-medium text-gray-700 mb-3">Property Amenities</h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                         {Object.entries(property.amenities).map(([amenity, available]) => {
                           if (available) {
                             return (
@@ -700,8 +683,8 @@ const AdminPropertyDetails = () => {
                   </div>
                 </div>
 
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-4 sm:p-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
                     {(property.rooms || []).map((room) => {
                       const roomStatus = getStatusBadge(room.approval_status || 'pending');
                       return (
@@ -1019,30 +1002,6 @@ const AdminPropertyDetails = () => {
                 </motion.div>
               )}
 
-              {/* Owner Information */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
-              >
-                <div className="p-4 border-b">
-                  <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                    <User className="w-5 h-5 mr-2" />
-                    Owner Information
-                  </h3>
-                </div>
-                <div className="p-4 space-y-3">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Name</p>
-                    <p className="text-gray-900">{property.owner?.name || 'Unknown'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Email</p>
-                    <p className="text-gray-900">{property.owner?.email || 'Not provided'}</p>
-                  </div>
-                </div>
-              </motion.div>
 
               {/* Documents */}
               <motion.div

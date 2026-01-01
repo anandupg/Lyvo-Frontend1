@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import AdminLayout from "../../components/admin/AdminLayout";
 import { Loader2 } from "lucide-react";
+import apiClient from "../../utils/apiClient";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -32,8 +33,6 @@ const Dashboard = () => {
     pendingApprovals: 0
   });
 
-  const userServiceUrl = import.meta.env.VITE_API_URL || 'http://localhost:4002/api';
-  const propertyServiceUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   // Helper function to format time ago (defined early to avoid hoisting issues)
   const getTimeAgo = (dateString) => {
@@ -69,14 +68,14 @@ const Dashboard = () => {
 
         // Fetch users, properties, and bookings in parallel
         const [usersRes, propertiesRes, bookingsRes] = await Promise.all([
-          fetch(`${userServiceUrl}/user/all`, { headers }),
-          fetch(`${propertyServiceUrl}/property/admin/properties?limit=1000`, { headers }), // Fetch all properties
-          fetch(`${propertyServiceUrl}/property/debug/bookings`, { headers })
+          apiClient.get('/user/all'),
+          apiClient.get('/property/admin/properties?limit=1000'), // Fetch all properties
+          apiClient.get('/property/debug/bookings')
         ]);
 
-        const usersData = await usersRes.json();
-        const propertiesData = await propertiesRes.json();
-        const bookingsData = await bookingsRes.json();
+        const usersData = usersRes.data;
+        const propertiesData = propertiesRes.data;
+        const bookingsData = bookingsRes.data;
 
         // Set data (handle different response formats)
         setUsers(usersData.data || []);
@@ -404,8 +403,8 @@ const Dashboard = () => {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`py-3 lg:py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors duration-200 ${activeTab === tab.id
-                      ? "border-red-500 text-red-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ? "border-red-500 text-red-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                     }`}
                 >
                   <span className="mr-2">{tab.icon}</span>

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Shield, 
-  Mail, 
-  Lock, 
-  Eye, 
-  EyeOff, 
+import {
+  Shield,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
   UserPlus,
   AlertCircle,
   CheckCircle,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
+import apiClient from '../../utils/apiClient';
 
 const AddAdmin = () => {
   const navigate = useNavigate();
@@ -46,7 +47,6 @@ const AddAdmin = () => {
   const [emailCheckLoading, setEmailCheckLoading] = useState(false);
   const [emailExists, setEmailExists] = useState(null); // null, true, or false
 
-  const userServiceUrl = import.meta.env.VITE_API_URL || 'http://localhost:4002/api';
 
   // Check if email already exists (real-time)
   const checkEmailExists = async (email) => {
@@ -57,18 +57,10 @@ const AddAdmin = () => {
 
     setEmailCheckLoading(true);
     try {
-      const authToken = localStorage.getItem('authToken');
-      const response = await fetch(`${userServiceUrl}/user/check-email?email=${encodeURIComponent(email.toLowerCase().trim())}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authToken ? `Bearer ${authToken}` : ''
-        }
-      });
+      const response = await apiClient.get(`/user/check-email?email=${encodeURIComponent(email.toLowerCase().trim())}`);
+      const data = response.data;
 
-      const data = await response.json();
-      
-      if (response.ok) {
+      if (response.status === 200) {
         setEmailExists(data.exists ? data : null);
       } else {
         setEmailExists(null);
@@ -126,27 +118,27 @@ const AddAdmin = () => {
       errors.password = 'Password is required';
     } else {
       const passwordErrors = [];
-      
+
       if (formData.password.length < 8) {
         passwordErrors.push('at least 8 characters');
       }
-      
+
       if (!/[A-Z]/.test(formData.password)) {
         passwordErrors.push('one uppercase letter');
       }
-      
+
       if (!/[a-z]/.test(formData.password)) {
         passwordErrors.push('one lowercase letter');
       }
-      
+
       if (!/[0-9]/.test(formData.password)) {
         passwordErrors.push('one number');
       }
-      
+
       if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
         passwordErrors.push('one special character (!@#$%^&*...)');
       }
-      
+
       if (passwordErrors.length > 0) {
         errors.password = `Password must contain ${passwordErrors.join(', ')}`;
       }
@@ -236,9 +228,9 @@ const AddAdmin = () => {
       case 'password':
         if (!value) {
           errors.password = 'Password is required';
-        } else if (!passwordStrength.length || !passwordStrength.uppercase || 
-                   !passwordStrength.lowercase || !passwordStrength.number || 
-                   !passwordStrength.special) {
+        } else if (!passwordStrength.length || !passwordStrength.uppercase ||
+          !passwordStrength.lowercase || !passwordStrength.number ||
+          !passwordStrength.special) {
           // Error message is shown via password strength indicators
           errors.password = '';
         } else {
@@ -266,7 +258,7 @@ const AddAdmin = () => {
   // Handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate form
     if (!validateForm()) {
       return;
@@ -277,30 +269,21 @@ const AddAdmin = () => {
     setSuccess('');
 
     try {
-      const authToken = localStorage.getItem('authToken');
-      
-      const response = await fetch(`${userServiceUrl}/admin/create-admin`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: formData.name.trim(),
-          email: formData.email.trim().toLowerCase(),
-          password: formData.password,
-          role: 2 // Admin role
-        })
+      const response = await apiClient.post('/admin/create-admin', {
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        role: 2 // Admin role
       });
 
-      const data = await response.json();
+      const data = response.data;
 
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(data.message || 'Failed to create admin');
       }
 
       setSuccess(`Admin account created successfully! Login credentials have been sent to ${formData.email}`);
-      
+
       // Reset form
       setFormData({
         name: '',
@@ -408,9 +391,8 @@ const AddAdmin = () => {
                   value={formData.name}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
-                    validationErrors.name ? 'border-red-500' : touchedFields.name && !validationErrors.name && formData.name ? 'border-green-500' : 'border-gray-200'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${validationErrors.name ? 'border-red-500' : touchedFields.name && !validationErrors.name && formData.name ? 'border-green-500' : 'border-gray-200'
+                    }`}
                   placeholder="Enter admin's full name"
                   disabled={loading}
                 />
@@ -436,12 +418,11 @@ const AddAdmin = () => {
                     value={formData.email}
                     onChange={handleChange}
                     onBlur={handleBlur}
-                    className={`w-full pl-11 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
-                      emailExists && emailExists.exists ? 'border-red-500' : 
-                      validationErrors.email ? 'border-red-500' : 
-                      touchedFields.email && !validationErrors.email && formData.email && !emailCheckLoading && !emailExists ? 'border-green-500' : 
-                      'border-gray-200'
-                    }`}
+                    className={`w-full pl-11 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${emailExists && emailExists.exists ? 'border-red-500' :
+                        validationErrors.email ? 'border-red-500' :
+                          touchedFields.email && !validationErrors.email && formData.email && !emailCheckLoading && !emailExists ? 'border-green-500' :
+                            'border-gray-200'
+                      }`}
                     placeholder="admin@example.com"
                     disabled={loading}
                   />
@@ -501,9 +482,8 @@ const AddAdmin = () => {
                     value={formData.password}
                     onChange={handleChange}
                     onBlur={handleBlur}
-                    className={`w-full pl-11 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
-                      validationErrors.password ? 'border-red-500' : 'border-gray-200'
-                    }`}
+                    className={`w-full pl-11 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${validationErrors.password ? 'border-red-500' : 'border-gray-200'
+                      }`}
                     placeholder="Enter secure password"
                     disabled={loading}
                   />
@@ -526,9 +506,8 @@ const AddAdmin = () => {
                   <div className="mt-2 space-y-1">
                     <p className="text-xs font-medium text-gray-700 mb-1.5">Password requirements:</p>
                     <div className="space-y-1">
-                      <div className={`flex items-center gap-2 text-xs transition-all ${
-                        passwordStrength.length ? 'text-green-600' : 'text-gray-500'
-                      }`}>
+                      <div className={`flex items-center gap-2 text-xs transition-all ${passwordStrength.length ? 'text-green-600' : 'text-gray-500'
+                        }`}>
                         {passwordStrength.length ? (
                           <CheckCircle className="w-4 h-4" />
                         ) : (
@@ -536,9 +515,8 @@ const AddAdmin = () => {
                         )}
                         <span>At least 8 characters</span>
                       </div>
-                      <div className={`flex items-center gap-2 text-xs transition-all ${
-                        passwordStrength.uppercase ? 'text-green-600' : 'text-gray-500'
-                      }`}>
+                      <div className={`flex items-center gap-2 text-xs transition-all ${passwordStrength.uppercase ? 'text-green-600' : 'text-gray-500'
+                        }`}>
                         {passwordStrength.uppercase ? (
                           <CheckCircle className="w-4 h-4" />
                         ) : (
@@ -546,9 +524,8 @@ const AddAdmin = () => {
                         )}
                         <span>One uppercase letter (A-Z)</span>
                       </div>
-                      <div className={`flex items-center gap-2 text-xs transition-all ${
-                        passwordStrength.lowercase ? 'text-green-600' : 'text-gray-500'
-                      }`}>
+                      <div className={`flex items-center gap-2 text-xs transition-all ${passwordStrength.lowercase ? 'text-green-600' : 'text-gray-500'
+                        }`}>
                         {passwordStrength.lowercase ? (
                           <CheckCircle className="w-4 h-4" />
                         ) : (
@@ -556,9 +533,8 @@ const AddAdmin = () => {
                         )}
                         <span>One lowercase letter (a-z)</span>
                       </div>
-                      <div className={`flex items-center gap-2 text-xs transition-all ${
-                        passwordStrength.number ? 'text-green-600' : 'text-gray-500'
-                      }`}>
+                      <div className={`flex items-center gap-2 text-xs transition-all ${passwordStrength.number ? 'text-green-600' : 'text-gray-500'
+                        }`}>
                         {passwordStrength.number ? (
                           <CheckCircle className="w-4 h-4" />
                         ) : (
@@ -566,9 +542,8 @@ const AddAdmin = () => {
                         )}
                         <span>One number (0-9)</span>
                       </div>
-                      <div className={`flex items-center gap-2 text-xs transition-all ${
-                        passwordStrength.special ? 'text-green-600' : 'text-gray-500'
-                      }`}>
+                      <div className={`flex items-center gap-2 text-xs transition-all ${passwordStrength.special ? 'text-green-600' : 'text-gray-500'
+                        }`}>
                         {passwordStrength.special ? (
                           <CheckCircle className="w-4 h-4" />
                         ) : (
@@ -595,9 +570,8 @@ const AddAdmin = () => {
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     onBlur={handleBlur}
-                    className={`w-full pl-11 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
-                      validationErrors.confirmPassword ? 'border-red-500' : touchedFields.confirmPassword && !validationErrors.confirmPassword && formData.confirmPassword ? 'border-green-500' : 'border-gray-200'
-                    }`}
+                    className={`w-full pl-11 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${validationErrors.confirmPassword ? 'border-red-500' : touchedFields.confirmPassword && !validationErrors.confirmPassword && formData.confirmPassword ? 'border-green-500' : 'border-gray-200'
+                      }`}
                     placeholder="Re-enter password"
                     disabled={loading}
                   />

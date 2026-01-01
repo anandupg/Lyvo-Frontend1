@@ -15,37 +15,37 @@ const AdminLayout = ({ children, showSidebar = true }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50">
       {/* Mobile Overlay */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={closeSidebar}
         />
       )}
 
-      {/* Sidebar - Fixed position on desktop, overlay on mobile */}
+      {/* Sidebar - Fixed position */}
       {showSidebar && (
         <div className={`
-          fixed lg:fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out
+          fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}>
           <AdminSidebar onClose={closeSidebar} />
         </div>
       )}
-      
-      {/* Main Content Area - With left margin to account for fixed sidebar */}
-      <div className={`flex-1 flex flex-col ${showSidebar ? 'lg:ml-64' : ''}`}>
+
+      {/* Main Content Area */}
+      <div className={`flex flex-col min-h-screen ${showSidebar ? 'lg:pl-64' : ''}`}>
         {/* Top Navbar - Fixed at top */}
         <div className="sticky top-0 z-30 bg-white">
           <AdminNavbar onMenuClick={toggleSidebar} />
         </div>
-        
-        {/* Page Content - Scrollable */}
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
+
+        {/* Page Content */}
+        <main className="flex-1 p-4 lg:p-6 overflow-x-hidden">
           {children}
         </main>
-        
+
         {/* Footer */}
         <AdminFooter />
       </div>

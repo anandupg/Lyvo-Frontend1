@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Shield, Database, Eye, EyeOff, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { motion } from 'framer-motion';
+import apiClient from '../../utils/apiClient';
 
 const SettingsPage = () => {
   const [activeTab, setActiveTab] = useState('security');
@@ -97,7 +98,7 @@ const SettingsPage = () => {
 
   const handlePasswordChange = (field, value) => {
     setPasswordData(prev => ({ ...prev, [field]: value }));
-    
+
     if (field === 'newPassword') {
       validatePasswordStrength(value);
     }
@@ -141,24 +142,14 @@ const SettingsPage = () => {
     setIsChangingPassword(true);
 
     try {
-      const authToken = localStorage.getItem('authToken');
-      const userServiceUrl = import.meta.env.VITE_API_URL || 'http://localhost:4002/api';
-
-      const response = await fetch(`${userServiceUrl}/user/change-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authToken ? `Bearer ${authToken}` : ''
-        },
-        body: JSON.stringify({
-          currentPassword: passwordData.oldPassword,
-          newPassword: passwordData.newPassword
-        })
+      const response = await apiClient.post('/user/change-password', {
+        currentPassword: passwordData.oldPassword,
+        newPassword: passwordData.newPassword
       });
 
-      const data = await response.json();
+      const data = response.data;
 
-      if (!response.ok || !data.success) {
+      if (response.status !== 200 || !data.success) {
         throw new Error(data.message || 'Failed to change password');
       }
 
@@ -166,7 +157,7 @@ const SettingsPage = () => {
       setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
       setTouchedFields({ oldPassword: false, newPassword: false, confirmPassword: false });
       setPasswordErrors({});
-      
+
       // Hide success message after 5 seconds
       setTimeout(() => setPasswordChangeSuccess(false), 5000);
 
@@ -225,11 +216,10 @@ const SettingsPage = () => {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
-                      activeTab === tab.id
+                    className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === tab.id
                         ? 'border-red-500 text-red-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
+                      }`}
                   >
                     <Icon className="w-4 h-4" />
                     <span>{tab.name}</span>
@@ -260,13 +250,13 @@ const SettingsPage = () => {
                     <div className="flex-1">
                       <p className="text-green-800 font-medium">Password changed successfully!</p>
                       <p className="text-green-700 text-sm mt-1">Your password has been updated.</p>
-                </div>
-              </motion.div>
-            )}
+                    </div>
+                  </motion.div>
+                )}
 
                 {/* Error Message */}
                 {passwordChangeError && (
-              <motion.div
+                  <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3"
@@ -290,9 +280,8 @@ const SettingsPage = () => {
                         value={passwordData.oldPassword}
                         onChange={(e) => handlePasswordChange('oldPassword', e.target.value)}
                         onBlur={() => handlePasswordBlur('oldPassword')}
-                        className={`w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition-all ${
-                          passwordErrors.oldPassword && touchedFields.oldPassword ? 'border-red-500' : 'border-gray-300'
-                        }`}
+                        className={`w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition-all ${passwordErrors.oldPassword && touchedFields.oldPassword ? 'border-red-500' : 'border-gray-300'
+                          }`}
                         placeholder="Enter your current password"
                       />
                       <button
@@ -323,9 +312,8 @@ const SettingsPage = () => {
                         value={passwordData.newPassword}
                         onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
                         onBlur={() => handlePasswordBlur('newPassword')}
-                        className={`w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition-all ${
-                          passwordErrors.newPassword && touchedFields.newPassword ? 'border-red-500' : 'border-gray-300'
-                        }`}
+                        className={`w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition-all ${passwordErrors.newPassword && touchedFields.newPassword ? 'border-red-500' : 'border-gray-300'
+                          }`}
                         placeholder="Enter your new password"
                       />
                       <button
@@ -335,22 +323,21 @@ const SettingsPage = () => {
                       >
                         {showPasswords.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
-                  </div>
+                    </div>
                     {passwordErrors.newPassword && touchedFields.newPassword && (
                       <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3" />
                         {passwordErrors.newPassword}
                       </p>
                     )}
-                    
+
                     {/* Password Strength Indicators */}
                     {passwordData.newPassword && (
                       <div className="mt-3 space-y-2">
                         <p className="text-xs font-medium text-gray-700 mb-1.5">Password must contain:</p>
                         <div className="space-y-1">
-                          <div className={`flex items-center gap-2 text-xs transition-all ${
-                            passwordStrength.length ? 'text-green-600' : 'text-gray-500'
-                          }`}>
+                          <div className={`flex items-center gap-2 text-xs transition-all ${passwordStrength.length ? 'text-green-600' : 'text-gray-500'
+                            }`}>
                             {passwordStrength.length ? (
                               <CheckCircle className="w-4 h-4" />
                             ) : (
@@ -358,9 +345,8 @@ const SettingsPage = () => {
                             )}
                             <span>At least 8 characters</span>
                           </div>
-                          <div className={`flex items-center gap-2 text-xs transition-all ${
-                            passwordStrength.uppercase ? 'text-green-600' : 'text-gray-500'
-                          }`}>
+                          <div className={`flex items-center gap-2 text-xs transition-all ${passwordStrength.uppercase ? 'text-green-600' : 'text-gray-500'
+                            }`}>
                             {passwordStrength.uppercase ? (
                               <CheckCircle className="w-4 h-4" />
                             ) : (
@@ -368,9 +354,8 @@ const SettingsPage = () => {
                             )}
                             <span>One uppercase letter (A-Z)</span>
                           </div>
-                          <div className={`flex items-center gap-2 text-xs transition-all ${
-                            passwordStrength.lowercase ? 'text-green-600' : 'text-gray-500'
-                          }`}>
+                          <div className={`flex items-center gap-2 text-xs transition-all ${passwordStrength.lowercase ? 'text-green-600' : 'text-gray-500'
+                            }`}>
                             {passwordStrength.lowercase ? (
                               <CheckCircle className="w-4 h-4" />
                             ) : (
@@ -378,9 +363,8 @@ const SettingsPage = () => {
                             )}
                             <span>One lowercase letter (a-z)</span>
                           </div>
-                          <div className={`flex items-center gap-2 text-xs transition-all ${
-                            passwordStrength.number ? 'text-green-600' : 'text-gray-500'
-                          }`}>
+                          <div className={`flex items-center gap-2 text-xs transition-all ${passwordStrength.number ? 'text-green-600' : 'text-gray-500'
+                            }`}>
                             {passwordStrength.number ? (
                               <CheckCircle className="w-4 h-4" />
                             ) : (
@@ -388,18 +372,17 @@ const SettingsPage = () => {
                             )}
                             <span>One number (0-9)</span>
                           </div>
-                          <div className={`flex items-center gap-2 text-xs transition-all ${
-                            passwordStrength.special ? 'text-green-600' : 'text-gray-500'
-                          }`}>
+                          <div className={`flex items-center gap-2 text-xs transition-all ${passwordStrength.special ? 'text-green-600' : 'text-gray-500'
+                            }`}>
                             {passwordStrength.special ? (
                               <CheckCircle className="w-4 h-4" />
                             ) : (
                               <div className="w-4 h-4 rounded-full border-2 border-gray-300"></div>
                             )}
                             <span>One special character (!@#$%^&*...)</span>
-                    </div>
-                  </div>
-                </div>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
 
@@ -409,17 +392,16 @@ const SettingsPage = () => {
                       Confirm New Password <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                    <input
+                      <input
                         type={showPasswords.confirm ? "text" : "password"}
                         id="confirmPassword"
                         value={passwordData.confirmPassword}
                         onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
                         onBlur={() => handlePasswordBlur('confirmPassword')}
-                        className={`w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition-all ${
-                          passwordErrors.confirmPassword && touchedFields.confirmPassword ? 'border-red-500' : 
-                          touchedFields.confirmPassword && !passwordErrors.confirmPassword && passwordData.confirmPassword ? 'border-green-500' : 
-                          'border-gray-300'
-                        }`}
+                        className={`w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition-all ${passwordErrors.confirmPassword && touchedFields.confirmPassword ? 'border-red-500' :
+                            touchedFields.confirmPassword && !passwordErrors.confirmPassword && passwordData.confirmPassword ? 'border-green-500' :
+                              'border-gray-300'
+                          }`}
                         placeholder="Re-enter your new password"
                       />
                       <button
@@ -477,7 +459,7 @@ const SettingsPage = () => {
                 className="space-y-6"
               >
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">System Information</h2>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h3 className="text-sm font-medium text-gray-900 mb-2">System Status</h3>

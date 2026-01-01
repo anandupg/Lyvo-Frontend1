@@ -12,6 +12,7 @@ import {
   AlertCircle,
   XCircle
 } from 'lucide-react';
+import apiClient from '../../utils/apiClient';
 
 const AdminNavbar = ({ onMenuClick }) => {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -21,8 +22,6 @@ const AdminNavbar = ({ onMenuClick }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
 
-  const userServiceUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-  const propertyServiceUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   // Get user data from main authentication
   const getUserData = () => {
@@ -79,14 +78,14 @@ const AdminNavbar = ({ onMenuClick }) => {
 
       // Fetch admin notifications from database and real-time data
       const [dbNotificationsRes, usersRes, propertiesRes] = await Promise.all([
-        fetch(`${propertyServiceUrl}/notifications`, { headers }),
-        fetch(`${userServiceUrl}/user/all`, { headers }),
-        fetch(`${propertyServiceUrl}/property/admin/properties?limit=100`, { headers })
+        apiClient.get('/notifications', { headers: { 'x-user-id': userData._id } }),
+        apiClient.get('/user/all', { headers: { 'x-user-id': userData._id } }),
+        apiClient.get('/property/admin/properties?limit=100', { headers: { 'x-user-id': userData._id } })
       ]);
 
-      const dbNotifications = await dbNotificationsRes.json();
-      const usersData = await usersRes.json();
-      const propertiesData = await propertiesRes.json();
+      const dbNotifications = dbNotificationsRes.data;
+      const usersData = usersRes.data;
+      const propertiesData = propertiesRes.data;
 
       const users = usersData.data || [];
       const properties = propertiesData.data || propertiesData.properties || [];
@@ -265,15 +264,13 @@ const AdminNavbar = ({ onMenuClick }) => {
 
       if (!authToken || !userData._id) return;
 
-      const response = await fetch(`${propertyServiceUrl}/notifications/${notificationId}`, {
-        method: 'DELETE',
+      const response = await apiClient.delete(`/notifications/${notificationId}`, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
           'x-user-id': userData._id
         }
       });
 
-      if (response.ok) {
+      if (response.status === 200) {
         setNotifications(prev => prev.filter(n => n._id !== notificationId));
         setUnreadCount(prev => Math.max(0, prev - 1));
         fetchNotifications();
