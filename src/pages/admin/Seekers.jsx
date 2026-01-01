@@ -3,6 +3,7 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import { motion } from 'framer-motion';
 import { Users, Search, Mail, Eye } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
+import ConfirmModal from '../../components/admin/ConfirmModal';
 
 const AdminSeekers = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -12,6 +13,14 @@ const AdminSeekers = () => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [togglingStatus, setTogglingStatus] = useState(false);
+
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    userId: null,
+    userName: '',
+    currentStatus: null
+  });
 
   useEffect(() => {
     const fetchSeekers = async () => {
@@ -47,10 +56,22 @@ const AdminSeekers = () => {
     o.email.toLowerCase().includes(searchTerm.toLowerCase())
   ), [items, searchTerm]);
 
-  const handleToggleStatus = async (userId) => {
+  const handleToggleStatus = (userId, userName, currentStatus) => {
+    setConfirmModal({
+      isOpen: true,
+      userId,
+      userName,
+      currentStatus
+    });
+  };
+
+  const handleConfirmToggle = async () => {
+    const { userId, currentStatus } = confirmModal;
+
     try {
       setTogglingStatus(true);
-      const token = localStorage.getItem('authToken');
+      setConfirmModal(prev => ({ ...prev, isOpen: false }));
+
       const response = await apiClient.patch(`/admin/user/${userId}/toggle-status`);
 
       const data = response.data;
@@ -62,16 +83,15 @@ const AdminSeekers = () => {
       // Update the local state
       setItems(prev => prev.map(item =>
         item._id === userId
-          ? { ...item, isActive: !item.isActive }
+          ? { ...item, isActive: !currentStatus }
           : item
       ));
 
       // Update selected item if it's the same user
       if (selected && selected._id === userId) {
-        setSelected(prev => ({ ...prev, isActive: !prev.isActive }));
+        setSelected(prev => ({ ...prev, isActive: !currentStatus }));
       }
 
-      alert(`User ${data.user.isActive ? 'activated' : 'deactivated'} successfully!`);
     } catch (error) {
       console.error('Toggle status error:', error);
       alert(`Error: ${error.message}`);
@@ -132,11 +152,11 @@ const AdminSeekers = () => {
                       <div className="flex gap-1">
                         <button onClick={() => { setSelected(o); setDetailsOpen(true); }} className="inline-flex items-center px-2 py-1 text-xs border rounded-md hover:bg-gray-50"><Eye className="w-4 h-4 mr-1" />Details</button>
                         <button
-                          onClick={() => handleToggleStatus(o._id)}
+                          onClick={() => handleToggleStatus(o._id, o.name, o.isActive)}
                           disabled={togglingStatus}
                           className={`inline-flex items-center px-2 py-1 text-xs rounded-md text-white disabled:opacity-50 ${o.isActive
-                              ? 'bg-red-600 hover:bg-red-700'
-                              : 'bg-green-600 hover:bg-green-700'
+                            ? 'bg-red-600 hover:bg-red-700'
+                            : 'bg-green-600 hover:bg-green-700'
                             }`}
                           title={o.isActive ? 'Deactivate User' : 'Activate User'}
                         >
@@ -162,11 +182,11 @@ const AdminSeekers = () => {
                 <div className="mt-2 flex gap-2">
                   <button onClick={() => { setSelected(o); setDetailsOpen(true); }} className="inline-flex items-center px-2 py-1 text-xs border rounded-md">View</button>
                   <button
-                    onClick={() => handleToggleStatus(o._id)}
+                    onClick={() => handleToggleStatus(o._id, o.name, o.isActive)}
                     disabled={togglingStatus}
                     className={`inline-flex items-center px-2 py-1 text-xs rounded-md text-white disabled:opacity-50 ${o.isActive
-                        ? 'bg-red-600 hover:bg-red-700'
-                        : 'bg-green-600 hover:bg-green-700'
+                      ? 'bg-red-600 hover:bg-red-700'
+                      : 'bg-green-600 hover:bg-green-700'
                       }`}
                   >
                     {o.isActive ? 'Deactivate' : 'Activate'}
@@ -192,6 +212,17 @@ const AdminSeekers = () => {
             </div>
           </div>
         )}
+        {/* Confirmation Modal */}
+        <ConfirmModal
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={handleConfirmToggle}
+          title={confirmModal.currentStatus ? 'Deactivate User' : 'Activate User'}
+          message={`Are you sure you want to ${confirmModal.currentStatus ? 'deactivate' : 'activate'} ${confirmModal.userName}? ${confirmModal.currentStatus ? 'They will no longer be able to log in or use the platform.' : 'They will regain access to the platform.'}`}
+          confirmText={confirmModal.currentStatus ? 'Deactivate' : 'Activate'}
+          type={confirmModal.currentStatus ? 'danger' : 'success'}
+          isLoading={togglingStatus}
+        />
       </div>
     </AdminLayout>
   );

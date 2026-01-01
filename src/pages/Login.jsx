@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react";
 import apiClient from "../utils/apiClient";
 import { getUserFromStorage, getAuthToken, getUserRole, getRedirectUrl } from "../utils/authUtils";
+import AlertModal from "../components/common/AlertModal";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
 
@@ -15,6 +16,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [showDeactivatedModal, setShowDeactivatedModal] = useState(false);
   const navigate = useNavigate();
 
   // Initialize Google Sign-In
@@ -212,7 +214,11 @@ const Login = () => {
 
       // Handle specific error cases
       if (err.response?.status === 403) {
-        setError('Google Sign-in is not configured for this domain. Please use email/password login.');
+        if (err.response?.data?.message?.toLowerCase().includes('deactivated')) {
+          setShowDeactivatedModal(true);
+        } else {
+          setError('Google Sign-in is not configured for this domain. Please use email/password login.');
+        }
       } else if (err.response?.status === 400) {
         setError('Invalid Google credentials. Please try again.');
       } else if (err.message === 'No credential received from Google') {
@@ -341,6 +347,8 @@ const Login = () => {
         setError('Invalid email or password.');
       } else if (err.code === 'auth/user-not-found') {
         setError('No user found with this email.');
+      } else if (err.response?.status === 403 && err.response?.data?.message?.toLowerCase().includes('deactivated')) {
+        setShowDeactivatedModal(true);
       } else {
         setError(err.response?.data?.message || err.message || 'An unexpected error occurred.');
       }
@@ -529,6 +537,16 @@ const Login = () => {
           </div>
         </div>
       </motion.div>
+
+      {/* Deactivated Account Modal */}
+      <AlertModal
+        isOpen={showDeactivatedModal}
+        onClose={() => setShowDeactivatedModal(false)}
+        title="Account Deactivated"
+        message="Your account has been deactivated by the admin. You will no longer be able to log in or use the platform. Please contact support if you believe this is a mistake."
+        type="danger"
+        buttonText="Close"
+      />
     </div>
   );
 };

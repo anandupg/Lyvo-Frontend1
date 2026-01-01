@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import apiClient from '../../utils/apiClient';
+import ConfirmModal from '../../components/admin/ConfirmModal';
 
 const AllUsers = () => {
   const [users, setUsers] = useState([]);
@@ -29,6 +30,14 @@ const AllUsers = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [updatingUserId, setUpdatingUserId] = useState(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState('');
+
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    userId: null,
+    userName: '',
+    currentStatus: null
+  });
 
 
   // Role mapping
@@ -84,10 +93,21 @@ const AllUsers = () => {
   }, []);
 
   // Toggle user active status
-  const toggleUserStatus = async (userId, currentStatus) => {
+  const toggleUserStatus = async (userId, userName, currentStatus) => {
+    setConfirmModal({
+      isOpen: true,
+      userId,
+      userName,
+      currentStatus
+    });
+  };
+
+  const handleConfirmToggle = async () => {
+    const { userId, currentStatus } = confirmModal;
+
     try {
       setUpdatingUserId(userId);
-      const authToken = localStorage.getItem('authToken');
+      setConfirmModal(prev => ({ ...prev, isOpen: false }));
 
       const response = await apiClient.patch(`/user/${userId}/status`, {
         isActive: !currentStatus
@@ -96,8 +116,6 @@ const AllUsers = () => {
       if (response.status !== 200) {
         throw new Error('Failed to update user status');
       }
-
-      const data = response.data;
 
       // Update user in local state
       setUsers(prevUsers =>
@@ -453,7 +471,7 @@ const AllUsers = () => {
                             {/* Actions */}
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               <button
-                                onClick={() => toggleUserStatus(user._id, isActive)}
+                                onClick={() => toggleUserStatus(user._id, user.name, isActive)}
                                 disabled={updatingUserId === user._id}
                                 className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isActive
                                   ? 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
@@ -538,7 +556,7 @@ const AllUsers = () => {
                         </span>
 
                         <button
-                          onClick={() => toggleUserStatus(user._id, isActive)}
+                          onClick={() => toggleUserStatus(user._id, user.name, isActive)}
                           disabled={updatingUserId === user._id}
                           className={`inline-flex items-center px-4 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${isActive
                             ? 'bg-white text-red-600 border border-red-200 hover:bg-red-50'
@@ -574,6 +592,18 @@ const AllUsers = () => {
             </motion.div>
           )
         }
+
+        {/* Confirmation Modal */}
+        <ConfirmModal
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={handleConfirmToggle}
+          title={confirmModal.currentStatus ? 'Deactivate User' : 'Activate User'}
+          message={`Are you sure you want to ${confirmModal.currentStatus ? 'deactivate' : 'activate'} ${confirmModal.userName}? ${confirmModal.currentStatus ? 'They will no longer be able to log in or use the platform.' : 'They will regain access to the platform.'}`}
+          confirmText={confirmModal.currentStatus ? 'Deactivate' : 'Activate'}
+          type={confirmModal.currentStatus ? 'danger' : 'success'}
+          isLoading={updatingUserId === confirmModal.userId}
+        />
       </div >
     </AdminLayout >
   );

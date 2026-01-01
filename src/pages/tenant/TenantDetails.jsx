@@ -2,16 +2,42 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     Users, User, Phone, Mail, Calendar, Home,
-    MapPin, Shield, AlertCircle, UserCheck, DollarSign
+    MapPin, Shield, AlertCircle, UserCheck, DollarSign, MessageSquare
 } from 'lucide-react';
 import SeekerLayout from '../../components/seeker/SeekerLayout';
 import { useTenantStatus } from '../../hooks/useTenantStatus';
 import apiClient from '../../utils/apiClient';
+import { useToast } from '../../hooks/use-toast';
 
 const TenantDetails = () => {
     const { tenantData, loading: tenantLoading } = useTenantStatus();
+    const { toast } = useToast();
     const [roommates, setRoommates] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    const handleCall = (phone) => {
+        if (phone) {
+            window.location.href = `tel:${phone}`;
+        } else {
+            toast({
+                title: "Unavailable",
+                description: "Phone number not available.",
+                variant: "destructive"
+            });
+        }
+    };
+
+    const handleMessage = (phone) => {
+        if (phone) {
+            window.location.href = `sms:${phone}`;
+        } else {
+            toast({
+                title: "Unavailable",
+                description: "Contact information not available.",
+                variant: "destructive"
+            });
+        }
+    };
 
     useEffect(() => {
         const fetchRoommates = async () => {
@@ -211,26 +237,28 @@ const TenantDetails = () => {
                                                     <User className="w-8 h-8 text-white" />
                                                 </div>
                                             )}
-                                            {isCurrentUser && (
-                                                <span className="px-3 py-1 bg-indigo-600 text-white text-xs font-medium rounded-full">
-                                                    You
-                                                </span>
-                                            )}
-                                            {roommate.status === 'active' && (
-                                                <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full flex items-center gap-1">
-                                                    <UserCheck className="w-3 h-3" />
-                                                    Active
-                                                </span>
-                                            )}
+                                            <div className="flex flex-col items-end gap-2">
+                                                {isCurrentUser && (
+                                                    <span className="px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded-full shadow-sm">
+                                                        YOU
+                                                    </span>
+                                                )}
+                                                {roommate.status === 'active' && (
+                                                    <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full flex items-center gap-1">
+                                                        <UserCheck className="w-3 h-3" />
+                                                        Active
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Name */}
-                                        <h3 className="text-xl font-bold text-gray-900 mb-2">
-                                            {roommate.userName} {isCurrentUser && <span className="text-indigo-600 font-semibold">(You)</span>}
+                                        <h3 className="text-xl font-bold text-gray-900 mb-2 truncate">
+                                            {roommate.userName} {isCurrentUser && <span className="text-indigo-600 text-sm font-semibold">(You)</span>}
                                         </h3>
 
                                         {/* Contact Info */}
-                                        <div className="space-y-3 mb-4">
+                                        <div className="space-y-3 mb-6">
                                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                                 <Mail className="w-4 h-4 text-indigo-600 flex-shrink-0" />
                                                 <span className="truncate">{roommate.userEmail}</span>
@@ -243,13 +271,35 @@ const TenantDetails = () => {
                                             )}
                                         </div>
 
+                                        {/* Action Buttons - Only for others */}
+                                        {!isCurrentUser && (
+                                            <div className="flex gap-2 mb-6">
+                                                <button
+                                                    onClick={() => handleCall(roommate.userPhone)}
+                                                    className="flex-1 bg-indigo-50 text-indigo-600 py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-indigo-100 transition-colors border border-indigo-100"
+                                                >
+                                                    <Phone className="w-4 h-4" />
+                                                    <span className="text-sm font-semibold">Call</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleMessage(roommate.userPhone)}
+                                                    className="flex-1 bg-purple-50 text-purple-600 py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-purple-100 transition-colors border border-purple-100"
+                                                >
+                                                    <MessageSquare className="w-4 h-4" />
+                                                    <span className="text-sm font-semibold">Message</span>
+                                                </button>
+                                            </div>
+                                        )}
+
                                         {/* Check-in Date */}
-                                        <div className="pt-4 border-t border-gray-200">
-                                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                <Calendar className="w-4 h-4 text-purple-600" />
+                                        <div className="pt-4 border-t border-gray-100">
+                                            <div className="flex items-center gap-3 text-sm text-gray-600">
+                                                <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
+                                                    <Calendar className="w-4 h-4 text-purple-600" />
+                                                </div>
                                                 <div>
-                                                    <p className="text-xs text-gray-500">Checked in on</p>
-                                                    <p className="font-medium text-gray-900">{formatDate(roommate.actualCheckInDate)}</p>
+                                                    <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Checked in</p>
+                                                    <p className="font-semibold text-gray-900">{formatDate(roommate.actualCheckInDate)}</p>
                                                 </div>
                                             </div>
                                         </div>

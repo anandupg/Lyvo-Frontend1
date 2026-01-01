@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, AlertCircle, User, CheckCircle, Shield, X, Check, Loader2 } from "lucide-react";
 import apiClient from "../utils/apiClient";
 import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from "firebase/auth";
+import AlertModal from "../components/common/AlertModal";
 import { auth } from "../firebase";
 
 const API_URL = 'http://localhost:4002/api/user';
@@ -24,6 +25,7 @@ const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [showDeactivatedModal, setShowDeactivatedModal] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(PasswordStrength);
   const [passwordFeedback, setPasswordFeedback] = useState('');
   const [showPasswordValidation, setShowPasswordValidation] = useState(false);
@@ -136,6 +138,8 @@ const Signup = () => {
     } catch (err) {
       if (err.response?.data?.errorCode === 'ROLE_CONFLICT') {
         setError(err.response.data.message);
+      } else if (err.response?.status === 403 && err.response?.data?.message?.toLowerCase().includes('deactivated')) {
+        setShowDeactivatedModal(true);
       } else {
         setError(err.response?.data?.message || 'Google sign-in failed. Please try again.');
       }
@@ -1014,6 +1018,16 @@ const Signup = () => {
           </div>
         </div>
       </motion.div>
+
+      {/* Deactivated Account Modal */}
+      <AlertModal
+        isOpen={showDeactivatedModal}
+        onClose={() => setShowDeactivatedModal(false)}
+        title="Account Deactivated"
+        message="Your account has been deactivated by the admin. You will no longer be able to log in or use the platform. Please contact support if you believe this is a mistake."
+        type="danger"
+        buttonText="Close"
+      />
     </div>
   );
 };
