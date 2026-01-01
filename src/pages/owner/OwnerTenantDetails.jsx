@@ -5,7 +5,7 @@ import OwnerLayout from '../../components/owner/OwnerLayout';
 import {
     User, Phone, Mail, MapPin, Calendar, DollarSign,
     Shield, FileText, CheckCircle, XCircle, ArrowLeft,
-    CreditCard, Clock, AlertTriangle, Eye
+    CreditCard, Clock, AlertTriangle, Eye, LogOut, RefreshCw
 } from 'lucide-react';
 
 import apiClient from '../../utils/apiClient';
@@ -16,6 +16,8 @@ const OwnerTenantDetails = () => {
     const [tenant, setTenant] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+    const [checkingOut, setCheckingOut] = useState(false);
 
     useEffect(() => {
         const fetchDetails = async () => {
@@ -47,6 +49,27 @@ const OwnerTenantDetails = () => {
             month: 'long',
             day: 'numeric'
         });
+    };
+
+    const handleCheckoutConfirm = async () => {
+        try {
+            setCheckingOut(true);
+            const response = await apiClient.post(`/property/tenants/${tenantId}/check-out`);
+
+            if (response.status !== 200) {
+                throw new Error('Failed to check out tenant');
+            }
+
+            // Navigate back to tenants list after successful checkout
+            navigate('/owner-tenants', { state: { message: 'Tenant checked out successfully' } });
+        } catch (err) {
+            console.error('Checkout error:', err);
+            // Ideally show a toast here, but for now we'll just log it
+            alert(err.message || 'Failed to check out tenant');
+        } finally {
+            setCheckingOut(false);
+            setShowCheckoutModal(false);
+        }
     };
 
     if (loading) {
@@ -99,11 +122,23 @@ const OwnerTenantDetails = () => {
                             <h1 className="text-3xl font-bold text-gray-900 mb-2">Tenant Profile</h1>
                             <p className="text-gray-600">Detailed information and documents</p>
                         </div>
-                        <div className={`px-4 py-2 rounded-full text-sm font-medium border ${tenant.status === 'active' ? 'bg-green-100 text-green-800 border-green-200' :
-                            tenant.status === 'checked_out' ? 'bg-red-100 text-red-800 border-red-200' :
-                                'bg-gray-100 text-gray-800 border-gray-200'
-                            }`}>
-                            Status: {tenant.status.charAt(0).toUpperCase() + tenant.status.slice(1)}
+                        <div className="flex items-center gap-3">
+                            <div className={`px-4 py-2 rounded-full text-sm font-medium border ${tenant.status === 'active' ? 'bg-green-100 text-green-800 border-green-200' :
+                                tenant.status === 'checked_out' ? 'bg-red-100 text-red-800 border-red-200' :
+                                    'bg-gray-100 text-gray-800 border-gray-200'
+                                }`}>
+                                Status: {tenant.status.charAt(0).toUpperCase() + tenant.status.slice(1)}
+                            </div>
+
+                            {tenant.status === 'active' && (
+                                <button
+                                    onClick={() => setShowCheckoutModal(true)}
+                                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
+                                >
+                                    <LogOut className="w-4 h-4" />
+                                    Checkout Tenant
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -137,6 +172,20 @@ const OwnerTenantDetails = () => {
                                         <Phone className="w-4 h-4 mr-3 text-gray-400" />
                                         <span>{tenant.userPhone || 'No phone provided'}</span>
                                     </div>
+
+                                    {/* KYC Photo Thumbnail */}
+                                    {kyc?.aadhar?.frontImageUrl && (
+                                        <div className="pt-2">
+                                            <p className="text-xs text-gray-400 mb-1 text-left">KYC Document:</p>
+                                            <div className="h-24 w-full bg-gray-50 rounded border border-gray-100 overflow-hidden cursor-pointer" onClick={() => window.open(kyc.aadhar.frontImageUrl, '_blank')}>
+                                                <img
+                                                    src={kyc.aadhar.frontImageUrl}
+                                                    alt="KYC Front"
+                                                    className="w-full h-full object-contain"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -312,6 +361,81 @@ const OwnerTenantDetails = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Checkout Confirmation Modal */}
+            {showCheckoutModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+                    >
+                        {/* Modal Header */}
+                        <div className="bg-gradient-to-r from-red-600 to-red-700 p-6 text-white">
+                            <h2 className="text-2xl font-bold mb-2">Confirm Checkout</h2>
+                            <p className="text-red-100">Are you sure you want to check out this tenant?</p>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 space-y-4">
+                            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                                <div>
+                                    <p className="text-xs text-gray-500">Tenant Name</p>
+                                    <p className="text-base font-semibold text-gray-900">{tenant.userName}</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <p className="text-xs text-gray-500">Monthly Rent</p>
+                                        <p className="text-sm font-semibold text-green-600">{formatCurrency(tenant.monthlyRent)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500">Deposit</p>
+                                        <p className="text-sm font-semibold text-blue-600">{formatCurrency(tenant.securityDeposit)}</p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Check-in Date</p>
+                                    <p className="text-sm font-semibold text-gray-900">{formatDate(tenant.actualCheckInDate)}</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                <p className="text-sm text-yellow-800">
+                                    <strong>Note:</strong> This action will mark the tenant as checked out. The security deposit will need to be processed separately.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="bg-gray-50 px-6 py-4 flex gap-3">
+                            <button
+                                onClick={() => setShowCheckoutModal(false)}
+                                disabled={checkingOut}
+                                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleCheckoutConfirm}
+                                disabled={checkingOut}
+                                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {checkingOut ? (
+                                    <>
+                                        <RefreshCw className="w-4 h-4 animate-spin" />
+                                        Checking Out...
+                                    </>
+                                ) : (
+                                    <>
+                                        <XCircle className="w-5 h-5" />
+                                        Confirm Checkout
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
         </OwnerLayout>
     );
 };

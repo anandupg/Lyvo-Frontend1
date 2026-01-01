@@ -285,8 +285,8 @@ const Settings = () => {
 
       const response = await apiClient.get('/user/aadhar-status');
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
         setAadharApprovalStatus(data.aadharStatus);
         console.log('Aadhar approval status:', data.aadharStatus);
       }
@@ -311,8 +311,8 @@ const Settings = () => {
 
       const response = await apiClient.get(`/user/profile/${userId}`);
 
-      if (response.ok) {
-        const userData = await response.json();
+      if (response.status === 200) {
+        const userData = response.data;
         setKycStatus(userData.kycStatus || 'not_verified');
         setVerificationStatus(userData.kycStatus || 'not_verified');
       }
@@ -478,9 +478,9 @@ const Settings = () => {
         }
       });
 
-      const result = await response.json();
+      const result = response.data;
 
-      if (response.ok) {
+      if (response.status === 200) {
         clearInterval(progressInterval);
         setVerificationProgress(100);
 
@@ -808,6 +808,7 @@ const Settings = () => {
   useEffect(() => {
     if (activeTab === 'kyc') {
       refreshUserFromApi();
+      checkAadharApprovalStatus();
     }
   }, [activeTab]);
 
@@ -882,7 +883,11 @@ const Settings = () => {
                 <p className="text-sm text-gray-600">Upload a clear photo of your Aadhar card for identity verification. We'll extract your information automatically.</p>
 
                 {/* If Aadhar is already approved, show approval status */}
-                {aadharApprovalStatus && aadharApprovalStatus.isApproved ? (
+                {checkingApprovalStatus ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-red-600" />
+                  </div>
+                ) : aadharApprovalStatus && aadharApprovalStatus.isApproved ? (
                   <Card className="border-green-200 bg-green-50">
                     <CardHeader>
                       <CardTitle className="flex items-center text-green-800">
@@ -917,43 +922,56 @@ const Settings = () => {
                         </div>
 
                         {aadharApprovalStatus.details && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="p-4 bg-white rounded-lg border border-green-200">
-                              <h4 className="font-semibold text-gray-900 mb-2">Verification Details</h4>
-                              <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Aadhar Number:</span>
-                                  <span className="font-medium">{aadharApprovalStatus.details.aadharNumber}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Name:</span>
-                                  <span className="font-medium">{aadharApprovalStatus.details.name}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Confidence:</span>
-                                  <span className="font-medium">{aadharApprovalStatus.details.overallConfidence}%</span>
-                                </div>
+                          <>
+                            <div className="mb-4 bg-gray-50 p-4 rounded-lg flex justify-center border border-gray-100">
+                              <div className="text-center">
+                                <p className="text-sm font-medium text-gray-500 mb-2">Verified Document</p>
+                                <img
+                                  src={aadharApprovalStatus.details.frontImageUrl}
+                                  alt="Verified Aadhar"
+                                  className="max-h-64 rounded-lg shadow-md border-2 border-green-200 object-contain"
+                                />
                               </div>
                             </div>
 
-                            <div className="p-4 bg-white rounded-lg border border-green-200">
-                              <h4 className="font-semibold text-gray-900 mb-2">What's Next?</h4>
-                              <div className="space-y-2 text-sm text-gray-600">
-                                <div className="flex items-center">
-                                  <CheckCircle2 className="w-4 h-4 text-green-600 mr-2" />
-                                  You can now list properties
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="p-4 bg-white rounded-lg border border-green-200">
+                                <h4 className="font-semibold text-gray-900 mb-2">Verification Details</h4>
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Aadhar Number:</span>
+                                    <span className="font-medium">{aadharApprovalStatus.details.aadharNumber}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Name:</span>
+                                    <span className="font-medium">{aadharApprovalStatus.details.name}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Confidence:</span>
+                                    <span className="font-medium">{aadharApprovalStatus.details.overallConfidence}%</span>
+                                  </div>
                                 </div>
-                                <div className="flex items-center">
-                                  <CheckCircle2 className="w-4 h-4 text-green-600 mr-2" />
-                                  Access all platform features
-                                </div>
-                                <div className="flex items-center">
-                                  <CheckCircle2 className="w-4 h-4 text-green-600 mr-2" />
-                                  No need to verify again
+                              </div>
+
+                              <div className="p-4 bg-white rounded-lg border border-green-200">
+                                <h4 className="font-semibold text-gray-900 mb-2">What's Next?</h4>
+                                <div className="space-y-2 text-sm text-gray-600">
+                                  <div className="flex items-center">
+                                    <CheckCircle2 className="w-4 h-4 text-green-600 mr-2" />
+                                    You can now list properties
+                                  </div>
+                                  <div className="flex items-center">
+                                    <CheckCircle2 className="w-4 h-4 text-green-600 mr-2" />
+                                    Access all platform features
+                                  </div>
+                                  <div className="flex items-center">
+                                    <CheckCircle2 className="w-4 h-4 text-green-600 mr-2" />
+                                    No need to verify again
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
+                          </>
                         )}
                       </div>
                     </CardContent>

@@ -29,7 +29,24 @@ const Tenants = () => {
 
       if (response.status === 200) {
         const data = response.data;
-        setTenants(Array.isArray(data.tenants) ? data.tenants : []);
+        const rawTenants = Array.isArray(data.tenants) ? data.tenants : [];
+
+        // Deduplicate tenants by unique combination of Email + Property + Room
+        // This handles cases where backend has duplicate records for the same tenancy
+        const uniqueTenantsMap = new Map();
+
+        rawTenants.forEach(tenant => {
+          // Create a composite key to identify duplicates
+          // Use email if available, otherwise name (fallback)
+          const distinctKey = `${tenant.userEmail || tenant.userName}-${tenant.propertyName}-${tenant.roomNumber}`;
+
+          if (!uniqueTenantsMap.has(distinctKey)) {
+            uniqueTenantsMap.set(distinctKey, tenant);
+          }
+        });
+
+        const uniqueTenants = Array.from(uniqueTenantsMap.values());
+        setTenants(uniqueTenants);
       } else {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -266,30 +283,36 @@ const Tenants = () => {
                   : 'border-gray-200'
                   }`}
               >
-                <div className="p-4 sm:p-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    {/* Left: Tenant Info */}
-                    <div className="flex items-center gap-3 sm:gap-4 flex-1">
-                      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center ${tenant.status === 'checked_out' ? 'bg-red-100' : 'bg-blue-100'
-                        }`}>
-                        <User className={`w-6 h-6 sm:w-7 sm:h-7 ${tenant.status === 'checked_out' ? 'text-red-600' : 'text-blue-600'
-                          }`} />
+                <div className="p-4 sm:p-6 text-left">
+                  <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 items-center">
+                    {/* Left: Tenant Info (Col Span 4) */}
+                    <div className="flex items-center gap-3 sm:gap-4 w-full lg:col-span-4">
+                      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden ${!tenant.profilePicture && (tenant.status === 'checked_out' ? 'bg-red-100' : 'bg-blue-100')}`}>
+                        {tenant.profilePicture ? (
+                          <img
+                            src={tenant.profilePicture}
+                            alt={tenant.userName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <User className={`w-6 h-6 sm:w-7 sm:h-7 ${tenant.status === 'checked_out' ? 'text-red-600' : 'text-blue-600'}`} />
+                        )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <h3 className="text-lg sm:text-xl font-bold text-gray-900 truncate">{tenant.userName}</h3>
-                          <span className={`inline-block px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-xs font-medium ${getStatusColor(tenant.status)}`}>
-                            {tenant.status}
+                      <div className="flex-1 min-w-0 text-left">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-bold text-gray-900 truncate" title={tenant.userName}>{tenant.userName}</h3>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(tenant.status)}`}>
+                            {tenant.status === 'active' ? 'Active' : 'Checked Out'}
                           </span>
                         </div>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm text-gray-600">
-                          <div className="flex items-center gap-1 sm:gap-1.5">
-                            <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                            <span className="truncate">{tenant.userEmail}</span>
+                        <div className="flex flex-col gap-0.5 text-sm text-gray-600">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <Mail className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="truncate" title={tenant.userEmail}>{tenant.userEmail}</span>
                           </div>
                           {tenant.userPhone && (
-                            <div className="flex items-center gap-1 sm:gap-1.5">
-                              <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                            <div className="flex items-center gap-1.5 truncate">
+                              <Phone className="w-3.5 h-3.5 flex-shrink-0" />
                               <span>{tenant.userPhone}</span>
                             </div>
                           )}
@@ -297,48 +320,42 @@ const Tenants = () => {
                       </div>
                     </div>
 
-                    {/* Middle: Property & Room - Desktop Only */}
-                    <div className="hidden lg:flex items-center gap-6 xl:gap-8">
-                      <div className="text-center">
-                        <p className="text-xs text-gray-500 mb-1">Property</p>
-                        <p className="text-sm xl:text-base font-semibold text-gray-900">{tenant.propertyName}</p>
+                    {/* Middle: Property & Room - Desktop Only (Col Span 4) */}
+                    <div className="hidden lg:grid grid-cols-2 gap-4 lg:col-span-4 w-full">
+                      <div className="text-center overflow-hidden px-1">
+                        <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider">Property</p>
+                        <p className="text-sm font-semibold text-gray-900 truncate" title={tenant.propertyName}>{tenant.propertyName}</p>
                       </div>
-                      <div className="text-center">
-                        <p className="text-xs text-gray-500 mb-1">Room</p>
-                        <p className="text-sm xl:text-base font-semibold text-gray-900">Room {tenant.roomNumber}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs text-gray-500 mb-1">Rent</p>
-                        <p className="text-sm xl:text-base font-semibold text-green-600">{formatCurrency(tenant.monthlyRent)}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs text-gray-500 mb-1">Check-in</p>
-                        <p className="text-sm xl:text-base font-semibold text-gray-900">{formatDate(tenant.actualCheckInDate)}</p>
+                      <div className="text-center px-1">
+                        <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider">Room</p>
+                        <p className="text-sm font-semibold text-gray-900">Room {tenant.roomNumber}</p>
                       </div>
                     </div>
 
-                    {/* Right: Checkout Button */}
-                    <div className="flex items-center gap-2 sm:justify-end">
-                      {tenant.status === 'active' && (
+                    {/* Right: Checkout Button (Col Span 4) */}
+                    <div className="flex items-center gap-2 w-full lg:w-auto lg:justify-end lg:col-span-4">
+                      {tenant.status === 'active' ? (
                         <>
                           <button
                             onClick={() => navigate(`/owner/tenants/${tenant._id}`)}
-                            className="w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium flex items-center justify-center gap-1.5 sm:gap-2"
+                            title="View Details"
+                            className="p-2 sm:px-4 sm:py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium flex items-center justify-center gap-2"
                           >
                             <Eye className="w-4 h-4" />
-                            <span>Details</span>
+                            <span className="hidden xl:inline">Details</span>
                           </button>
                           <button
                             onClick={() => handleCheckoutClick(tenant)}
-                            className="w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium flex items-center justify-center gap-1.5 sm:gap-2"
+                            title="Checkout Tenant"
+                            className="flex-1 lg:flex-none px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
                           >
                             <LogOut className="w-4 h-4" />
-                            <span>Checkout</span>
+                            <span className="hidden xl:inline">Checkout</span>
+                            <span className="lg:hidden">Checkout</span>
                           </button>
                         </>
-                      )}
-                      {tenant.status === 'checked_out' && (
-                        <div className="w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-red-100 text-red-800 rounded-lg text-sm font-medium text-center">
+                      ) : (
+                        <div className="w-full lg:w-auto px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm font-medium text-center border border-red-100">
                           Checked Out
                         </div>
                       )}
