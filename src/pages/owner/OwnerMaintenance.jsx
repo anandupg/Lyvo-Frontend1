@@ -8,10 +8,7 @@ import {
     Bed, Filter, Eye, X
 } from 'lucide-react';
 
-import axios from 'axios';
-import { getAuthToken } from '../../utils/authUtils';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import apiClient from '../../utils/apiClient';
 
 const OwnerMaintenance = () => {
     const navigate = useNavigate();
@@ -30,10 +27,7 @@ const OwnerMaintenance = () => {
 
     const fetchRequests = async () => {
         try {
-            const token = getAuthToken();
-            const res = await axios.get(`${API_URL}/maintenance/owner`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await apiClient.get('/maintenance/owner');
             const mapped = res.data.map(r => ({
                 id: r._id,
                 tenantName: r.tenantId?.name || 'Unknown',
@@ -135,10 +129,8 @@ const OwnerMaintenance = () => {
 
     const confirmStatusChange = async () => {
         try {
-            const token = getAuthToken();
-            await axios.patch(`${API_URL}/maintenance/${confirmModal.requestId}`,
-                { status: confirmModal.newStatus },
-                { headers: { Authorization: `Bearer ${token}` } }
+            await apiClient.patch(`/maintenance/${confirmModal.requestId}`,
+                { status: confirmModal.newStatus }
             );
             fetchRequests();
             setConfirmModal({ open: false, requestId: null, newStatus: null, title: '', message: '' });

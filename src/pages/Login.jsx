@@ -180,6 +180,25 @@ const Login = () => {
         return;
       }
 
+      // Double-check tenancy if not detected and user is a seeker (fix for redirection delay)
+      if (u && u.role === 1 && !u.isTenant) {
+        try {
+          console.log('Login: Double-checking tenancy status...');
+          const tenantCheck = await apiClient.get('/property/user/tenant-status');
+          if (tenantCheck.data.success && tenantCheck.data.isTenant) {
+            console.log('Login: Tenancy found on double-check. Updating user session.');
+            u.isTenant = true;
+
+            // Update localStorage with fixed user object
+            const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+            storedUser.isTenant = true;
+            localStorage.setItem('user', JSON.stringify(storedUser));
+          }
+        } catch (e) {
+          console.warn('Login: Tenancy double-check failed', e);
+        }
+      }
+
       const redirectUrl = getRedirectUrl(u);
       console.log('Login: Final redirect URL for Google sign-in user:', {
         role: u.role,
@@ -293,6 +312,25 @@ const Login = () => {
         console.log('Login (Email): Redirecting to /seeker-profile due to incomplete profile');
         navigate('/seeker-profile');
         return;
+      }
+
+      // Double-check tenancy if not detected and user is a seeker (fix for redirection delay)
+      if (u && u.role === 1 && !u.isTenant) {
+        try {
+          console.log('Login: Double-checking tenancy status...');
+          const tenantCheck = await apiClient.get('/property/user/tenant-status');
+          if (tenantCheck.data.success && tenantCheck.data.isTenant) {
+            console.log('Login: Tenancy found on double-check. Updating user session.');
+            u.isTenant = true;
+
+            // Update localStorage with fixed user object
+            const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+            storedUser.isTenant = true;
+            localStorage.setItem('user', JSON.stringify(storedUser));
+          }
+        } catch (e) {
+          console.warn('Login: Tenancy double-check failed', e);
+        }
       }
 
       const redirectUrl = getRedirectUrl(u);

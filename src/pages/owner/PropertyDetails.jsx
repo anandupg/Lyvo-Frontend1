@@ -2,17 +2,12 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import OwnerLayout from '../../components/owner/OwnerLayout';
+import apiClient from '../../utils/apiClient';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix Leaflet default marker icon issue
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+
 import {
   ArrowLeft,
   MapPin,
@@ -47,6 +42,14 @@ import {
   PowerOff,
   Plus
 } from 'lucide-react';
+
+// Fix Leaflet default marker icon issue
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 const PropertyDetails = () => {
   const { id } = useParams();
@@ -271,17 +274,13 @@ const PropertyDetails = () => {
         formData.append('toilet_image', addRoomData.toilet_image_file);
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/owner/properties/${id}/rooms`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`
-        },
-        body: formData
+      const response = await apiClient.post(`/property/owner/properties/${id}/rooms`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      const result = await response.json();
+      const result = response.data;
 
-      if (response.ok && result.success) {
+      if (result.success) {
         await refreshPropertyData();
         setIsAddRoomModalOpen(false);
         setSuccessMessage('Room added successfully!');
@@ -430,28 +429,17 @@ const PropertyDetails = () => {
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/owner/properties/${id}/status`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
+      const response = await apiClient.put(`/property/owner/properties/${id}/status`, { status: newStatus });
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          // Update the property in the local state
-          setProperty(prev => ({
-            ...prev,
-            status: newStatus,
-            updated_at: new Date().toISOString()
-          }));
-          console.log('Property status updated successfully');
-        }
-      } else {
-        console.error('Failed to update property status');
+      const result = response.data;
+      if (result.success) {
+        // Update the property in the local state
+        setProperty(prev => ({
+          ...prev,
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        }));
+        console.log('Property status updated successfully');
       }
     } catch (error) {
       console.error('Error updating property status:', error);
@@ -502,20 +490,12 @@ const PropertyDetails = () => {
 
   const refreshPropertyData = async () => {
     try {
-      const authToken = localStorage.getItem('authToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/owner/properties/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'x-user-id': (() => { try { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u._id || u.id || ''; } catch { return ''; } })()
-        }
-      });
+      const response = await apiClient.get(`/property/owner/properties/${id}`);
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          setProperty(result.data);
-          console.log('Property data refreshed');
-        }
+      const result = response.data;
+      if (result.success) {
+        setProperty(result.data);
+        console.log('Property data refreshed');
       }
     } catch (error) {
       console.error('Error refreshing property data:', error);
@@ -530,24 +510,15 @@ const PropertyDetails = () => {
       console.log('Fetching owner email for userId:', userId);
       console.log('User service URL:', `${import.meta.env.VITE_USER_SERVICE_API_URL || 'http://localhost:4002'}/api/users/${userId}`);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/user/profile/${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'x-user-id': userId
-        }
-      });
+      const response = await apiClient.get(`/user/profile/${userId}`);
 
       console.log('Owner email response status:', response.status);
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Owner email response data:', result);
-        if (result.success && result.data) {
-          setOwnerEmail(result.data.email || '');
-          console.log('Owner email fetched and set:', result.data.email);
-        }
-      } else {
-        console.error('Failed to fetch owner email:', response.status);
+      const result = response.data;
+      console.log('Owner email response data:', result);
+      if (result.success && result.data) {
+        setOwnerEmail(result.data.email || '');
+        console.log('Owner email fetched and set:', result.data.email);
       }
     } catch (error) {
       console.error('Error fetching owner email:', error);
@@ -584,19 +555,14 @@ const PropertyDetails = () => {
       console.log('Updating room:', editRoomData._id);
       console.log('Room data:', roomDataToSend);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/rooms/${editRoomData._id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'x-user-id': userId
-        },
-        body: formData
+      const response = await apiClient.put(`/property/rooms/${editRoomData._id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      const responseData = await response.json();
+      const responseData = response.data;
       console.log('Update response:', responseData);
 
-      if (response.ok) {
+      if (responseData.success) {
         // Refresh the entire property data to get updated images
         await refreshPropertyData();
 
@@ -604,23 +570,13 @@ const PropertyDetails = () => {
         if (selectedRoom && selectedRoom._id === editRoomData._id) {
           // Fetch updated property data
           try {
-            const authToken = localStorage.getItem('authToken');
-            const userId = (() => { try { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u._id || u.id || ''; } catch { return ''; } })();
+            const response = await apiClient.get(`/property/owner/properties/${id}`);
 
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/owner/properties/${id}`, {
-              headers: {
-                'Authorization': `Bearer ${authToken}`,
-                'x-user-id': userId
-              }
-            });
-
-            if (response.ok) {
-              const result = await response.json();
-              if (result.success && result.data) {
-                const updatedRoom = result.data.rooms.find(room => room._id === editRoomData._id);
-                if (updatedRoom) {
-                  setSelectedRoom(updatedRoom);
-                }
+            const result = response.data;
+            if (result.success && result.data) {
+              const updatedRoom = result.data.rooms.find(room => room._id === editRoomData._id);
+              if (updatedRoom) {
+                setSelectedRoom(updatedRoom);
               }
             }
           } catch (error) {
@@ -636,10 +592,6 @@ const PropertyDetails = () => {
         setTimeout(() => {
           setShowSuccessModal(false);
         }, 3000);
-      } else {
-        console.error('Failed to update room:', response.status, responseData);
-        setSuccessMessage(`Failed to update room: ${responseData.message || 'Unknown error'}`);
-        setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error updating room:', error);
@@ -680,20 +632,12 @@ const PropertyDetails = () => {
       console.log('Updating property:', editPropertyData._id);
       console.log('Property data:', updateData);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/owner/properties/${editPropertyData._id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
-          'x-user-id': userId
-        },
-        body: JSON.stringify(updateData)
-      });
+      const response = await apiClient.put(`/property/owner/properties/${editPropertyData._id}`, updateData);
 
-      const responseData = await response.json();
+      const responseData = response.data;
       console.log('Update response:', responseData);
 
-      if (response.ok) {
+      if (responseData.success) {
         // Refresh the entire property data
         await refreshPropertyData();
 
@@ -705,10 +649,6 @@ const PropertyDetails = () => {
         setTimeout(() => {
           setShowSuccessModal(false);
         }, 3000);
-      } else {
-        console.error('Failed to update property:', response.status, responseData);
-        setSuccessMessage(`Failed to update property: ${responseData.message || 'Unknown error'}`);
-        setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error updating property:', error);
@@ -733,21 +673,13 @@ const PropertyDetails = () => {
         userId: userId || 'Missing'
       });
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/rooms/${roomId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
-          'x-user-id': userId
-        },
-        body: JSON.stringify({ is_available: newStatus === 'active' })
-      });
+      const response = await apiClient.put(`/property/rooms/${roomId}/status`, { is_available: newStatus === 'active' });
 
       console.log('Response status:', response.status);
-      const responseData = await response.json();
+      const responseData = response.data;
       console.log('Response data:', responseData);
 
-      if (response.ok) {
+      if (responseData.success) {
         // Update the room status in the local state
         setProperty(prev => ({
           ...prev,
@@ -769,10 +701,6 @@ const PropertyDetails = () => {
         setTimeout(() => {
           setShowSuccessModal(false);
         }, 3000);
-      } else {
-        console.error('Failed to update room status:', response.status, responseData);
-        setSuccessMessage(`Failed to update room status: ${responseData.message || 'Unknown error'}`);
-        setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error updating room status:', error);
@@ -836,34 +764,18 @@ const PropertyDetails = () => {
         const authToken = localStorage.getItem('authToken');
         if (!authToken) return;
 
-        const url = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/owner/properties/${id}`;
-        console.log('PropertyDetails - Fetching from URL:', url);
+        console.log('PropertyDetails - Fetching from URL via apiClient');
 
-        const response = await fetch(url, {
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'x-user-id': (() => { try { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u._id || u.id || ''; } catch { return ''; } })()
-          }
-        });
+        const response = await apiClient.get(`/property/owner/properties/${id}`);
 
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success) {
-            console.log('Property details fetched:', result.data);
-            console.log('Property toilet_outside:', result.data.toilet_outside);
-            console.log('Property outside_toilet_image:', result.data.outside_toilet_image);
-            console.log('Property documents:', result.data.documents);
-            console.log('Property rooms:', result.data.rooms);
-            if (result.data.rooms) {
-              result.data.rooms.forEach((room, index) => {
-                console.log(`Room ${index}:`, room);
-                console.log(`Room ${index} ID:`, room._id);
-              });
-            }
-            setProperty(result.data);
-          }
+        console.log('Property fetch response status:', response.status);
+
+        const result = response.data;
+        if (result.success) {
+          console.log('Property details fetched:', result.data);
+          setProperty(result.data);
         } else {
-          console.error('Failed to fetch property:', response.status);
+          console.error('Failed to fetch property:', result.message);
         }
       } catch (error) {
         console.error('Error fetching property details:', error);

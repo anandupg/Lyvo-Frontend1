@@ -5,6 +5,7 @@ import OwnerSidebar from './OwnerSidebar';
 import OwnerFooter from './OwnerFooter';
 import { Toaster } from '../ui/toaster';
 import NotificationListener from '../NotificationListener';
+import apiClient from '../../utils/apiClient';
 
 const OwnerLayout = ({ children, hideFooter = false }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -89,10 +90,9 @@ const OwnerLayout = ({ children, hideFooter = false }) => {
         // Try to refresh from API
         const token = localStorage.getItem('authToken');
         if (!token || !parsed?._id) return;
-        const base = import.meta.env.VITE_API_URL || 'http://localhost:4002/api';
-        const res = await fetch(`${base}/user/profile/${parsed._id}`, { headers: { Authorization: `Bearer ${token}` } });
-        if (res.ok) {
-          const fresh = await res.json();
+        const res = await apiClient.get(`/user/profile/${parsed._id}`);
+        if (res.data) {
+          const fresh = res.data;
           if (fresh?._id) {
             localStorage.setItem('user', JSON.stringify(fresh));
             setShowGovtIdPrompt(computeShowKycPrompt(fresh));

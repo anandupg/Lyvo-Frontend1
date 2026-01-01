@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OwnerLayout from '../../components/owner/OwnerLayout';
+import apiClient from '../../utils/apiClient';
 import {
   Calendar,
   Search,
@@ -46,19 +47,9 @@ const OwnerBookings = () => {
       if (!isSilent) setLoading(true);
       if (isSilent) setIsRefreshing(true);
       setError('');
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const token = localStorage.getItem('authToken');
-      const resp = await fetch(`${baseUrl}/property/owner/bookings`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
-      });
-      if (!resp.ok) {
-        const text = await resp.text();
-        throw new Error(text || `HTTP ${resp.status}`);
-      }
-      const data = await resp.json();
+      const resp = await apiClient.get('/property/owner/bookings');
+
+      const data = resp.data;
       setBookings(Array.isArray(data.bookings) ? data.bookings : []);
     } catch (e) {
       if (!isSilent) setError(e.message || 'Failed to load bookings');

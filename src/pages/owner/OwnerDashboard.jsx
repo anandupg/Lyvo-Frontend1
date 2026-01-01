@@ -15,7 +15,7 @@ import {
   MoreVertical,
   ArrowUpRight,
   ArrowDownRight,
-  MessageCircle
+
 } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
 
@@ -85,14 +85,18 @@ const OwnerDashboard = () => {
         const data = response.data;
         console.log('Tenant fetch response data:', data);
 
-        if (data.success) {
-          const count = data.count || 0;
+        if (data.success && Array.isArray(data.tenants)) {
+          // Filter for active tenants only
+          const activeTenants = data.tenants.filter(t =>
+            ['active', 'extended'].includes(t.status)
+          );
+          const count = activeTenants.length;
           setTenantCount(count);
-          console.log(`Successfully fetched ${count} tenants`);
+          console.log(`Successfully fetched ${count} active tenants`);
           setTenantError(null);
         } else {
-          console.warn('API returned success: false', data.message);
-          setTenantError(data.message || 'Failed to fetch tenant data');
+          console.warn('API returned success but invalid tenants data', data);
+          setTenantError(data.message || 'Failed to parse tenant data');
         }
       } else {
         setTenantError(`Failed to fetch tenants (${response.status})`);
@@ -168,6 +172,7 @@ const OwnerDashboard = () => {
       const totalProperties = properties.length;
 
       // Active Tenants (already fetched)
+      // Note: activeTenants is set from fetchTenantCount which now filters for active status
       const activeTenants = tenantCount;
 
       // Monthly Revenue - sum of confirmed bookings' rent
@@ -194,11 +199,12 @@ const OwnerDashboard = () => {
       const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
       // Pending Applications
-      const pendingApplications = bookings.filter(b => b.status === 'pending').length;
+      // Backend uses 'pending_approval' for new booking requests
+      const pendingApplications = bookings.filter(b => b.status === 'pending_approval').length;
 
       setStats({
         totalProperties,
-        activeTenants,
+        activeTenants: tenantCount,
         monthlyRevenue,
         averageRating: Math.round(averageRating * 10) / 10,
         occupancyRate,
@@ -251,9 +257,29 @@ const OwnerDashboard = () => {
     const propertyRevenue = propertyBookings.reduce((sum, b) => sum + (b.rent || 0), 0);
 
     // Get first image from property images
-    const propertyImage = property.images && property.images[0]
-      ? property.images[0]
-      : property.frontImage || "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&w=400&h=300&fit=crop&crop=center";
+    // Get best available image
+    const propertyImage =
+      property.images?.front ||
+      property.images?.hall ||
+      (Array.isArray(property.images?.gallery) && property.images.gallery[0]) ||
+      property.frontImage ||
+      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&w=400&h=300&fit=crop&crop=center";
+
+    // Calculate rent range for display if no revenue
+    let rentDisplay = `₹${propertyRevenue.toLocaleString('en-IN')}`;
+    let rentLabel = 'Revenue';
+
+    if (propertyRevenue === 0 && rooms.length > 0) {
+      const rents = rooms.map(r => r.rent || 0).filter(r => r > 0);
+      if (rents.length > 0) {
+        const minRent = Math.min(...rents);
+        const maxRent = Math.max(...rents);
+        rentDisplay = minRent === maxRent
+          ? `₹${minRent.toLocaleString('en-IN')}/mo`
+          : `₹${minRent.toLocaleString('en-IN')} - ${maxRent.toLocaleString('en-IN')}/mo`;
+        rentLabel = 'Rent';
+      }
+    }
 
     // Format address object to string
     let locationString = 'Location not available';
@@ -276,7 +302,8 @@ const OwnerDashboard = () => {
       type: property.propertyType || property.property_type || 'Property',
       tenants: occupiedRooms,
       occupancy: `${occupancyPercentage}%`,
-      revenue: `₹${propertyRevenue.toLocaleString('en-IN')}`,
+      revenue: rentDisplay,
+      revenueLabel: rentLabel,
       status: property.status === 'approved' ? 'Active' : property.status || 'Pending',
       image: propertyImage
     };
@@ -434,13 +461,7 @@ const OwnerDashboard = () => {
             <p className="text-sm sm:text-base text-gray-600 mt-1">Here's what's happening with your properties today.</p>
           </div>
           <div className="sm:mt-0 flex space-x-3">
-            <button
-              onClick={() => navigate('/owner-messages')}
-              className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors duration-200"
-            >
-              <MessageCircle className="w-4 h-4 mr-2" />
-              Messages
-            </button>
+
             <button
               onClick={() => navigate('/owner-add-property')}
               className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors duration-200"
@@ -468,10 +489,7 @@ const OwnerDashboard = () => {
                 <Building className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
               </div>
             </div>
-            <div className="mt-3 sm:mt-4 flex items-center text-xs sm:text-sm text-green-600">
-              <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-              <span>+2 this month</span>
-            </div>
+
           </motion.div>
 
           <motion.div
@@ -508,12 +526,7 @@ const OwnerDashboard = () => {
                   }`} />
               </div>
             </div>
-            {!tenantLoading && !tenantError && (
-              <div className="mt-3 sm:mt-4 flex items-center text-xs sm:text-sm text-green-600">
-                <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                <span>{stats.activeTenants > 0 ? '+3 this week' : 'No tenants yet'}</span>
-              </div>
-            )}
+
             {tenantError && (
               <div className="mt-3 sm:mt-4">
                 <p className="text-xs text-gray-500">
@@ -541,10 +554,7 @@ const OwnerDashboard = () => {
                 <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
               </div>
             </div>
-            <div className="mt-3 sm:mt-4 flex items-center text-xs sm:text-sm text-green-600">
-              <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-              <span>+12% vs last month</span>
-            </div>
+
           </motion.div>
 
           <motion.div
@@ -562,10 +572,7 @@ const OwnerDashboard = () => {
                 <Star className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
               </div>
             </div>
-            <div className="mt-3 sm:mt-4 flex items-center text-xs sm:text-sm text-green-600">
-              <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-              <span>+0.2 this month</span>
-            </div>
+
           </motion.div>
 
           <motion.div
@@ -583,10 +590,7 @@ const OwnerDashboard = () => {
                 <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
               </div>
             </div>
-            <div className="mt-3 sm:mt-4 flex items-center text-xs sm:text-sm text-green-600">
-              <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-              <span>+5% vs last month</span>
-            </div>
+
           </motion.div>
 
           <motion.div
@@ -660,7 +664,8 @@ const OwnerDashboard = () => {
                     </div>
                     <div className="text-right flex-shrink-0">
                       <p className="text-xs sm:text-sm font-medium text-gray-900">{property.revenue}</p>
-                      <p className="text-xs text-green-600">{property.status}</p>
+                      <p className="text-[10px] text-gray-500">{property.revenueLabel}</p>
+                      <p className="text-xs text-green-600 mt-1">{property.status}</p>
                     </div>
                     <button className="p-1 sm:p-2 text-gray-400 hover:text-gray-600 flex-shrink-0">
                       <MoreVertical className="w-3 h-3 sm:w-4 sm:h-4" />

@@ -9,7 +9,7 @@ import {
   Calendar,
   Settings,
   BarChart3,
-  MessageCircle,
+
   LogOut,
   Plus,
   X,
@@ -128,11 +128,19 @@ const OwnerSidebar = ({ onClose }) => {
       >
         <div className="flex items-center space-x-3">
           <motion.div
-            className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center"
+            className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center overflow-hidden"
             whileHover={{ scale: 1.05 }}
             transition={{ duration: 0.2 }}
           >
-            <Users className="w-6 h-6 text-red-600" />
+            {user.profilePicture ? (
+              <img
+                src={user.profilePicture}
+                alt={user.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Users className="w-6 h-6 text-red-600" />
+            )}
           </motion.div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">

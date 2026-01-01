@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import OwnerLayout from '../../components/owner/OwnerLayout';
+import apiClient from '../../utils/apiClient';
 import {
   BarChart3,
   TrendingUp,
@@ -64,20 +65,14 @@ const OwnerAnalytics = () => {
           return;
         }
 
-        const headers = {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-          'x-user-id': userData._id
-        };
-
         // Fetch properties (owner-scoped via auth) and bookings
         const [propertiesRes, bookingsRes] = await Promise.all([
-          fetch(`${baseUrl}/property/owner/properties?page=1&limit=500`, { headers }),
-          fetch(`${baseUrl}/property/owner/bookings`, { headers })
+          apiClient.get('/property/owner/properties?page=1&limit=500'),
+          apiClient.get('/property/owner/bookings')
         ]);
 
-        const propertiesData = await propertiesRes.json();
-        const bookingsData = await bookingsRes.json();
+        const propertiesData = propertiesRes.data;
+        const bookingsData = bookingsRes.data;
 
         const propsArray = propertiesData.properties || propertiesData.data || [];
         setProperties(propsArray);

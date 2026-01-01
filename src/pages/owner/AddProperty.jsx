@@ -875,7 +875,17 @@ const AddProperty = () => {
                 <input
                   type="number"
                   value={formData.securityDeposit}
-                  onChange={(e) => handleInputChange('securityDeposit', e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '' || (/^\d+$/.test(val) && parseInt(val) >= 0)) {
+                      handleInputChange('securityDeposit', val);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (['-', '+', 'e', 'E', '.'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors.securityDeposit ? 'border-red-500' : 'border-gray-300'
                     }`}
                   placeholder="Security deposit amount"
@@ -897,7 +907,18 @@ const AddProperty = () => {
                     min="1"
                     max="6"
                     value={formData.numberOfRooms}
-                    onChange={(e) => handleRoomCountChange(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      // Allow empty string to let user backspace, but otherwise only digits
+                      if (val === '' || (/^\d+$/.test(val) && parseInt(val) > 0)) {
+                        handleRoomCountChange(val);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (['-', '+', 'e', 'E', '.'].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors.numberOfRooms ? 'border-red-500' : 'border-gray-300'
                       }`}
                     placeholder="Enter number of rooms (max 6)"
@@ -1014,7 +1035,17 @@ const AddProperty = () => {
                           type="number"
                           min="50"
                           value={room.roomSize}
-                          onChange={(e) => handleRoomChange(index, 'roomSize', e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '' || (/^\d+$/.test(val) && parseInt(val) >= 0)) {
+                              handleRoomChange(index, 'roomSize', val);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (['-', '+', 'e', 'E', '.'].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
                           className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors[`room_${index}_size`] ? 'border-red-500' : 'border-gray-300'
                             }`}
                           placeholder="Enter room size"
@@ -1074,7 +1105,17 @@ const AddProperty = () => {
                           type="number"
                           min="0"
                           value={room.rent}
-                          onChange={(e) => handleRoomChange(index, 'rent', e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '' || (/^\d+$/.test(val) && parseInt(val) >= 0)) {
+                              handleRoomChange(index, 'rent', val);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (['-', '+', 'e', 'E', '.'].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
                           className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors[`room_${index}_rent`] ? 'border-red-500' : 'border-gray-300'
                             }`}
                           placeholder="Enter monthly rent"
