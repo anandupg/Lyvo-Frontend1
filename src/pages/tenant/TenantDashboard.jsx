@@ -7,10 +7,36 @@ import {
 } from 'lucide-react';
 import SeekerLayout from '../../components/seeker/SeekerLayout';
 import { useTenantStatus } from '../../hooks/useTenantStatus';
+import { useToast } from '../../hooks/use-toast';
 
 const TenantDashboard = () => {
     const { tenantData, loading } = useTenantStatus();
+    const { toast } = useToast();
     const [currentDate, setCurrentDate] = useState(new Date());
+
+    const handleCall = () => {
+        if (tenantData?.owner?.phone) {
+            window.location.href = `tel:${tenantData.owner.phone}`;
+        } else {
+            toast({
+                title: "Contact Info Unavailable",
+                description: "The owner's phone number is not available.",
+                variant: "destructive"
+            });
+        }
+    };
+
+    const handleMessage = () => {
+        if (tenantData?.owner?.phone) {
+            window.location.href = `sms:${tenantData.owner.phone}`;
+        } else {
+            toast({
+                title: "Contact Info Unavailable",
+                description: "The owner's phone number is not available.",
+                variant: "destructive"
+            });
+        }
+    };
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentDate(new Date()), 1000);
@@ -111,7 +137,7 @@ const TenantDashboard = () => {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-gray-500 text-sm font-medium">Monthly Rent</p>
-                                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(tenantData.monthlyRent)}</p>
+                                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(room?.rent || tenantData.monthlyRent)}</p>
                                 </div>
                                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
                                     <DollarSign className="w-6 h-6 text-red-500" />
@@ -145,7 +171,7 @@ const TenantDashboard = () => {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-gray-500 text-sm font-medium">Room Number</p>
-                                    <p className="text-2xl font-bold text-gray-900 mt-1">Room {room?.roomNumber}</p>
+                                    <p className="text-2xl font-bold text-gray-900 mt-1">Room {room?.roomNumber || tenantData.roomNumber}</p>
                                 </div>
                                 <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
                                     <Bed className="w-6 h-6 text-purple-600" />
@@ -189,10 +215,10 @@ const TenantDashboard = () => {
                                 </div>
                                 <div className="p-6">
                                     <div className="flex flex-col md:flex-row gap-6">
-                                        {room?.roomImage && (
+                                        {(room?.roomImage || room?.image) && (
                                             <div className="md:w-1/3">
                                                 <img
-                                                    src={room.roomImage}
+                                                    src={room.roomImage || room.image}
                                                     alt="Your Room"
                                                     className="w-full h-48 object-cover rounded-xl shadow-md"
                                                 />
@@ -202,15 +228,15 @@ const TenantDashboard = () => {
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div>
                                                     <p className="text-sm text-gray-500 font-medium">Room Number</p>
-                                                    <p className="text-lg font-semibold text-gray-900">Room {room?.roomNumber}</p>
+                                                    <p className="text-lg font-semibold text-gray-900">Room {room?.roomNumber || tenantData.roomNumber}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-sm text-gray-500 font-medium">Room Type</p>
-                                                    <p className="text-lg font-semibold text-gray-900">{room?.roomType}</p>
+                                                    <p className="text-lg font-semibold text-gray-900">{room?.roomType || room?.room_type || 'N/A'}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-sm text-gray-500 font-medium">Monthly Rent</p>
-                                                    <p className="text-lg font-semibold text-green-600">{formatCurrency(room?.rent)}</p>
+                                                    <p className="text-lg font-semibold text-green-600">{formatCurrency(room?.rent || tenantData.monthlyRent)}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-sm text-gray-500 font-medium">Check-in Date</p>
@@ -239,7 +265,7 @@ const TenantDashboard = () => {
                                     <div className="space-y-4">
                                         <div>
                                             <p className="text-sm text-gray-500 font-medium">Property Name</p>
-                                            <p className="text-xl font-semibold text-gray-900">{property?.propertyName}</p>
+                                            <p className="text-xl font-semibold text-gray-900">{property?.propertyName || property?.property_name || tenantData.propertyName}</p>
                                         </div>
                                         <div>
                                             <p className="text-sm text-gray-500 font-medium flex items-center">
@@ -247,9 +273,11 @@ const TenantDashboard = () => {
                                                 Address
                                             </p>
                                             <p className="text-base text-gray-700">
-                                                {typeof property?.address === 'string'
-                                                    ? property.address
-                                                    : `${property?.address?.street || ''}, ${property?.address?.city || ''}, ${property?.address?.state || ''} ${property?.address?.pincode || ''}`
+                                                {property?.address
+                                                    ? (typeof property.address === 'string'
+                                                        ? property.address
+                                                        : `${property.address.street || ''}, ${property.address.city || ''}, ${property.address.state || ''} ${property.address.pincode || ''}`)
+                                                    : 'N/A'
                                                 }
                                             </p>
                                         </div>
@@ -274,11 +302,11 @@ const TenantDashboard = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="bg-green-50 rounded-xl p-4">
                                             <p className="text-sm text-green-700 font-medium mb-1">Monthly Rent</p>
-                                            <p className="text-2xl font-bold text-green-900">{formatCurrency(tenantData.monthlyRent)}</p>
+                                            <p className="text-2xl font-bold text-green-900">{formatCurrency(room?.rent || tenantData.monthlyRent)}</p>
                                         </div>
                                         <div className="bg-red-50 rounded-xl p-4">
                                             <p className="text-sm text-red-700 font-medium mb-1">Security Deposit</p>
-                                            <p className="text-2xl font-bold text-red-900">{formatCurrency(tenantData.securityDeposit)}</p>
+                                            <p className="text-2xl font-bold text-red-900">{formatCurrency(property?.security_deposit || tenantData.securityDeposit)}</p>
                                         </div>
                                         <div className="bg-purple-50 rounded-xl p-4">
                                             <p className="text-sm text-purple-700 font-medium mb-1">Next Payment Due</p>
@@ -317,11 +345,17 @@ const TenantDashboard = () => {
                                         <p className="text-lg font-semibold text-gray-900">{tenantData.ownerName}</p>
                                     </div>
                                     <div className="space-y-3">
-                                        <button className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center">
+                                        <button
+                                            onClick={handleCall}
+                                            className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center"
+                                        >
                                             <Phone className="w-4 h-4 mr-2" />
                                             Call Owner
                                         </button>
-                                        <button className="w-full bg-red-500 text-white py-3 px-4 rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center">
+                                        <button
+                                            onClick={handleMessage}
+                                            className="w-full bg-red-500 text-white py-3 px-4 rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center"
+                                        >
                                             <MessageCircle className="w-4 h-4 mr-2" />
                                             Send Message
                                         </button>

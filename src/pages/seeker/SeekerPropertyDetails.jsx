@@ -34,6 +34,30 @@ const SeekerPropertyDetails = () => {
   const [showAllPhotos, setShowAllPhotos] = useState(false);
   const roomsSectionRef = useRef(null);
 
+  const handleCall = () => {
+    if (property?.ownerDetails?.phone) {
+      window.location.href = `tel:${property.ownerDetails.phone}`;
+    } else {
+      toast({
+        title: "Contact Info Unavailable",
+        description: "The owner's phone number is not available.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleMessage = () => {
+    if (property?.ownerDetails?.phone) {
+      window.location.href = `sms:${property.ownerDetails.phone}`;
+    } else {
+      toast({
+        title: "Contact Info Unavailable",
+        description: "The owner's phone number is not available.",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Derived state for images
   const getPropertyImages = (prop) => {
     if (!prop?.images) return [];
@@ -529,9 +553,20 @@ const SeekerPropertyDetails = () => {
                       )}
                     </div>
 
-                    <button className="w-full py-2.5 border border-gray-900 rounded-lg text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors">
-                      Contact Host
-                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleMessage}
+                        className="flex-1 py-2.5 border border-gray-900 rounded-lg text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Mail className="w-4 h-4" /> Message
+                      </button>
+                      <button
+                        onClick={handleCall}
+                        className="flex-1 py-2.5 bg-blue-600 rounded-lg text-sm font-semibold text-white hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Phone className="w-4 h-4" /> Call
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

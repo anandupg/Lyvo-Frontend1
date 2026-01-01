@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, Loader2, X } from 'lucide-react';
 import locationService from '../../services/locationService';
 
-const UniversalSearchInput = ({ 
-  mapType = 'google', 
-  onLocationSelect, 
+const UniversalSearchInput = ({
+  mapType = 'google',
+  onLocationSelect,
   placeholder = "Search for a location (e.g., Koramangala, Bangalore)",
   className = ""
 }) => {
@@ -13,7 +13,7 @@ const UniversalSearchInput = ({
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [googleAutocomplete, setGoogleAutocomplete] = useState(null);
-  
+
   const inputRef = useRef(null);
   const resultsRef = useRef(null);
   const searchTimeoutRef = useRef(null);
@@ -31,7 +31,7 @@ const UniversalSearchInput = ({
       await locationService.initializeGoogleMaps();
       if (inputRef.current && !googleAutocomplete) {
         const autocomplete = await locationService.searchWithGooglePlaces('', inputRef.current);
-        
+
         autocomplete.addListener('place_changed', () => {
           const place = autocomplete.getPlace();
           if (place.geometry) {
@@ -46,7 +46,7 @@ const UniversalSearchInput = ({
             onLocationSelect(locationData);
           }
         });
-        
+
         setGoogleAutocomplete(autocomplete);
       }
     } catch (error) {
@@ -58,7 +58,7 @@ const UniversalSearchInput = ({
   const handleSearchInput = async (e) => {
     const query = e.target.value;
     setSearchQuery(query);
-    
+
     // Clear previous timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -129,8 +129,8 @@ const UniversalSearchInput = ({
   // Close results when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (resultsRef.current && !resultsRef.current.contains(event.target) && 
-          inputRef.current && !inputRef.current.contains(event.target)) {
+      if (resultsRef.current && !resultsRef.current.contains(event.target) &&
+        inputRef.current && !inputRef.current.contains(event.target)) {
         setShowResults(false);
       }
     };
@@ -140,7 +140,7 @@ const UniversalSearchInput = ({
   }, []);
 
   return (
-    <div className={`relative z-[9998] ${className}`}>
+    <div className={`relative z-20 ${className}`}>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
         <input
@@ -157,14 +157,14 @@ const UniversalSearchInput = ({
           className="w-full pl-10 pr-20 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
           autoComplete="off"
         />
-        
+
         {/* Right side controls */}
         <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
           {/* Loading indicator */}
           {isSearching && (
             <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
           )}
-          
+
           {/* Map type indicator */}
           <div className="text-xs text-gray-500">
             {mapType === 'google' ? (
@@ -173,7 +173,7 @@ const UniversalSearchInput = ({
               <span className="text-blue-600">✓ Leaflet</span>
             )}
           </div>
-          
+
           {/* Clear button */}
           {searchQuery && (
             <button
@@ -190,8 +190,8 @@ const UniversalSearchInput = ({
       {mapType === 'leaflet' && showResults && searchResults.length > 0 && (
         <div
           ref={resultsRef}
-          className="absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto"
-          style={{ zIndex: 9999 }}
+          className="absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto"
+          style={{ zIndex: 30 }}
         >
           {searchResults.map((result, index) => (
             <button
@@ -230,7 +230,7 @@ const UniversalSearchInput = ({
           <MapPin className="w-4 h-4" />
           <span>Use Current Location</span>
         </button>
-        
+
         {/* Search info */}
         <div className="text-xs text-gray-500">
           {mapType === 'google' ? 'Google Places Autocomplete' : 'OpenStreetMap Search'}

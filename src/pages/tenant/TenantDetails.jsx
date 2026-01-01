@@ -152,7 +152,7 @@ const TenantDetails = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <div className="bg-indigo-50 rounded-lg p-4">
                                 <p className="text-sm text-indigo-700 font-medium mb-1">Property</p>
-                                <p className="text-base font-semibold text-gray-900">{property?.propertyName || tenantData.propertyName || 'N/A'}</p>
+                                <p className="text-base font-semibold text-gray-900">{property?.property_name || property?.propertyName || tenantData.propertyName || 'N/A'}</p>
                             </div>
                             <div className="bg-purple-50 rounded-lg p-4">
                                 <p className="text-sm text-purple-700 font-medium mb-1">Room Number</p>
@@ -160,7 +160,7 @@ const TenantDetails = () => {
                             </div>
                             <div className="bg-blue-50 rounded-lg p-4">
                                 <p className="text-sm text-blue-700 font-medium mb-1">Room Type</p>
-                                <p className="text-base font-semibold text-gray-900">{room?.roomType || 'Standard'}</p>
+                                <p className="text-base font-semibold text-gray-900">{room?.roomType || room?.room_type || 'Standard'}</p>
                             </div>
                             <div className="bg-green-50 rounded-lg p-4">
                                 <p className="text-sm text-green-700 font-medium mb-1 flex items-center gap-1">
@@ -173,9 +173,11 @@ const TenantDetails = () => {
                                     <MapPin className="w-3 h-3" /> Address
                                 </p>
                                 <p className="text-base font-semibold text-gray-900">
-                                    {property?.address && typeof property.address === 'object' ?
-                                        `${property.address.street || ''}, ${property.address.city || ''}, ${property.address.state || ''} - ${property.address.pincode || ''}`
-                                        : tenantData.propertySnapshot?.address || 'Address not available'}
+                                    {property?.address
+                                        ? (typeof property.address === 'object'
+                                            ? `${property.address.street || ''}, ${property.address.city || ''}, ${property.address.state || ''} - ${property.address.pincode || ''}`
+                                            : property.address)
+                                        : (tenantData.propertySnapshot?.address || 'Address not available')}
                                 </p>
                             </div>
                         </div>

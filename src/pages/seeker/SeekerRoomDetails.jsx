@@ -34,6 +34,30 @@ const SeekerRoomDetails = () => {
     const [room, setRoom] = useState(null);
     const [property, setProperty] = useState(null);
     const [owner, setOwner] = useState(null);
+
+    const handleCall = () => {
+        if (owner?.phone) {
+            window.location.href = `tel:${owner.phone}`;
+        } else {
+            toast({
+                title: "Contact Info Unavailable",
+                description: "The owner's phone number is not available.",
+                variant: "destructive"
+            });
+        }
+    };
+
+    const handleMessage = () => {
+        if (owner?.phone) {
+            window.location.href = `sms:${owner.phone}`;
+        } else {
+            toast({
+                title: "Contact Info Unavailable",
+                description: "The owner's phone number is not available.",
+                variant: "destructive"
+            });
+        }
+    };
     const [loading, setLoading] = useState(true);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [isFavorited, setIsFavorited] = useState(false);
@@ -935,10 +959,16 @@ const SeekerRoomDetails = () => {
                                         </div>
 
                                         <div className="flex gap-3">
-                                            <button className="flex-1 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+                                            <button
+                                                onClick={handleMessage}
+                                                className="flex-1 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                                            >
                                                 <Mail className="w-4 h-4" /> Message
                                             </button>
-                                            <button className="flex-1 py-2 border border-blue-200 bg-blue-50 rounded-lg text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors flex items-center justify-center gap-2">
+                                            <button
+                                                onClick={handleCall}
+                                                className="flex-1 py-2 border border-blue-200 bg-blue-50 rounded-lg text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                                            >
                                                 <Phone className="w-4 h-4" /> Call
                                             </button>
                                         </div>

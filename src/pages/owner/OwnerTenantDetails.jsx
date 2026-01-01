@@ -201,21 +201,29 @@ const OwnerTenantDetails = () => {
                                     <p className="text-xs text-gray-500 mb-1">Property</p>
                                     <div className="flex items-start">
                                         <MapPin className="w-4 h-4 mr-2 text-gray-400 mt-0.5" />
-                                        <p className="text-sm font-medium text-gray-900">{tenant.propertyName}</p>
+                                        <p className="text-sm font-medium text-gray-900">
+                                            {tenant.propertyId?.property_name || tenant.propertyId?.propertyName || tenant.propertyName}
+                                        </p>
                                     </div>
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Room</p>
-                                    <p className="text-sm font-medium text-gray-900 ml-6">Room {tenant.roomNumber}</p>
+                                    <p className="text-sm font-medium text-gray-900 ml-6">
+                                        Room {tenant.roomId?.roomNumber || tenant.roomNumber}
+                                    </p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <p className="text-xs text-gray-500 mb-1">Monthly Rent</p>
-                                        <p className="text-sm font-bold text-green-600 ml-6">{formatCurrency(tenant.monthlyRent)}</p>
+                                        <p className="text-sm font-bold text-green-600 ml-6">
+                                            {formatCurrency(tenant.roomId?.rent || tenant.monthlyRent)}
+                                        </p>
                                     </div>
                                     <div>
                                         <p className="text-xs text-gray-500 mb-1">Deposit</p>
-                                        <p className="text-sm font-bold text-blue-600 ml-6">{formatCurrency(tenant.securityDeposit)}</p>
+                                        <p className="text-sm font-bold text-blue-600 ml-6">
+                                            {formatCurrency(tenant.propertyId?.security_deposit || tenant.security_deposit || tenant.securityDeposit)}
+                                        </p>
                                     </div>
                                 </div>
                                 <div>
