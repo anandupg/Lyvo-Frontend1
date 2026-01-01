@@ -91,7 +91,6 @@ const SeekerSidebar = ({ onClose }) => {
   // Items to show only when user HAS confirmed booking
   const confirmedBookingNavigation = [
     { name: 'My Room', href: '/my-room', icon: Home },
-    { name: 'Messages', href: '/seeker-messages', icon: MessageCircle },
   ];
 
   // Items to show when user is a TENANT

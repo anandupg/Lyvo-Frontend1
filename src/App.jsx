@@ -41,7 +41,7 @@ import BasicRoomDashboard from "./pages/seeker/BasicRoomDashboard";
 import SeekerRoomDetails from "./pages/seeker/SeekerRoomDetails";
 import RoomDebug from "./pages/seeker/RoomDebug";
 import KycUpload from "./pages/seeker/KycUpload";
-import SeekerMessages from "./pages/seeker/SeekerMessages";
+
 import TenantDashboard from "./pages/tenant/TenantDashboard";
 import TenantPayments from "./pages/tenant/TenantPayments";
 import TenantMaintenance from "./pages/tenant/TenantMaintenance";
@@ -53,7 +53,7 @@ import OwnerDashboard from "./pages/owner/OwnerDashboard";
 import OwnerProperties from "./pages/owner/Properties";
 import PropertyDetails from "./pages/owner/PropertyDetails";
 import AddProperty from "./pages/owner/AddProperty";
-import Messages from "./pages/owner/Messages";
+
 import KycRequired from "./pages/owner/KycRequired";
 // Import admin pages and components
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -455,11 +455,7 @@ function AppRoutesWithLoader() {
               <KycUpload />
             </ProtectedSeekerRoute>
           } />
-          <Route path="/seeker-messages" element={
-            <ProtectedSeekerRoute>
-              <SeekerMessages />
-            </ProtectedSeekerRoute>
-          } />
+
           <Route path="/tenant-dashboard" element={
             <ProtectedSeekerRoute>
               <TenantDashboard />
@@ -548,11 +544,7 @@ function AppRoutesWithLoader() {
               <KycRequired />
             </ProtectedOwnerRoute>
           } />
-          <Route path="/owner-messages" element={
-            <ProtectedOwnerRoute>
-              <Messages />
-            </ProtectedOwnerRoute>
-          } />
+
           <Route path="/owner-bookings" element={
             <ProtectedOwnerRoute>
               <OwnerBookings />

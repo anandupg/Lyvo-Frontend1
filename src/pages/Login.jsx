@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react";
 import apiClient from "../utils/apiClient";
 import { getUserFromStorage, getAuthToken, getUserRole, getRedirectUrl } from "../utils/authUtils";
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -367,8 +367,8 @@ const Login = () => {
           {/* Google Sign-In Button */}
           <div className="mb-6 flex justify-center w-full" id="google-btn-container">
             {googleLoading ? (
-              <div className="w-full h-[40px] flex items-center justify-center bg-white border border-gray-300 rounded-sm">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500 mr-3"></div>
+              <div className="w-full h-[40px] flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-sm shadow-sm transition-all duration-200">
+                <Loader2 className="w-5 h-5 text-red-500 animate-spin" />
                 <span className="text-sm text-gray-600 font-medium">Signing in...</span>
               </div>
             ) : (
@@ -460,9 +460,16 @@ const Login = () => {
               whileTap={{ scale: 0.98 }}
               type="submit"
               disabled={loading}
-              className="w-full bg-red-600 text-white py-3 px-4 rounded-lg font-semibold shadow-sm hover:bg-red-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-red-600 text-white py-3 px-4 rounded-lg font-semibold shadow-sm hover:bg-red-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loading ? "Signing in..." : "Sign in"}
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Signing in...</span>
+                </>
+              ) : (
+                "Sign in"
+              )}
             </motion.button>
           </form>
 

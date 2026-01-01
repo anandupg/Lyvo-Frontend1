@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Lock, Eye, EyeOff, AlertCircle, User, CheckCircle, Shield, X, Check } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, AlertCircle, User, CheckCircle, Shield, X, Check, Loader2 } from "lucide-react";
 import apiClient from "../utils/apiClient";
 import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from "firebase/auth";
 import { auth } from "../firebase";
@@ -641,9 +641,9 @@ const Signup = () => {
           {/* Google Sign-In Button */}
           <div className="mb-6 flex justify-center w-full" id="google-btn-container">
             {googleLoading ? (
-              <div className="w-full h-[40px] flex items-center justify-center bg-white border border-gray-300 rounded-sm">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500 mr-3"></div>
-                <span className="text-sm text-gray-600 font-medium">Signing in...</span>
+              <div className="w-full h-[40px] flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-sm shadow-sm transition-all duration-200">
+                <Loader2 className="w-5 h-5 text-red-500 animate-spin" />
+                <span className="text-sm text-gray-600 font-medium">Signing up...</span>
               </div>
             ) : (
               <div id="google-signin-button" className="w-full flex justify-center"></div>
@@ -967,9 +967,14 @@ const Signup = () => {
               className={`w-full py-3 px-4 rounded-lg font-semibold shadow-sm transition-all duration-200 ${isFormReady()
                 ? 'bg-red-600 text-white hover:bg-red-700'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                } disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
             >
-              {loading ? "Creating account..." : !isFormReady() ? "Complete all fields to continue" : "Create account"}
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Creating account...</span>
+                </>
+              ) : !isFormReady() ? "Complete all fields to continue" : "Create account"}
             </motion.button>
           </form>
 
