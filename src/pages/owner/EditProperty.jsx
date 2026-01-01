@@ -438,14 +438,8 @@ const EditProperty = () => {
 
       // Structure the data for the backend
       const updateData = {
-        ...payload,
-        pricing: {
-          security_deposit: formData.security_deposit
-        }
+        ...payload
       };
-
-      // Remove the flat pricing fields from the root level
-      delete updateData.security_deposit;
 
       // Add property data as JSON string
       formDataToSend.append('propertyData', JSON.stringify(updateData));

@@ -28,6 +28,7 @@ const SeekerDashboard = () => {
   const [upcomingBookings, setUpcomingBookings] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
   const [isFirstLogin, setIsFirstLogin] = useState(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
 
   // Location Search States
   const [searchQuery, setSearchQuery] = useState('');
@@ -303,8 +304,11 @@ const SeekerDashboard = () => {
     checkFirstLogin();
 
     // Check if user has confirmed booking or active tenancy and redirect
-    checkAndRedirectToDashboard().then((redirected) => {
+    const performCheck = async () => {
+      setIsCheckingStatus(true);
+      const redirected = await checkAndRedirectToDashboard();
       if (!redirected) {
+        setIsCheckingStatus(false);
         // Only fetch data if no redirect happened
         // Clear mock sections until real endpoints exist
         setRecentSearches([]);
@@ -314,7 +318,9 @@ const SeekerDashboard = () => {
         fetchFavoritesCount();
         fetchBookingsCount();
       }
-    });
+    };
+
+    performCheck();
 
     // Listen for booking status changes
     const handleBookingStatusChange = (event) => {
@@ -494,6 +500,19 @@ const SeekerDashboard = () => {
         return <Clock className="w-4 h-4" />;
     }
   };
+
+  if (isCheckingStatus) {
+    return (
+      <SeekerLayout>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Verifying account status...</p>
+          </div>
+        </div>
+      </SeekerLayout>
+    );
+  }
 
   return (
     <SeekerLayout>

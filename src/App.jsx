@@ -330,6 +330,14 @@ const RootAuthCheck = ({ children }) => {
               return;
             } else if (userData.role === 1) {
               console.log('RootAuthCheck: Root path - redirecting seeker to appropriate page');
+
+              // Check if user is a tenant
+              if (userData.isTenant) {
+                console.log('RootAuthCheck: User is tenant - redirecting to tenant dashboard');
+                window.location.href = '/tenant-dashboard';
+                return;
+              }
+
               if (userData.isNewUser && !userData.hasCompletedBehaviorQuestions) {
                 window.location.href = '/seeker-onboarding';
               } else {

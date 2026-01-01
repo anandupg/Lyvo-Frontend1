@@ -86,7 +86,7 @@ const OwnerAnalytics = () => {
             rent: room.rent ?? room.price ?? 0,
             roomType: room.roomType ?? room.room_type ?? 'Unknown',
             is_available: typeof room.is_available === 'boolean' ? room.is_available : (room.status === 'active'),
-            property
+            property: prop
           }));
           return [...acc, ...normalized];
         }, []);

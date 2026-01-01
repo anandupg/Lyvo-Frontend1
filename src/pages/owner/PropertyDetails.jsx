@@ -97,6 +97,7 @@ const PropertyDetails = () => {
   const [editPropertyData, setEditPropertyData] = useState({});
   const [ownerEmail, setOwnerEmail] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [addRoomErrors, setAddRoomErrors] = useState({});
 
   const openDocumentPreview = (docUrl, fileName) => {
     const isPdf = fileName.toLowerCase().endsWith('.pdf');
@@ -189,11 +190,26 @@ const PropertyDetails = () => {
       toilet_image: null,
       toilet_image_file: null
     });
+    setAddRoomErrors({});
     setIsAddRoomModalOpen(true);
   };
 
   // Add Room Handlers
   const handleAddRoomChange = (field, value) => {
+    // Clear error for this field
+    if (addRoomErrors[field]) {
+      setAddRoomErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+
+    // Input constraints
+    if ((field === 'rent' || field === 'room_size') && value !== '' && Number(value) < 0) {
+      return; // Prevent negative numbers
+    }
+
     setAddRoomData(prev => {
       const updated = { ...prev, [field]: value };
       if (field === 'room_type') {
@@ -216,6 +232,14 @@ const PropertyDetails = () => {
   const handleAddRoomImageUpload = (event, field) => {
     const file = event.target.files[0];
     if (file) {
+      // Clear error for this field
+      if (addRoomErrors.room_image && field === 'room_image') {
+        setAddRoomErrors(prev => { const n = { ...prev }; delete n.room_image; return n; });
+      }
+      if (addRoomErrors.toilet_image && field === 'toilet_image') {
+        setAddRoomErrors(prev => { const n = { ...prev }; delete n.toilet_image; return n; });
+      }
+
       setAddRoomData(prev => ({
         ...prev,
         [field]: URL.createObjectURL(file), // Preview URL
@@ -233,26 +257,35 @@ const PropertyDetails = () => {
   };
 
   const validateAddRoom = () => {
-    const errors = [];
-    if (!addRoomData.room_number) errors.push("Room Number is required");
+    const errors = {};
+
+    if (!addRoomData.room_number) errors.room_number = "Room Number is required";
     // Check if room number already exists
     if (property && property.rooms && property.rooms.some(r => r.room_number.toString() === addRoomData.room_number.toString())) {
-      errors.push("Room Number already exists");
+      errors.room_number = "Room Number already exists";
     }
-    if (!addRoomData.rent || Number(addRoomData.rent) <= 0) errors.push("Valid Rent is required");
-    if (!addRoomData.room_size || Number(addRoomData.room_size) <= 0) errors.push("Valid Room Size is required");
-    if (!addRoomData.room_image_file) errors.push("Room Image is required");
-    if (addRoomData.amenities.attachedBathroom && !addRoomData.toilet_image_file) {
-      errors.push("Toilet Image is required for attached bathroom");
+
+    if (!addRoomData.rent) errors.rent = "Rent is required";
+    else if (Number(addRoomData.rent) <= 0) errors.rent = "Rent must be greater than 0";
+
+    if (!addRoomData.room_size) errors.room_size = "Room Size is required";
+    else if (Number(addRoomData.room_size) <= 0) errors.room_size = "Size must be greater than 0";
+
+    if (!addRoomData.room_image_file && !addRoomData.room_image) errors.room_image = "Room Image is required";
+
+    if (addRoomData.amenities.attachedBathroom && !addRoomData.toilet_image_file && !addRoomData.toilet_image) {
+      errors.toilet_image = "Toilet Image is required for attached bathroom";
     }
+
     return errors;
   };
 
   const submitAddRoom = async () => {
     try {
-      const validationErrors = validateAddRoom();
-      if (validationErrors.length > 0) {
-        throw new Error(validationErrors.join('\n'));
+      const errors = validateAddRoom();
+      if (Object.keys(errors).length > 0) {
+        setAddRoomErrors(errors);
+        return;
       }
 
       setAddRoomLoading(true);
@@ -958,11 +991,7 @@ const PropertyDetails = () => {
     type: 'property'
   }] : [];
 
-  console.log('Outside toilet image processing:', {
-    toilet_outside: property.toilet_outside,
-    outside_toilet_image: property.outside_toilet_image,
-    outsideToiletImage: outsideToiletImage
-  });
+
 
   const allImages = [...propertyImages, ...roomImages, ...outsideToiletImage];
 
@@ -1140,7 +1169,7 @@ const PropertyDetails = () => {
                               </div>
                               <div>
                                 <h3 className="text-lg font-semibold text-gray-900">Room {room.room_number || index + 1}</h3>
-                                <p className="text-sm text-gray-500">{room.room_type} â€¢ {room.room_size} sq ft</p>
+                                <p className="text-sm text-gray-500">{room.room_type} &bull; {room.room_size} sq ft</p>
                               </div>
                             </div>
                             <div className="text-right">
@@ -1156,7 +1185,7 @@ const PropertyDetails = () => {
                               <span className="capitalize">{room.status || 'Active'}</span>
                             </div>
                             <div className="text-sm text-gray-500 group-hover:text-gray-700">
-                              Click to view details â†’
+                              Click to view details &rarr;
                             </div>
                           </div>
 
@@ -2055,7 +2084,7 @@ const PropertyDetails = () => {
                           <p className="text-xs text-gray-500 mt-1">Auto-set based on room type</p>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Monthly Rent (â‚¹)</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Monthly Rent (&#8377;)</label>
                           <input
                             type="number"
                             value={editRoomData.rent}
@@ -2423,19 +2452,21 @@ const PropertyDetails = () => {
                         type="text"
                         value={addRoomData.room_number}
                         onChange={(e) => handleAddRoomChange('room_number', e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-red-500 focus:border-red-500"
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-red-500 focus:border-red-500 ${addRoomErrors.room_number ? 'border-red-500' : 'border-gray-300'}`}
                         placeholder="e.g. 101"
                       />
+                      {addRoomErrors.room_number && <p className="text-red-500 text-xs mt-1">{addRoomErrors.room_number}</p>}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Rent (â‚¹)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Rent (&#8377;)</label>
                       <input
                         type="number"
                         value={addRoomData.rent}
                         onChange={(e) => handleAddRoomChange('rent', e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-red-500 focus:border-red-500"
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-red-500 focus:border-red-500 ${addRoomErrors.rent ? 'border-red-500' : 'border-gray-300'}`}
                         placeholder="e.g. 5000"
                       />
+                      {addRoomErrors.rent && <p className="text-red-500 text-xs mt-1">{addRoomErrors.rent}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Room Type</label>
@@ -2458,9 +2489,10 @@ const PropertyDetails = () => {
                         type="number"
                         value={addRoomData.room_size || ''}
                         onChange={(e) => handleAddRoomChange('room_size', e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-red-500 focus:border-red-500"
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-red-500 focus:border-red-500 ${addRoomErrors.room_size ? 'border-red-500' : 'border-gray-300'}`}
                         placeholder="e.g. 150"
                       />
+                      {addRoomErrors.room_size && <p className="text-red-500 text-xs mt-1">{addRoomErrors.room_size}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Bed Type</label>
@@ -2519,7 +2551,7 @@ const PropertyDetails = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Room Image</label>
-                      <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition-colors">
+                      <div className={`relative border-2 border-dashed rounded-lg p-4 text-center hover:bg-gray-50 transition-colors ${addRoomErrors.room_image ? 'border-red-500' : 'border-gray-300'}`}>
                         {addRoomData.room_image ? (
                           <div className="relative">
                             <img src={addRoomData.room_image} alt="Room Preview" className="h-32 w-full object-cover rounded-md" />
@@ -2538,10 +2570,11 @@ const PropertyDetails = () => {
                           </label>
                         )}
                       </div>
+                      {addRoomErrors.room_image && <p className="text-red-500 text-xs mt-1 text-center">{addRoomErrors.room_image}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Toilet Image</label>
-                      <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition-colors">
+                      <div className={`relative border-2 border-dashed rounded-lg p-4 text-center hover:bg-gray-50 transition-colors ${addRoomErrors.toilet_image ? 'border-red-500' : 'border-gray-300'}`}>
                         {addRoomData.toilet_image ? (
                           <div className="relative">
                             <img src={addRoomData.toilet_image} alt="Toilet Preview" className="h-32 w-full object-cover rounded-md" />
@@ -2560,6 +2593,7 @@ const PropertyDetails = () => {
                           </label>
                         )}
                       </div>
+                      {addRoomErrors.toilet_image && <p className="text-red-500 text-xs mt-1 text-center">{addRoomErrors.toilet_image}</p>}
                     </div>
                   </div>
 
