@@ -5,7 +5,7 @@ import OwnerLayout from '../../components/owner/OwnerLayout';
 import {
   Users, Search, RefreshCw, ArrowUpRight, CheckCircle, XCircle,
   User, Phone, Mail, MapPin, Calendar, DollarSign, Home,
-  Bed, Building, Eye, Clock, LogOut
+  Bed, Building, Eye, Clock, LogOut, MessageCircle
 } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
 
@@ -149,6 +149,21 @@ const Tenants = () => {
     } finally {
       setCheckingOut(false);
     }
+  };
+
+  const handleCall = (phone) => {
+    if (phone) window.location.href = `tel:${phone}`;
+  };
+
+  const handleWhatsApp = (phone) => {
+    if (phone) {
+      const cleanPhone = phone.replace(/\D/g, '');
+      window.open(`https://wa.me/${cleanPhone}`, '_blank');
+    }
+  };
+
+  const handleMail = (email) => {
+    if (email) window.location.href = `mailto:${email}`;
   };
 
   if (loading) {
@@ -316,6 +331,29 @@ const Tenants = () => {
                               <span>{tenant.userPhone}</span>
                             </div>
                           )}
+                          <div className="flex items-center gap-2 mt-2">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleCall(tenant.userPhone); }}
+                              className="p-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors"
+                              title="Call Tenant"
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleWhatsApp(tenant.userPhone); }}
+                              className="p-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-colors"
+                              title="WhatsApp Tenant"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleMail(tenant.userEmail); }}
+                              className="p-1.5 bg-indigo-50 text-indigo-600 rounded-md hover:bg-indigo-100 transition-colors"
+                              title="Email Tenant"
+                            >
+                              <Mail className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>

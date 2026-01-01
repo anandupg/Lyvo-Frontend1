@@ -5,7 +5,7 @@ import OwnerLayout from '../../components/owner/OwnerLayout';
 import {
     User, Phone, Mail, MapPin, Calendar, DollarSign,
     Shield, FileText, CheckCircle, XCircle, ArrowLeft,
-    CreditCard, Clock, AlertTriangle, Eye, LogOut, RefreshCw
+    CreditCard, Clock, AlertTriangle, Eye, LogOut, RefreshCw, MessageCircle
 } from 'lucide-react';
 
 import apiClient from '../../utils/apiClient';
@@ -70,6 +70,21 @@ const OwnerTenantDetails = () => {
             setCheckingOut(false);
             setShowCheckoutModal(false);
         }
+    };
+
+    const handleCall = () => {
+        if (tenant?.userPhone) window.location.href = `tel:${tenant.userPhone}`;
+    };
+
+    const handleWhatsApp = () => {
+        if (tenant?.userPhone) {
+            const cleanPhone = tenant.userPhone.replace(/\D/g, '');
+            window.open(`https://wa.me/${cleanPhone}`, '_blank');
+        }
+    };
+
+    const handleMail = () => {
+        if (tenant?.userEmail) window.location.href = `mailto:${tenant.userEmail}`;
     };
 
     if (loading) {
@@ -171,6 +186,30 @@ const OwnerTenantDetails = () => {
                                     <div className="flex items-center text-sm text-gray-600">
                                         <Phone className="w-4 h-4 mr-3 text-gray-400" />
                                         <span>{tenant.userPhone || 'No phone provided'}</span>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-3 pt-2">
+                                        <button
+                                            onClick={handleCall}
+                                            className="flex items-center justify-center p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                                            title="Call"
+                                        >
+                                            <Phone className="w-5 h-5" />
+                                        </button>
+                                        <button
+                                            onClick={handleWhatsApp}
+                                            className="flex items-center justify-center p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
+                                            title="WhatsApp"
+                                        >
+                                            <MessageCircle className="w-5 h-5" />
+                                        </button>
+                                        <button
+                                            onClick={handleMail}
+                                            className="flex items-center justify-center p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors"
+                                            title="Email"
+                                        >
+                                            <Mail className="w-5 h-5" />
+                                        </button>
                                     </div>
 
                                     {/* KYC Photo Thumbnail */}

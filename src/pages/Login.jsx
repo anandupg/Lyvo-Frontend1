@@ -403,15 +403,25 @@ const Login = () => {
           </AnimatePresence>
 
           {/* Google Sign-In Button */}
-          <div className="mb-6 flex justify-center w-full" id="google-btn-container">
-            {googleLoading ? (
-              <div className="w-full h-[40px] flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-sm shadow-sm transition-all duration-200">
-                <Loader2 className="w-5 h-5 text-red-500 animate-spin" />
-                <span className="text-sm text-gray-600 font-medium">Signing in...</span>
-              </div>
-            ) : (
-              <div id="google-signin-button" className="w-full flex justify-center"></div>
-            )}
+          <div className="mb-6 flex flex-col items-center w-full" id="google-btn-container">
+            <div
+              id="google-signin-button"
+              className={`w-full flex justify-center ${googleLoading ? 'opacity-50 pointer-events-none' : ''}`}
+            ></div>
+
+            <AnimatePresence>
+              {googleLoading && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="mt-3 flex items-center justify-center gap-2"
+                >
+                  <Loader2 className="w-5 h-5 text-red-500 animate-spin" />
+                  <span className="text-sm text-gray-600 font-medium">Signing in...</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {!import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.VITE_GOOGLE_CLIENT_ID === 'your-google-client-id' && (
               <div className="mt-3 text-center">
@@ -483,12 +493,6 @@ const Login = () => {
                 className="text-sm text-red-600 hover:text-red-700 hover:underline"
               >
                 Forgot your password?
-              </Link>
-              <Link
-                to="/resend-verification"
-                className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
-              >
-                Resend verification email
               </Link>
             </div>
 
