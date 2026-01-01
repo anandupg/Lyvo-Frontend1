@@ -361,9 +361,6 @@ const AllUsers = () => {
                           Contact
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Location
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Joined
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -416,14 +413,6 @@ const AllUsers = () => {
                               <div className="text-sm text-gray-900 flex items-center gap-1">
                                 <Phone className="w-3 h-3 text-gray-400" />
                                 {user.phone || 'N/A'}
-                              </div>
-                            </td>
-
-                            {/* Location */}
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900 flex items-center gap-1">
-                                <MapPin className="w-3 h-3 text-gray-400" />
-                                {user.location || 'N/A'}
                               </div>
                             </td>
 
@@ -529,15 +518,9 @@ const AllUsers = () => {
 
                       {/* Card Body: Contact & Meta */}
                       <div className="p-4 space-y-3">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="flex items-center text-xs text-gray-600">
-                            <Phone className="w-3.5 h-3.5 mr-2 text-gray-400" />
-                            {user.phone || 'N/A'}
-                          </div>
-                          <div className="flex items-center text-xs text-gray-600">
-                            <MapPin className="w-3.5 h-3.5 mr-2 text-gray-400" />
-                            {user.location || 'N/A'}
-                          </div>
+                        <div className="flex items-center text-xs text-gray-600">
+                          <Phone className="w-3.5 h-3.5 mr-2 text-gray-400" />
+                          {user.phone || 'N/A'}
                         </div>
                         <div className="flex items-center text-xs text-gray-600">
                           <Calendar className="w-3.5 h-3.5 mr-2 text-gray-400" />
@@ -579,18 +562,20 @@ const AllUsers = () => {
         </motion.div>
 
         {/* Results Count */}
-        {!loading && filteredUsers.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="mt-4 text-center text-sm text-gray-600"
-          >
-            Showing {filteredUsers.length} of {users.length} users
-          </motion.div>
-        )}
-      </div>
-    </AdminLayout>
+        {
+          !loading && filteredUsers.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="mt-4 text-center text-sm text-gray-600"
+            >
+              Showing {filteredUsers.length} of {users.length} users
+            </motion.div>
+          )
+        }
+      </div >
+    </AdminLayout >
   );
 };
 
