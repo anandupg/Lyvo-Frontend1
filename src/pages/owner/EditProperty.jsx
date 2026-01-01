@@ -28,6 +28,7 @@ import {
   Download,
   ExternalLink
 } from 'lucide-react';
+import apiClient from '../../utils/apiClient';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -127,7 +128,8 @@ const EditProperty = () => {
       front: null,
       back: null,
       hall: null,
-      kitchen: null
+      kitchen: null,
+      outside_toilet: null
     },
 
     // Outside Toilet
@@ -152,90 +154,87 @@ const EditProperty = () => {
           return;
         }
 
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/owner/properties/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${authToken}`
-          }
-        });
+        const response = await apiClient.get(`/property/owner/properties/${id}`);
 
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success) {
-            const propertyData = result.data;
-            setProperty(propertyData);
+        if (response.data.success) {
+          const propertyData = response.data.data;
+          setProperty(propertyData);
 
-            // Populate form data
-            setFormData({
-              property_name: propertyData.property_name || '',
-              description: propertyData.description || '',
-              property_mode: propertyData.property_mode || 'room',
-              address: {
-                street: propertyData.address?.street || '',
-                city: propertyData.address?.city || '',
-                state: propertyData.address?.state || '',
-                pincode: propertyData.address?.pincode || '',
-                landmark: propertyData.address?.landmark || ''
-              },
-              latitude: propertyData.latitude || '',
-              longitude: propertyData.longitude || '',
-              security_deposit: propertyData.security_deposit || '',
-              amenities: {
-                parking4w: propertyData.amenities?.parking4w || false,
-                parking2w: propertyData.amenities?.parking2w || false,
-                kitchen: propertyData.amenities?.kitchen || false,
-                powerBackup: propertyData.amenities?.powerBackup || false
-              },
-              rules: {
-                petsAllowed: propertyData.rules?.petsAllowed || false,
-                smokingAllowed: propertyData.rules?.smokingAllowed || false,
-                visitorsAllowed: propertyData.rules?.visitorsAllowed !== false,
-                cookingAllowed: propertyData.rules?.cookingAllowed !== false
-              },
-              images: {
-                front: propertyData.images?.front || '',
-                back: propertyData.images?.back || '',
-                hall: propertyData.images?.hall || '',
-                kitchen: propertyData.images?.kitchen || '',
-                gallery: propertyData.images?.gallery || []
-              },
-              requiredImages: {
-                front: propertyData.images?.front ? {
-                  file: null,
-                  preview: propertyData.images.front,
-                  name: 'Front View'
-                } : null,
-                back: propertyData.images?.back ? {
-                  file: null,
-                  preview: propertyData.images.back,
-                  name: 'Back View'
-                } : null,
-                hall: propertyData.images?.hall ? {
-                  file: null,
-                  preview: propertyData.images.hall,
-                  name: 'Hall View'
-                } : null,
-                kitchen: propertyData.images?.kitchen ? {
-                  file: null,
-                  preview: propertyData.images.kitchen,
-                  name: 'Kitchen View'
-                } : null
-              },
-              toilet_outside: propertyData.toilet_outside || false,
-              outside_toilet_image: propertyData.outside_toilet_image || '',
-              land_tax_receipt: propertyData.land_tax_receipt || '',
-              status: propertyData.status || 'active'
-            });
+          // Populate form data
+          setFormData({
+            property_name: propertyData.property_name || '',
+            description: propertyData.description || '',
+            property_mode: propertyData.property_mode || 'room',
+            address: {
+              street: propertyData.address?.street || '',
+              city: propertyData.address?.city || '',
+              state: propertyData.address?.state || '',
+              pincode: propertyData.address?.pincode || '',
+              landmark: propertyData.address?.landmark || ''
+            },
+            latitude: propertyData.latitude || '',
+            longitude: propertyData.longitude || '',
+            security_deposit: propertyData.security_deposit || '',
+            amenities: {
+              parking4w: propertyData.amenities?.parking4w || false,
+              parking2w: propertyData.amenities?.parking2w || false,
+              kitchen: propertyData.amenities?.kitchen || false,
+              powerBackup: propertyData.amenities?.powerBackup || false
+            },
+            rules: {
+              petsAllowed: propertyData.rules?.petsAllowed || false,
+              smokingAllowed: propertyData.rules?.smokingAllowed || false,
+              visitorsAllowed: propertyData.rules?.visitorsAllowed !== false,
+              cookingAllowed: propertyData.rules?.cookingAllowed !== false
+            },
+            images: {
+              front: propertyData.images?.front || '',
+              back: propertyData.images?.back || '',
+              hall: propertyData.images?.hall || '',
+              kitchen: propertyData.images?.kitchen || '',
+              gallery: propertyData.images?.gallery || []
+            },
+            requiredImages: {
+              front: propertyData.images?.front ? {
+                file: null,
+                preview: propertyData.images.front,
+                name: 'Front View'
+              } : null,
+              back: propertyData.images?.back ? {
+                file: null,
+                preview: propertyData.images.back,
+                name: 'Back View'
+              } : null,
+              hall: propertyData.images?.hall ? {
+                file: null,
+                preview: propertyData.images.hall,
+                name: 'Hall View'
+              } : null,
+              kitchen: propertyData.images?.kitchen ? {
+                file: null,
+                preview: propertyData.images.kitchen,
+                name: 'Kitchen View'
+              } : null,
+              outside_toilet: propertyData.outside_toilet_image ? {
+                file: null,
+                preview: propertyData.outside_toilet_image,
+                name: 'Outside Toilet'
+              } : null
+            },
+            toilet_outside: propertyData.toilet_outside || false,
+            outside_toilet_image: propertyData.outside_toilet_image || '',
+            land_tax_receipt: propertyData.land_tax_receipt || '',
+            status: propertyData.status || 'active'
+          });
 
-            // Set map center if coordinates exist
-            if (propertyData.latitude && propertyData.longitude) {
-              setMapCenter([propertyData.latitude, propertyData.longitude]);
-            }
-          } else {
-            setError('Property not found');
+          // Set map center if coordinates exist
+          if (propertyData.latitude && propertyData.longitude) {
+            setMapCenter([propertyData.latitude, propertyData.longitude]);
           }
         } else {
-          setError('Failed to fetch property details');
+          setError('Property not found');
         }
+
       } catch (error) {
         console.error('Error fetching property:', error);
         setError('Error loading property details');
@@ -427,6 +426,16 @@ const EditProperty = () => {
       // Clone data and strip file objects
       const payload = { ...formData };
 
+      // Validation: If kitchen amenity is true, kitchen image is required
+      if (formData.amenities.kitchen) {
+        const hasKitchenImage = formData.images.kitchen || formData.requiredImages.kitchen?.file || formData.requiredImages.kitchen?.preview;
+        if (!hasKitchenImage) {
+          setError('Kitchen image is required when Kitchen amenity is selected');
+          setSaving(false);
+          return;
+        }
+      }
+
       // Structure the data for the backend
       const updateData = {
         ...payload,
@@ -464,9 +473,9 @@ const EditProperty = () => {
         });
       }
 
-      // Add outside toilet image if exists
-      if (formData.outside_toilet_image && formData.outside_toilet_image.file) {
-        formDataToSend.append('outsideToiletImage', formData.outside_toilet_image.file);
+      // Add outside toilet image from requiredImages
+      if (formData.requiredImages.outside_toilet?.file) {
+        formDataToSend.append('outsideToiletImage', formData.requiredImages.outside_toilet.file);
       }
 
       // Add documents
@@ -484,31 +493,22 @@ const EditProperty = () => {
       }
 
       console.log('FormData entries for update:');
+      console.log('FormData entries for update:');
       for (let [key, value] of formDataToSend.entries()) {
         console.log(key, value);
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/owner/properties/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${authToken}`
-        },
-        body: formDataToSend
-      });
+      const response = await apiClient.put(`/property/owner/properties/${id}`, formDataToSend);
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          setSuccess('Property updated successfully!');
-          setTimeout(() => {
-            navigate('/owner-properties');
-          }, 2000);
-        } else {
-          setError(result.message || 'Failed to update property');
-        }
+      if (response.data.success) {
+        setSuccess('Property updated successfully!');
+        setTimeout(() => {
+          navigate('/owner-properties');
+        }, 2000);
       } else {
-        setError('Failed to update property');
+        setError(response.data.message || 'Failed to update property');
       }
+
     } catch (error) {
       console.error('Error updating property:', error);
       setError('Error updating property');
@@ -629,8 +629,8 @@ const EditProperty = () => {
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
                       className={`flex items-center space-x-2 sm:space-x-3 py-3 px-3 sm:px-4 border-b-2 font-medium text-sm whitespace-nowrap min-w-0 ${activeTab === tab.id
-                          ? 'border-red-500 text-red-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        ? 'border-red-500 text-red-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                         }`}
                     >
                       <Icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
@@ -885,8 +885,8 @@ const EditProperty = () => {
                         <label
                           key={amenity.key}
                           className={`flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${formData.amenities[amenity.key]
-                              ? 'border-red-500 bg-red-50 text-red-700'
-                              : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-red-500 bg-red-50 text-red-700'
+                            : 'border-gray-200 hover:border-gray-300'
                             }`}
                         >
                           <input
@@ -949,21 +949,63 @@ const EditProperty = () => {
                       <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
                       <h4 className="text-sm sm:text-lg font-semibold text-gray-900">Property Images</h4>
                     </div>
+
+                    {/* Toggles: Kitchen & Outside Toilet */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 mb-6">
+                      {/* Kitchen Toggle */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-gray-900">Kitchen Available</span>
+                        <button
+                          type="button"
+                          onClick={() => handleAmenityChange('kitchen')}
+                          className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors border ${formData.amenities.kitchen ? 'bg-red-600 border-red-600' : 'bg-gray-200 border-gray-300'}`}
+                          aria-pressed={formData.amenities.kitchen}
+                        >
+                          <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${formData.amenities.kitchen ? 'translate-x-5' : 'translate-x-0'}`}></span>
+                        </button>
+                        <span className={`text-xs font-semibold ${formData.amenities.kitchen ? 'text-red-700' : 'text-gray-500'}`}>
+                          {formData.amenities.kitchen ? 'YES' : 'NO'}
+                        </span>
+                      </div>
+
+                      {/* Outside Toilet Toggle */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-gray-900">Outside Toilet Available</span>
+                        <button
+                          type="button"
+                          onClick={() => handleInputChange('toilet_outside', !formData.toilet_outside)}
+                          className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors border ${formData.toilet_outside ? 'bg-red-600 border-red-600' : 'bg-gray-200 border-gray-300'}`}
+                          aria-pressed={formData.toilet_outside}
+                        >
+                          <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${formData.toilet_outside ? 'translate-x-5' : 'translate-x-0'}`}></span>
+                        </button>
+                        <span className={`text-xs font-semibold ${formData.toilet_outside ? 'text-red-700' : 'text-gray-500'}`}>
+                          {formData.toilet_outside ? 'YES' : 'NO'}
+                        </span>
+                      </div>
+                    </div>
+
+
                     {/* Required slots */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                       {[
                         { key: 'front', label: 'Front' },
                         { key: 'back', label: 'Back' },
                         { key: 'hall', label: 'Hall' },
-                        { key: 'kitchen', label: 'Kitchen' }
-                      ].filter(({ key }) => key !== 'kitchen' || formData.amenities.kitchen).map(({ key, label }) => {
+                        { key: 'kitchen', label: 'Kitchen' },
+                        { key: 'outside_toilet', label: 'Outside Toilet' }
+                      ].filter(({ key }) => {
+                        if (key === 'kitchen') return formData.amenities.kitchen;
+                        if (key === 'outside_toilet') return formData.toilet_outside;
+                        return true;
+                      }).map(({ key, label }) => {
                         const hasImage = formData.requiredImages[key] || formData.images[key];
                         const imageSrc = formData.requiredImages[key]?.preview || formData.images[key];
 
                         return (
                           <div key={key} className="">
                             <div className="text-xs font-medium text-gray-700 mb-2">
-                              {label} {key !== 'kitchen' || formData.amenities.kitchen ? '*' : ''}
+                              {label} {(key !== 'kitchen' && key !== 'outside_toilet') || (key === 'kitchen' && formData.amenities.kitchen) || (key === 'outside_toilet' && formData.toilet_outside) ? '*' : ''}
                             </div>
                             {!hasImage ? (
                               <label className={`flex items-center justify-center w-full h-28 border-2 border-dashed rounded-lg cursor-pointer ${imageLoading[key] ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-gray-50'} hover:bg-gray-100`}>
@@ -1049,60 +1091,7 @@ const EditProperty = () => {
                       )}
                     </div>
 
-                    {/* Outside Toilet */}
-                    <div className="space-y-4">
-                      <div className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          checked={formData.toilet_outside}
-                          onChange={(e) => handleInputChange('toilet_outside', e.target.checked)}
-                          className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-                        />
-                        <span className="text-sm font-medium text-gray-900">Outside Toilet Available</span>
-                      </div>
 
-                      {formData.toilet_outside && (
-                        <div className="flex items-center space-x-4">
-                          <div className="w-24 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
-                            {formData.outside_toilet_image ? (
-                              <img
-                                src={typeof formData.outside_toilet_image === 'string' ? formData.outside_toilet_image : formData.outside_toilet_image.preview}
-                                alt="Outside Toilet"
-                                className="w-full h-full object-cover rounded-lg"
-                              />
-                            ) : (
-                              <Camera className="w-6 h-6 text-gray-400" />
-                            )}
-                          </div>
-                          <div className="flex space-x-2">
-                            <input
-                              ref={(el) => (fileInputRefs.current.outside_toilet_image = el)}
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => handleImageUpload('outside_toilet_image', e.target.files[0])}
-                              className="hidden"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => fileInputRefs.current.outside_toilet_image?.click()}
-                              disabled={imageLoading.outside_toilet_image}
-                              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                            >
-                              Upload Image
-                            </button>
-                            {formData.outside_toilet_image && (
-                              <button
-                                type="button"
-                                onClick={() => removeImage('outside_toilet_image')}
-                                className="px-4 py-2 text-red-600 border border-red-600 rounded-lg hover:bg-red-50 text-sm"
-                              >
-                                Remove
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
                   </div>
 
                   {/* Documents Section */}

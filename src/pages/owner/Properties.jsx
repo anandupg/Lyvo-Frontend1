@@ -17,6 +17,7 @@ import {
   Power,
   PowerOff
 } from 'lucide-react';
+import apiClient from '../../utils/apiClient';
 
 const Properties = () => {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ const Properties = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [imageLoading, setImageLoading] = useState({});
   const [updatingStatus, setUpdatingStatus] = useState({});
+  const [error, setError] = useState(null); // Added error state
 
   // Fetch properties from backend
   const fetchProperties = async () => {
@@ -37,21 +39,23 @@ const Properties = () => {
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/owner/properties`, {
+      const response = await apiClient.get('/property/owner/properties', {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          console.log('Properties fetched:', result.data);
-          setProperties(result.data);
-        }
+      if (response.data.success) {
+        console.log('Properties fetched:', response.data.data);
+        setProperties(response.data.data);
+      } else {
+        setError('Failed to fetch properties');
       }
     } catch (error) {
       console.error('Error fetching properties:', error);
+      setError('Error connecting to server');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -66,28 +70,19 @@ const Properties = () => {
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/owner/properties/${propertyId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
+      const response = await apiClient.put(`/property/owner/properties/${propertyId}/status`, { status: newStatus });
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          // Update the property in the local state
-          setProperties(prev => prev.map(property =>
-            property._id === propertyId
-              ? { ...property, status: newStatus, updated_at: new Date().toISOString() }
-              : property
-          ));
-          console.log('Property status updated successfully');
-        }
+      if (response.data.success) {
+        // Update the property in the local state
+        setProperties(prev => prev.map(property =>
+          property._id === propertyId
+            ? { ...property, status: newStatus, updated_at: new Date().toISOString() }
+            : property
+        ));
+        console.log('Property status updated successfully');
       } else {
-        console.error('Failed to update property status');
+        console.error('Failed to update property status:', response.data.message || 'Unknown error');
+        setError('Failed to update property status');
       }
     } catch (error) {
       console.error('Error updating property status:', error);
@@ -423,8 +418,8 @@ const Properties = () => {
                     onClick={() => updatePropertyStatus(property.id, property.status === 'Active' ? 'inactive' : 'active')}
                     disabled={updatingStatus[property.id]}
                     className={`flex items-center justify-center px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors duration-200 ${property.status === 'Active'
-                        ? 'text-red-700 bg-red-100 hover:bg-red-200'
-                        : 'text-green-700 bg-green-100 hover:bg-green-200'
+                      ? 'text-red-700 bg-red-100 hover:bg-red-200'
+                      : 'text-green-700 bg-green-100 hover:bg-green-200'
                       } ${updatingStatus[property.id] ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {updatingStatus[property.id] ? (
