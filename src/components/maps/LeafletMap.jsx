@@ -134,7 +134,14 @@ const LeafletMap = ({
                   </div>
 
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-lg font-bold text-red-600">{property.price}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-lg font-bold text-red-600">{property.price}</p>
+                      {property.matchScore && (
+                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold">
+                          <Star className="w-2.5 h-2.5 fill-red-700" /> {property.matchScore}%
+                        </span>
+                      )}
+                    </div>
                     {property.distance && property.distance !== '0 km' && (
                       <p className="text-xs text-gray-500">{property.distance} away</p>
                     )}
@@ -220,7 +227,7 @@ const LeafletMap = ({
           />
         )}
       </MapContainer>
-    </div>
+    </div >
   );
 };
 

@@ -175,7 +175,7 @@ const SeekerDashboard = () => {
             images: property.images ? [property.images.front, property.images.hall, ...(property.images.gallery || [])].filter(Boolean) : [],
             ownerName: property.ownerName || 'Unknown Owner',
             roomDetails: property.room_details || [],
-            matchScore: 90 - (index * 4) // Mock match score
+            matchScore: property.matchScore || null
           };
         })
         .filter(pg => pg._distanceKm <= radiusKm)
@@ -765,10 +765,12 @@ const SeekerDashboard = () => {
                             <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
                             <span className="text-xs font-bold text-yellow-700">{pg.rating}</span>
                           </div>
-                          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-red-600 to-red-400 text-white text-[9px] font-black shadow-sm uppercase tracking-tighter">
-                            <Sparkles className="w-2.5 h-2.5" />
-                            <span>{pg.matchScore}% Match</span>
-                          </div>
+                          {pg.matchScore && (
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-red-600 to-red-400 text-white text-[9px] font-black shadow-sm uppercase tracking-tighter">
+                              <Sparkles className="w-2.5 h-2.5" />
+                              <span>{pg.matchScore}% Match</span>
+                            </div>
+                          )}
                         </div>
                       </div>
 

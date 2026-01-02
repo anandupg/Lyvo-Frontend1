@@ -511,11 +511,16 @@ const SeekerPropertyDetails = () => {
                             {room.room_type || room.type}
                           </div>
 
+
                           {/* Compatibility Badge - New */}
-                          <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-lg text-xs font-bold text-blue-600 shadow-sm flex items-center gap-1">
-                            <Star className="w-3 h-3 fill-blue-600" />
-                            {room.compatibility_score || 92}% Match
-                          </div>
+                          {room.compatibility?.overallScore !== undefined && (
+                            <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-lg text-xs font-bold shadow-sm flex items-center gap-1">
+                              <Star className={`w-3 h-3 ${room.compatibility.overallScore >= 80 ? 'fill-green-600 text-green-600' : room.compatibility.overallScore >= 60 ? 'fill-blue-600 text-blue-600' : 'fill-red-600 text-red-600'}`} />
+                              <span className={`${room.compatibility.overallScore >= 80 ? 'text-green-600' : room.compatibility.overallScore >= 60 ? 'text-blue-600' : 'text-red-600'}`}>
+                                {room.compatibility.overallScore}% Match
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         {/* Content Section */}
@@ -701,6 +706,72 @@ const SeekerPropertyDetails = () => {
                         Message
                       </button>
                     </div>
+                  </div>
+                )}
+
+                {/* Compact House Vibe Card */}
+                {(property.house_vibe || (property.current_residents && property.current_residents.length > 0)) && (
+                  <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl border border-indigo-100 p-6 mt-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-white rounded-lg shadow-sm text-indigo-600">
+                          <Users className="w-4 h-4" />
+                        </div>
+                        <h4 className="font-bold text-gray-900 text-lg">House Vibe</h4>
+                      </div>
+                      {property.house_vibe && (
+                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm border ${property.house_vibe.overallScore >= 80 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-white text-indigo-600 border-indigo-100'}`}>
+                          {property.house_vibe.overallScore}% Match
+                        </span>
+                      )}
+                    </div>
+
+
+                    {property.house_vibe && (
+                      <div className="space-y-3 mb-4">
+                        <p className="text-sm font-semibold text-gray-700 leading-snug">
+                          "{property.house_vibe.notes || property.house_vibe.label}"
+                        </p>
+
+                        {property.house_vibe.scoreBreakdown && property.house_vibe.scoreBreakdown.pros.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {property.house_vibe.scoreBreakdown.pros.slice(0, 3).map((attr, i) => (
+                              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-[10px] font-bold border border-green-100 uppercase tracking-wide">
+                                <CheckCircle className="w-2.5 h-2.5" /> {attr}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Compact Avatars */}
+                    {property.current_residents && property.current_residents.length > 0 ? (
+                      <div>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3 flex items-center justify-between">
+                          Flatmates
+                          <span className="text-gray-500">{property.current_residents.length} active</span>
+                        </p>
+                        <div className="flex items-center -space-x-2 overflow-hidden py-1">
+                          {property.current_residents.slice(0, 5).map((t, i) => (
+                            <img
+                              key={i}
+                              src={t.profilePicture || `https://ui-avatars.com/api/?name=${t.name}&background=random`}
+                              alt={t.name}
+                              className="inline-block h-8 w-8 rounded-full ring-2 ring-white object-cover"
+                              title={t.name}
+                            />
+                          ))}
+                          {property.current_residents.length > 5 && (
+                            <div className="flex flex-col items-center justify-center h-8 w-8 rounded-full ring-2 ring-white bg-gray-100 text-xs font-bold text-gray-500 z-10">
+                              +{property.current_residents.length - 5}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400 italic">No flatmates yet. Be the first!</p>
+                    )}
                   </div>
                 )}
 

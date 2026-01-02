@@ -5,7 +5,7 @@ import {
     ArrowLeft, Heart, Share2, User, Mail, Phone, MapPin,
     Bed, Square, Users, CheckCircle, Wifi, Car, Tv, Utensils,
     Shield, Calendar, Clock, DollarSign, Star, Info, X,
-    Wind, Dog, Ban, Camera
+    Wind, Dog, Ban, Camera, AlertCircle
 } from 'lucide-react';
 import SeekerLayout from '../../components/seeker/SeekerLayout';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -59,6 +59,7 @@ const SeekerRoomDetails = () => {
         }
     };
     const [loading, setLoading] = useState(true);
+    const [compatibility, setCompatibility] = useState(null);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [isFavorited, setIsFavorited] = useState(false);
     const [bookingStatus, setBookingStatus] = useState(null);
@@ -115,6 +116,8 @@ const SeekerRoomDetails = () => {
                 setRoom(data.data.room);
                 setProperty(data.data.property);
                 setOwner(data.data.owner);
+                setTenants(data.data.residents || []);
+                setCompatibility(data.data.compatibility);
 
                 if (data.data.property?.latitude && data.data.property?.longitude) {
                     setMapCenter([parseFloat(data.data.property.latitude), parseFloat(data.data.property.longitude)]);
@@ -555,13 +558,85 @@ const SeekerRoomDetails = () => {
                                 </div>
                             </div>
 
-                            {/* About Section - Shadowed Card */}
-                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow duration-300">
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow duration-300 mt-6">
                                 <h2 className="text-2xl font-bold text-gray-900 mb-4">About this place</h2>
                                 <p className="text-gray-600 leading-relaxed text-lg">
                                     {property.description || "A beautiful property located in a prime area, offering comfortable living spaces and modern amenities for a hassle-free stay."}
                                 </p>
                             </div>
+
+                            {/* Living With Section (Main Content) */}
+                            {tenants && tenants.length > 0 && (
+                                <div className="mt-8">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-gray-900">Living With</h2>
+                                            <p className="text-gray-500 mt-1">Get to know your potential future housemates</p>
+                                        </div>
+                                        <div className="flex items-center gap-3 bg-blue-50 px-4 py-2 rounded-full">
+                                            <div className="flex -space-x-3">
+                                                {tenants.slice(0, 3).map((t, i) => (
+                                                    <img
+                                                        key={i}
+                                                        src={t.profilePicture || `https://ui-avatars.com/api/?name=${t.name}&background=random`}
+                                                        alt={t.name}
+                                                        className="w-8 h-8 rounded-full border-2 border-white object-cover"
+                                                    />
+                                                ))}
+                                            </div>
+                                            <span className="text-sm font-bold text-blue-700">{tenants.length} Residents</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        {tenants.map((t, i) => (
+                                            <div key={i} className="flex gap-4 p-5 bg-white border border-gray-100 rounded-2xl hover:shadow-lg hover:border-blue-100 transition-all duration-300 items-center">
+                                                {/* Left: Avatar */}
+                                                <div className="relative shrink-0">
+                                                    <img
+                                                        src={t.profilePicture || `https://ui-avatars.com/api/?name=${t.name}&background=random`}
+                                                        alt={t.name}
+                                                        className="w-16 h-16 rounded-full object-cover shadow-sm bg-gray-100"
+                                                    />
+                                                    {/* Compatibility Badge (Percentage) */}
+                                                    {t.matchScore !== undefined && (
+                                                        <div className={`absolute -bottom-2 -right-2 px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm flex items-center justify-center ${t.matchScore >= 80 ? 'bg-green-500' : t.matchScore >= 60 ? 'bg-blue-500' : 'bg-red-500'}`} title="Lifestyle Match Score">
+                                                            <span className="text-[10px] font-bold text-white">{t.matchScore}%</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Right: Details */}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <h4 className="text-lg font-bold text-gray-900 truncate">{t.name}</h4>
+                                                        <span className="flex items-center gap-0.5 px-2 py-0.5 bg-green-50 text-green-700 text-[10px] font-bold rounded-full border border-green-100 uppercase tracking-wide">
+                                                            <CheckCircle className="w-3 h-3" /> VERIFIED
+                                                        </span>
+                                                    </div>
+
+                                                    <p className="text-xs text-gray-500 font-medium mb-3">
+                                                        Joined {t.joinedAt ? new Date(t.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Recently'}
+                                                    </p>
+
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {t.lifestyle?.occupation && (
+                                                            <span className="px-2.5 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold rounded-lg border border-gray-200">
+                                                                {t.lifestyle.occupation}
+                                                            </span>
+                                                        )}
+                                                        {t.lifestyle?.smoking !== undefined && (
+                                                            <span className="px-2.5 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold rounded-lg border border-gray-200">
+                                                                {t.lifestyle.smoking === 'Yes' ? 'Smoker' : 'Non-Smoker'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             <hr className="border-gray-100" />
 
@@ -584,38 +659,79 @@ const SeekerRoomDetails = () => {
                             </div>
 
                             {/* Mobile-only Compatibility Card */}
-                            <div className="lg:hidden">
-                                <div className="bg-white rounded-2xl shadow-sm p-6 overflow-hidden relative">
-                                    <div className="absolute top-0 right-0 p-3">
-                                        <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center">
-                                            <Star className="w-4 h-4 text-red-600" />
-                                        </div>
-                                    </div>
-                                    <h3 className="text-lg font-bold text-gray-900 mb-4 font-outfit">Compatibility</h3>
-                                    <div className="space-y-4">
-                                        <div className="flex items-end justify-between">
-                                            <div>
-                                                <p className="text-3xl font-black text-red-600">92%</p>
-                                                <p className="text-xs text-gray-500 font-medium">Lifestyle Match</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-sm font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">Excellent</p>
+                            {compatibility && (
+                                <div className="lg:hidden">
+                                    <div className="bg-white rounded-2xl shadow-sm p-6 overflow-hidden relative">
+                                        <div className="absolute top-0 right-0 p-3">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${compatibility.overallScore >= 80 ? 'bg-green-50' : compatibility.overallScore >= 60 ? 'bg-blue-50' : 'bg-red-50'}`}>
+                                                <Star className={`w-4 h-4 ${compatibility.overallScore >= 80 ? 'text-green-600' : compatibility.overallScore >= 60 ? 'text-blue-600' : 'text-red-600'}`} />
                                             </div>
                                         </div>
-                                        <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                                            <motion.div
-                                                initial={{ width: 0 }}
-                                                animate={{ width: '92%' }}
-                                                transition={{ duration: 1, ease: 'easeOut' }}
-                                                className="h-full bg-gradient-to-r from-blue-500 to-indigo-600"
-                                            />
+                                        <h3 className="text-lg font-bold text-gray-900 mb-4 font-outfit">Compatibility</h3>
+                                        <div className="space-y-4">
+                                            <div className="flex items-end justify-between">
+                                                <div>
+                                                    <p className={`text-3xl font-black ${compatibility.overallScore >= 80 ? 'text-green-600' : compatibility.overallScore >= 60 ? 'text-blue-600' : 'text-red-600'}`}>{compatibility.overallScore}%</p>
+                                                    <p className="text-xs text-gray-500 font-medium">Lifestyle Match</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className={`text-sm font-bold px-2 py-0.5 rounded ${compatibility.overallScore >= 80 ? 'text-green-600 bg-green-50' : compatibility.overallScore >= 60 ? 'text-blue-600 bg-blue-50' : 'text-red-600 bg-red-50'}`}>{compatibility.label}</p>
+                                                </div>
+                                            </div>
+                                            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                                                <motion.div
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${compatibility.overallScore}%` }}
+                                                    transition={{ duration: 1, ease: 'easeOut' }}
+                                                    className={`h-full bg-gradient-to-r ${compatibility.overallScore >= 80 ? 'from-green-500 to-emerald-600' : compatibility.overallScore >= 60 ? 'from-blue-500 to-indigo-600' : 'from-red-500 to-pink-600'}`}
+                                                />
+                                            </div>
+                                            <p className="text-xs text-gray-500 leading-relaxed">
+                                                {compatibility.notes}
+                                            </p>
+                                            {/* Deterministic Insights Mobile */}
+                                            {compatibility.scoreBreakdown && (
+                                                <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <h4 className="text-xs font-bold text-green-700 uppercase tracking-wide mb-2 flex items-center gap-1">
+                                                            <CheckCircle className="w-3 h-3" /> Strong Matches
+                                                        </h4>
+                                                        {compatibility.scoreBreakdown.pros.length > 0 ? (
+                                                            <ul className="text-xs text-gray-600 space-y-1">
+                                                                {compatibility.scoreBreakdown.pros.map((attr, i) => (
+                                                                    <li key={i} className="flex items-center gap-1.5">
+                                                                        <span className="w-1 h-1 bg-green-400 rounded-full"></span>
+                                                                        {attr}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        ) : (
+                                                            <p className="text-[10px] text-gray-400 italic">No specific strong matches.</p>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-xs font-bold text-red-700 uppercase tracking-wide mb-2 flex items-center gap-1">
+                                                            <AlertCircle className="w-3 h-3" /> Potential Friction
+                                                        </h4>
+                                                        {compatibility.scoreBreakdown.cons.length > 0 ? (
+                                                            <ul className="text-xs text-gray-600 space-y-1">
+                                                                {compatibility.scoreBreakdown.cons.map((attr, i) => (
+                                                                    <li key={i} className="flex items-center gap-1.5">
+                                                                        <span className="w-1 h-1 bg-red-400 rounded-full"></span>
+                                                                        {attr}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        ) : (
+                                                            <p className="text-[10px] text-gray-400 italic">No major friction points.</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                        <p className="text-xs text-gray-500 leading-relaxed">
-                                            Based on your preferences for <span className="text-gray-900 font-semibold">Quiet Evenings</span> and <span className="text-gray-900 font-semibold">Shared Kitchen</span> usage.
-                                        </p>
                                     </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Room Features - Card Grid */}
                             <div>
@@ -702,100 +818,7 @@ const SeekerRoomDetails = () => {
                             <hr className="border-gray-100" />
 
                             {/* Current Tenants Section - Detailed Cards */}
-                            <div>
-                                <div className="flex items-center justify-between mb-6">
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-gray-900">Living With</h2>
-                                        <p className="text-sm text-gray-500 mt-1">Get to know your potential future housemates</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex -space-x-2">
-                                            {tenants.slice(0, 3).map((t, i) => (
-                                                <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-200 overflow-hidden">
-                                                    <img src={t.profilePicture || t.userId?.profilePicture || `https://ui-avatars.com/api/?name=${t.userName}&background=random`} alt="" className="w-full h-full object-cover" />
-                                                </div>
-                                            ))}
-                                        </div>
-                                        <span className="text-xs font-bold bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full">
-                                            {tenants.length} Residents
-                                        </span>
-                                    </div>
-                                </div>
 
-                                {loadingTenants ? (
-                                    <div className="flex flex-col items-center justify-center py-10 gap-3">
-                                        <div className="w-8 h-8 border-3 border-blue-100 border-t-blue-600 rounded-full animate-spin" />
-                                        <p className="text-sm text-gray-500 animate-pulse">Finding your future roommates...</p>
-                                    </div>
-                                ) : tenants.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        {tenants.map((tenant, idx) => (
-                                            <div
-                                                key={tenant._id || idx}
-                                                className="group relative p-5 bg-white border border-gray-100 rounded-2xl hover:shadow-xl hover:shadow-blue-500/5 hover:border-blue-100 transition-all duration-300"
-                                            >
-                                                <div className="absolute top-4 right-4">
-                                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 text-green-700 text-[10px] font-bold uppercase tracking-wide">
-                                                        <CheckCircle className="w-3 h-3" /> Verified
-                                                    </span>
-                                                </div>
-
-                                                <div className="flex items-start gap-4">
-                                                    <div className="relative shrink-0">
-                                                        <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-white shadow-md bg-gray-100 group-hover:scale-105 transition-transform duration-300">
-                                                            {(tenant.profilePicture || tenant.userId?.profilePicture) ? (
-                                                                <img
-                                                                    src={tenant.profilePicture || tenant.userId?.profilePicture}
-                                                                    alt={tenant.userName || 'Resident'}
-                                                                    className="w-full h-full object-cover"
-                                                                />
-                                                            ) : (
-                                                                <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
-                                                                    <User className="w-8 h-8" />
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500 border-2 border-white rounded-full flex items-center justify-center shadow-sm z-10">
-                                                            <Users className="w-3 h-3 text-white" />
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="pt-1">
-                                                        <h3 className="font-bold text-gray-900 text-lg leading-tight group-hover:text-blue-600 transition-colors">
-                                                            {tenant.userName || 'Resident'}
-                                                        </h3>
-                                                        <p className="text-xs text-gray-500 font-medium mt-1">
-                                                            Joined {tenant.actualCheckInDate ? new Date(tenant.actualCheckInDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Recently'}
-                                                        </p>
-
-                                                        {/* Optional tags or info could go here */}
-                                                        <div className="flex gap-2 mt-3">
-                                                            <span className="text-[10px] font-semibold text-gray-500 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
-                                                                Student
-                                                            </span>
-                                                            <span className="text-[10px] font-semibold text-gray-500 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
-                                                                Non-Smoker
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8 text-center border border-white shadow-sm">
-                                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm text-blue-500">
-                                            <Users className="w-8 h-8" />
-                                        </div>
-                                        <h3 className="text-gray-900 font-bold text-lg mb-2">Room is Currently Empty</h3>
-                                        <p className="text-sm text-gray-600 max-w-[280px] mx-auto leading-relaxed">
-                                            You have the unique opportunity to set the vibe! Be the first to move in.
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-
-                            <hr className="border-gray-100" />
 
                             {/* Location */}
                             <div className="space-y-4">
@@ -944,37 +967,83 @@ const SeekerRoomDetails = () => {
                                     </div>
                                 )}
 
+
+                                {/* Living With (Desktop) */}
+
+
                                 {/* Behavioral Match (Desktop) */}
-                                <div className="hidden md:block bg-white rounded-2xl shadow-lg border border-gray-100 p-6 overflow-hidden relative hover:shadow-xl transition-shadow duration-300">
-                                    <div className="absolute top-0 right-0 p-3">
-                                        <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                                            <Star className="w-4 h-4 text-blue-600" />
-                                        </div>
-                                    </div>
-                                    <h3 className="text-lg font-bold text-gray-900 mb-4">Compatibility</h3>
-                                    <div className="space-y-4">
-                                        <div className="flex items-end justify-between">
-                                            <div>
-                                                <p className="text-3xl font-black text-blue-600">92%</p>
-                                                <p className="text-xs text-gray-500 font-medium">Lifestyle Match</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-sm font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">Excellent</p>
+                                {compatibility && (
+                                    <div className="hidden md:block bg-white rounded-2xl shadow-lg border border-gray-100 p-6 overflow-hidden relative hover:shadow-xl transition-shadow duration-300">
+                                        <div className="absolute top-0 right-0 p-3">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${compatibility.overallScore >= 80 ? 'bg-green-50' : compatibility.overallScore >= 60 ? 'bg-blue-50' : 'bg-red-50'}`}>
+                                                <Star className={`w-4 h-4 ${compatibility.overallScore >= 80 ? 'text-green-600' : compatibility.overallScore >= 60 ? 'text-blue-600' : 'text-red-600'}`} />
                                             </div>
                                         </div>
-                                        <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                                            <motion.div
-                                                initial={{ width: 0 }}
-                                                animate={{ width: '92%' }}
-                                                transition={{ duration: 1, ease: 'easeOut' }}
-                                                className="h-full bg-gradient-to-r from-blue-500 to-indigo-600"
-                                            />
+                                        <h3 className="text-lg font-bold text-gray-900 mb-4">Compatibility</h3>
+                                        <div className="space-y-4">
+                                            <div className="flex items-end justify-between">
+                                                <div>
+                                                    <p className={`text-3xl font-black ${compatibility.overallScore >= 80 ? 'text-green-600' : compatibility.overallScore >= 60 ? 'text-blue-600' : 'text-red-600'}`}>{compatibility.overallScore}%</p>
+                                                    <p className="text-xs text-gray-500 font-medium">Lifestyle Match</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className={`text-sm font-bold px-2 py-0.5 rounded ${compatibility.overallScore >= 80 ? 'text-green-600 bg-green-50' : compatibility.overallScore >= 60 ? 'text-blue-600 bg-blue-50' : 'text-red-600 bg-red-50'}`}>{compatibility.label}</p>
+                                                </div>
+                                            </div>
+                                            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                                                <motion.div
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${compatibility.overallScore}%` }}
+                                                    transition={{ duration: 1, ease: 'easeOut' }}
+                                                    className={`h-full bg-gradient-to-r ${compatibility.overallScore >= 80 ? 'from-green-500 to-emerald-600' : compatibility.overallScore >= 60 ? 'from-blue-500 to-indigo-600' : 'from-red-500 to-pink-600'}`}
+                                                />
+                                            </div>
+                                            <p className="text-xs text-gray-500 leading-relaxed">
+                                                {compatibility.notes || <span>Based on your preferences for <span className="text-gray-900 font-semibold">Quiet Evenings</span> and <span className="text-gray-900 font-semibold">Shared Kitchen</span> usage.</span>}
+                                            </p>
+
+                                            {/* Deterministic Insights */}
+                                            {compatibility.scoreBreakdown && (
+                                                <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <h4 className="text-xs font-bold text-green-700 uppercase tracking-wide mb-2 flex items-center gap-1">
+                                                            <CheckCircle className="w-3 h-3" /> Strong Matches
+                                                        </h4>
+                                                        {compatibility.scoreBreakdown.pros.length > 0 ? (
+                                                            <ul className="text-xs text-gray-600 space-y-1">
+                                                                {compatibility.scoreBreakdown.pros.map((attr, i) => (
+                                                                    <li key={i} className="flex items-center gap-1.5">
+                                                                        <span className="w-1 h-1 bg-green-400 rounded-full"></span>
+                                                                        {attr}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        ) : (
+                                                            <p className="text-[10px] text-gray-400 italic">No specific strong matches.</p>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-xs font-bold text-red-700 uppercase tracking-wide mb-2 flex items-center gap-1">
+                                                            <AlertCircle className="w-3 h-3" /> Potential Friction
+                                                        </h4>
+                                                        {compatibility.scoreBreakdown.cons.length > 0 ? (
+                                                            <ul className="text-xs text-gray-600 space-y-1">
+                                                                {compatibility.scoreBreakdown.cons.map((attr, i) => (
+                                                                    <li key={i} className="flex items-center gap-1.5">
+                                                                        <span className="w-1 h-1 bg-red-400 rounded-full"></span>
+                                                                        {attr}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        ) : (
+                                                            <p className="text-[10px] text-gray-400 italic">No major friction points.</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                        <p className="text-xs text-gray-500 leading-relaxed">
-                                            Based on your preferences for <span className="text-gray-900 font-semibold">Quiet Evenings</span> and <span className="text-gray-900 font-semibold">Shared Kitchen</span> usage.
-                                        </p>
                                     </div>
-                                </div>
+                                )}
 
                             </div>
                         </div>
