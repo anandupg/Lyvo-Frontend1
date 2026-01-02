@@ -16,7 +16,8 @@ import {
   Mail,
   MapPin,
   Bed,
-  DollarSign
+  DollarSign,
+  LogOut
 } from 'lucide-react';
 
 const OwnerBookings = () => {
@@ -64,12 +65,15 @@ const OwnerBookings = () => {
     const q = query.trim().toLowerCase();
     return bookings
       .filter((b) => {
-        if (statusFilter === 'all') return b.status !== 'checked_in';
+        if (statusFilter === 'all') return b.status !== 'checked_in' && b.status !== 'checked_out';
         if (statusFilter === 'pending') {
           return ['pending_approval', 'payment_pending', 'pending'].includes(b.status);
         }
         if (statusFilter === 'confirmed') {
           return ['confirmed', 'checked_in'].includes(b.status);
+        }
+        if (statusFilter === 'checked_out') {
+          return b.status === 'checked_out';
         }
         return b.status === statusFilter;
       })
@@ -84,12 +88,13 @@ const OwnerBookings = () => {
   }, [bookings, query, statusFilter]);
 
   const stats = useMemo(() => {
-    const total = bookings.filter(b => b.status !== 'checked_in').length;
+    const total = bookings.filter(b => b.status !== 'checked_in' && b.status !== 'checked_out').length;
     const confirmed = bookings.filter(b => ['confirmed', 'checked_in'].includes(b.status)).length;
     const pending = bookings.filter(b => ['pending_approval', 'payment_pending', 'pending'].includes(b.status)).length;
+    const checkedOut = bookings.filter(b => b.status === 'checked_out').length;
     const cancelled = bookings.filter(b => b.status === 'cancelled').length;
     const rejected = bookings.filter(b => b.status === 'rejected').length;
-    return { total, confirmed, pending, cancelled, rejected };
+    return { total, confirmed, pending, checkedOut, cancelled, rejected };
   }, [bookings]);
 
   const refresh = async () => {
@@ -126,6 +131,7 @@ const OwnerBookings = () => {
       case 'confirmed':
       case 'approved': return 'bg-green-100 text-green-800 border-green-200';
       case 'checked_in': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'checked_out': return 'bg-slate-100 text-slate-800 border-slate-200';
       case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
       case 'cancelled': return 'bg-gray-100 text-gray-800 border-gray-200';
       case 'pending_approval': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
@@ -138,6 +144,7 @@ const OwnerBookings = () => {
       case 'confirmed':
       case 'approved': return <CheckCircle className="w-4 h-4" />;
       case 'checked_in': return <MapPin className="w-4 h-4" />;
+      case 'checked_out': return <LogOut className="w-4 h-4" />;
       case 'rejected': return <XCircle className="w-4 h-4" />;
       case 'cancelled': return <XCircle className="w-4 h-4" />;
       case 'pending_approval': return <Clock className="w-4 h-4" />;
@@ -150,6 +157,7 @@ const OwnerBookings = () => {
       case 'confirmed':
       case 'approved': return 'Approved';
       case 'checked_in': return 'Checked In';
+      case 'checked_out': return 'Checked Out';
       case 'rejected': return 'Rejected';
       case 'cancelled': return cancelledBy === 'user' ? 'Cancelled by User' : 'Cancelled';
       case 'pending_approval': return 'Pending Approval';
@@ -218,7 +226,7 @@ const OwnerBookings = () => {
         </div>
 
         {/* Enhanced Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           <div
             className={`bg-gradient-to-br from-blue-50 to-blue-100 border rounded-xl p-6 hover:shadow-lg transition-shadow cursor-pointer ${statusFilter === 'all'
               ? 'border-blue-400 ring-2 ring-blue-200'
@@ -278,6 +286,24 @@ const OwnerBookings = () => {
               </div>
               <div className="w-12 h-12 bg-yellow-200 rounded-lg flex items-center justify-center">
                 <Clock className="w-6 h-6 text-yellow-600" />
+              </div>
+            </div>
+          </div>
+
+          <div
+            className={`bg-gradient-to-br from-slate-50 to-slate-100 border rounded-xl p-6 hover:shadow-lg transition-shadow cursor-pointer ${statusFilter === 'checked_out'
+              ? 'border-slate-400 ring-2 ring-slate-200'
+              : 'border-slate-200'
+              }`}
+            onClick={() => setStatusFilter('checked_out')}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-slate-600 mb-1">Checked Out</div>
+                <div className="text-3xl font-bold text-slate-900">{stats.checkedOut}</div>
+              </div>
+              <div className="w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center">
+                <LogOut className="w-6 h-6 text-slate-600" />
               </div>
             </div>
           </div>
