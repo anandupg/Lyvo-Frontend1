@@ -1002,6 +1002,33 @@ const PropertyDetails = () => {
     }).format(price);
   };
 
+  const renderApprovalBadge = (status) => {
+    switch (status) {
+      case 'approved':
+        return (
+          <div className="flex items-center space-x-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+            <CheckCircle className="w-4 h-4" />
+            <span>Approved</span>
+          </div>
+        );
+      case 'rejected':
+        return (
+          <div className="flex items-center space-x-1 px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+            <XCircle className="w-4 h-4" />
+            <span>Rejected</span>
+          </div>
+        );
+      case 'pending':
+      default:
+        return (
+          <div className="flex items-center space-x-1 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+            <Clock className="w-4 h-4" />
+            <span>Pending Approval</span>
+          </div>
+        );
+    }
+  };
+
   if (loading) {
     return (
       <OwnerLayout>
@@ -1236,9 +1263,12 @@ const PropertyDetails = () => {
 
                           {/* Room Status */}
                           <div className="flex items-center justify-between mb-4">
-                            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(room.status || 'active')}`}>
-                              <StatusIcon className="w-4 h-4" />
-                              <span className="capitalize">{room.status || 'Active'}</span>
+                            <div className="flex flex-wrap gap-2">
+                              <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(room.status || 'active')}`}>
+                                <StatusIcon className="w-4 h-4" />
+                                <span className="capitalize">{room.status || 'Active'}</span>
+                              </div>
+                              {renderApprovalBadge(room.approval_status || 'pending')}
                             </div>
                             <div className="text-sm text-gray-500 group-hover:text-gray-700">
                               Click to view details &rarr;
@@ -1536,6 +1566,21 @@ const PropertyDetails = () => {
                 </div>
               </div>
 
+              {/* Admin Approval Status */}
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Admin Approval</h3>
+                <div className="flex items-center justify-between">
+                  {renderApprovalBadge(property.approval_status || 'pending')}
+                  <p className="text-xs text-gray-500 italic max-w-[150px]">
+                    {property.approval_status === 'approved'
+                      ? 'Listing is visible to seekers.'
+                      : property.approval_status === 'rejected'
+                        ? 'Please contact admin for details.'
+                        : 'Awaiting admin review.'}
+                  </p>
+                </div>
+              </div>
+
               {/* Property Information */}
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Property Information</h3>
@@ -1814,6 +1859,7 @@ const PropertyDetails = () => {
                     })()}
                     <span className="capitalize">{selectedRoom.status || 'Active'}</span>
                   </div>
+                  {renderApprovalBadge(selectedRoom.approval_status || 'pending')}
                   <button
                     onClick={() => openEditRoom(selectedRoom)}
                     className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
@@ -1991,7 +2037,10 @@ const PropertyDetails = () => {
             <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-xl">
               {/* Modal Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900">Edit Room {editRoomData.room_number}</h2>
+                <div className="flex items-center space-x-4">
+                  <h2 className="text-xl font-semibold text-gray-900">Edit Room {editRoomData.room_number}</h2>
+                  {renderApprovalBadge(editRoomData.approval_status || 'pending')}
+                </div>
                 <button
                   onClick={() => setIsEditRoomModalOpen(false)}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { 
-  Home, 
-  Users, 
-  Calendar, 
-  TrendingUp, 
-  Star, 
-  Clock, 
+import {
+  Home,
+  Users,
+  Calendar,
+  TrendingUp,
+  Star,
+  Clock,
   MessageCircle,
   Settings,
   Bell,
@@ -58,7 +58,7 @@ const RoomOwnerDashboard = () => {
     const checkAuth = () => {
       const authToken = localStorage.getItem('authToken');
       const userData = localStorage.getItem('user');
-      
+
       if (!authToken || !userData) {
         navigate('/login');
         return;
@@ -77,7 +77,7 @@ const RoomOwnerDashboard = () => {
         navigate('/login');
         return;
       }
-      
+
       setLoading(false);
     };
 
@@ -85,65 +85,41 @@ const RoomOwnerDashboard = () => {
   }, [navigate]);
 
   // Mock data for room owner dashboard
+  // Mock stats for now, can be replaced with real analytics endpoint later
   const stats = {
-    totalProperties: 4,
-    activeListings: 3,
-    totalTenants: 8,
-    monthlyRevenue: 85000,
-    averageRating: 4.7,
-    occupancyRate: 92
+    totalProperties: properties.length,
+    activeListings: properties.filter(p => p.status === 'active').length,
+    totalTenants: properties.reduce((acc, curr) => acc + (curr.rooms?.reduce((rAcc, r) => rAcc + (r.current_occupants || 0), 0) || 0), 0),
+    monthlyRevenue: 85000, // Placeholder
+    averageRating: 4.7, // Placeholder
+    occupancyRate: 92 // Placeholder
   };
 
-  const properties = [
-    {
-      id: 1,
-      title: "Modern 2BHK Apartment",
-      location: "Koramangala, Bangalore",
-      price: "₹25,000",
-      type: "Apartment",
-      bedrooms: 2,
-      bathrooms: 2,
-      area: "1200 sq ft",
-      status: "Occupied",
-      rating: 4.8,
-      tenants: 3,
-      image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&w=400&h=300&fit=crop&crop=center",
-      nextPayment: "2024-04-15",
-      amenities: ["WiFi", "Parking", "Gym", "Security"]
-    },
-    {
-      id: 2,
-      title: "Cozy Studio Room",
-      location: "Indiranagar, Bangalore",
-      price: "₹15,000",
-      type: "Studio",
-      bedrooms: 1,
-      bathrooms: 1,
-      area: "600 sq ft",
-      status: "Available",
-      rating: 4.6,
-      tenants: 0,
-      image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&w=400&h=300&fit=crop&crop=center",
-      nextPayment: null,
-      amenities: ["WiFi", "Kitchen", "Laundry"]
-    },
-    {
-      id: 3,
-      title: "Premium 3BHK Villa",
-      location: "Whitefield, Bangalore",
-      price: "₹45,000",
-      type: "Villa",
-      bedrooms: 3,
-      bathrooms: 3,
-      area: "2000 sq ft",
-      status: "Occupied",
-      rating: 4.9,
-      tenants: 4,
-      image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&w=400&h=300&fit=crop&crop=center",
-      nextPayment: "2024-04-20",
-      amenities: ["WiFi", "Parking", "Garden", "Security", "Pool"]
+  const [properties, setProperties] = useState([]);
+
+  // Fetch properties
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('http://localhost:5000/api/property/owner/properties', {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+        const data = await response.json();
+        if (data.success) {
+          setProperties(data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching properties:', error);
+      }
+    };
+
+    if (user) {
+      fetchProperties();
     }
-  ];
+  }, [user]);
 
   const recentTransactions = [
     {
@@ -268,16 +244,15 @@ const RoomOwnerDashboard = () => {
           </div>
           <span className="text-xl font-bold text-gray-900"><span className="text-red-600">Lyvo</span><span className="text-black">+</span> Owner</span>
         </div>
-        
+
         <nav className="flex-1">
           <ul className="space-y-2">
             {sidebarLinks.map((link) => (
               <li key={link.name}>
                 <button
                   onClick={() => setActiveTab(link.tab)}
-                  className={`w-full flex items-center px-3 py-2 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all ${
-                    activeTab === link.tab ? 'bg-red-50 text-red-600' : ''
-                  }`}
+                  className={`w-full flex items-center px-3 py-2 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all ${activeTab === link.tab ? 'bg-red-50 text-red-600' : ''
+                    }`}
                 >
                   <link.icon className="w-5 h-5 mr-3" />
                   <span className="font-medium">{link.name}</span>
@@ -286,8 +261,8 @@ const RoomOwnerDashboard = () => {
             ))}
           </ul>
         </nav>
-        
-                        <div className="mt-10 text-xs text-gray-400 text-center">&copy; {new Date().getFullYear()} <span className="text-red-600">Lyvo</span><span className="text-black">+</span></div>
+
+        <div className="mt-10 text-xs text-gray-400 text-center">&copy; {new Date().getFullYear()} <span className="text-red-600">Lyvo</span><span className="text-black">+</span></div>
       </aside>
 
       {/* Main Content */}
@@ -329,7 +304,7 @@ const RoomOwnerDashboard = () => {
                     <Building className="w-8 h-8 text-red-500" />
                   </div>
                 </div>
-                
+
                 <div className="bg-white rounded-lg shadow p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -339,7 +314,7 @@ const RoomOwnerDashboard = () => {
                     <Home className="w-8 h-8 text-blue-500" />
                   </div>
                 </div>
-                
+
                 <div className="bg-white rounded-lg shadow p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -349,7 +324,7 @@ const RoomOwnerDashboard = () => {
                     <Users className="w-8 h-8 text-green-500" />
                   </div>
                 </div>
-                
+
                 <div className="bg-white rounded-lg shadow p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -414,12 +389,13 @@ const RoomOwnerDashboard = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {properties.slice(0, 3).map((property) => (
                       <motion.div
-                        key={property.id}
+                        key={property._id}
                         whileHover={{ y: -5 }}
                         className="bg-gray-50 rounded-lg p-4 border border-gray-200"
+                        onClick={() => navigate(`/owner/properties/${property._id}`)}
                       >
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-semibold text-gray-900">{property.title}</h4>
+                          <h4 className="font-semibold text-gray-900">{property.property_name}</h4>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(property.status)}`}>
                             {property.status}
                           </span>
@@ -427,19 +403,21 @@ const RoomOwnerDashboard = () => {
                         <div className="space-y-2 text-sm text-gray-600">
                           <div className="flex items-center">
                             <MapPin className="w-4 h-4 mr-2" />
-                            {property.location}
+                            {property.address?.city || 'Unknown Location'}
                           </div>
                           <div className="flex items-center">
                             <DollarSign className="w-4 h-4 mr-2" />
-                            {property.price}/month
+                            {/* Display rent range or first room's rent */}
+                            {property.rooms?.[0]?.rent ? `₹${property.rooms[0].rent}/month` : 'Contact for Price'}
                           </div>
                           <div className="flex items-center">
                             <Users className="w-4 h-4 mr-2" />
-                            {property.tenants} tenants
+                            {/* Calculate total tenants if available, or just mock for now if backend doesn't send it yet */}
+                            {property.rooms?.reduce((acc, r) => acc + (r.current_occupants || 0), 0)} tenants
                           </div>
                           <div className="flex items-center">
                             <Star className="w-4 h-4 mr-2 text-yellow-500" />
-                            {property.rating} rating
+                            {property.average_rating || 'New'} rating
                           </div>
                         </div>
                       </motion.div>
@@ -458,84 +436,104 @@ const RoomOwnerDashboard = () => {
             >
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">My Properties</h2>
-                <button className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+                <button
+                  onClick={() => navigate('/owner/properties/add')}
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                >
                   <Plus className="w-5 h-5" />
                   Add Property
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {properties.map((property) => (
-                  <motion.div
-                    key={property.id}
-                    whileHover={{ y: -5 }}
-                    className="bg-white rounded-lg shadow-lg overflow-hidden"
+              {properties.length === 0 ? (
+                <div className="bg-white rounded-lg shadow p-8 text-center">
+                  <Home className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900">No properties found</h3>
+                  <p className="text-gray-500 mt-2 mb-6">You haven't added any properties yet.</p>
+                  <button
+                    onClick={() => navigate('/owner/properties/add')}
+                    className="text-red-500 font-medium hover:text-red-700"
                   >
-                    <div className="h-48 bg-gray-200 relative">
-                      <img
-                        src={property.image}
-                        alt={property.title}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute top-3 right-3">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(property.status)}`}>
-                          {property.status}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">{property.title}</h3>
-                      <div className="space-y-3">
-                        <div className="flex items-center text-sm text-gray-600">
-                          <MapPin className="w-4 h-4 mr-2" />
-                          {property.location}
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4 text-sm text-gray-600">
-                            <div className="flex items-center">
-                              <Bed className="w-4 h-4 mr-1" />
-                              {property.bedrooms}
-                            </div>
-                            <div className="flex items-center">
-                              <Bath className="w-4 h-4 mr-1" />
-                              {property.bathrooms}
-                            </div>
-                            <div className="flex items-center">
-                              <Square className="w-4 h-4 mr-1" />
-                              {property.area}
-                            </div>
-                          </div>
-                          <div className="text-lg font-bold text-gray-900">{property.price}</div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <Star className="w-4 h-4 text-yellow-500 mr-1" />
-                            <span className="text-sm text-gray-600">{property.rating}</span>
-                          </div>
-                          <div className="flex items-center">
-                            <Users className="w-4 h-4 text-gray-400 mr-1" />
-                            <span className="text-sm text-gray-600">{property.tenants} tenants</span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                          <button className="text-red-500 hover:text-red-700 text-sm font-medium flex items-center">
-                            <Edit className="w-4 h-4 mr-1" />
-                            Edit
-                          </button>
-                          <button className="text-gray-500 hover:text-gray-700 text-sm font-medium flex items-center">
-                            <Eye className="w-4 h-4 mr-1" />
-                            View Details
-                          </button>
+                    Add your first property
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {properties.map((property) => (
+                    <motion.div
+                      key={property._id}
+                      whileHover={{ y: -5 }}
+                      className="bg-white rounded-lg shadow-lg overflow-hidden cursor-pointer"
+                      onClick={() => navigate(`/owner/properties/${property._id}`)}
+                    >
+                      <div className="h-48 bg-gray-200 relative">
+                        <img
+                          src={property.images?.front || property.images?.gallery?.[0] || 'https://via.placeholder.com/400x300?text=No+Image'}
+                          alt={property.property_name}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute top-3 right-3">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(property.status)}`}>
+                            {property.status}
+                          </span>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+
+                      <div className="p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{property.property_name}</h3>
+                        <div className="space-y-3">
+                          <div className="flex items-center text-sm text-gray-600">
+                            <MapPin className="w-4 h-4 mr-2" />
+                            {property.address?.city || 'Unknown'}, {property.address?.state || ''}
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4 text-sm text-gray-600">
+                              <div className="flex items-center">
+                                <Bed className="w-4 h-4 mr-1" />
+                                {property.rooms?.length || 0} Rooms
+                              </div>
+                            </div>
+                            <div className="text-lg font-bold text-gray-900">
+                              {property.rooms?.[0]?.rent ? `₹${property.rooms[0].rent}` : 'N/A'}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <Star className="w-4 h-4 text-yellow-500 mr-1" />
+                              <span className="text-sm text-gray-600">{property.average_rating || 'New'}</span>
+                            </div>
+                            <div className="flex items-center">
+                              <Users className="w-4 h-4 text-gray-400 mr-1" />
+                              <span className="text-sm text-gray-600">
+                                {property.rooms?.reduce((acc, r) => acc + (r.current_occupants || 0), 0)} tenants
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                            <button className="text-red-500 hover:text-red-700 text-sm font-medium flex items-center">
+                              <Edit className="w-4 h-4 mr-1" />
+                              Edit
+                            </button>
+                            <button
+                              className="text-gray-500 hover:text-gray-700 text-sm font-medium flex items-center"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/owner/properties/${property._id}`);
+                              }}
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              View Details
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -546,7 +544,7 @@ const RoomOwnerDashboard = () => {
               className="space-y-6"
             >
               <h2 className="text-2xl font-bold text-gray-900">Payment History</h2>
-              
+
               <div className="bg-white rounded-lg shadow">
                 <div className="p-6 border-b border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-800">Recent Transactions</h3>
@@ -569,9 +567,8 @@ const RoomOwnerDashboard = () => {
                           <p className="text-sm text-gray-600">{transaction.date}</p>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            transaction.status === 'Completed' ? 'text-green-600 bg-green-100' : 'text-yellow-600 bg-yellow-100'
-                          }`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${transaction.status === 'Completed' ? 'text-green-600 bg-green-100' : 'text-yellow-600 bg-yellow-100'
+                            }`}>
                             {transaction.status}
                           </span>
                         </div>
@@ -590,7 +587,7 @@ const RoomOwnerDashboard = () => {
               className="space-y-6"
             >
               <h2 className="text-2xl font-bold text-gray-900">Maintenance Requests</h2>
-              
+
               <div className="bg-white rounded-lg shadow">
                 <div className="p-6 border-b border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-800">Active Requests</h3>
@@ -616,10 +613,9 @@ const RoomOwnerDashboard = () => {
                           </span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            request.status === 'Completed' ? 'text-green-600 bg-green-100' : 
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${request.status === 'Completed' ? 'text-green-600 bg-green-100' :
                             request.status === 'In Progress' ? 'text-blue-600 bg-blue-100' : 'text-gray-600 bg-gray-100'
-                          }`}>
+                            }`}>
                             {request.status}
                           </span>
                         </div>
@@ -638,7 +634,7 @@ const RoomOwnerDashboard = () => {
               className="space-y-6"
             >
               <h2 className="text-2xl font-bold text-gray-900">Analytics</h2>
-              
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4">Property Types</h3>
@@ -661,7 +657,7 @@ const RoomOwnerDashboard = () => {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                
+
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4">Monthly Revenue</h3>
                   <ResponsiveContainer width="100%" height={250}>
@@ -701,7 +697,7 @@ const RoomOwnerDashboard = () => {
                 <LogOut className="w-12 h-12 text-red-500 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Logout</h3>
                 <p className="text-gray-600 mb-4">Are you sure you want to logout?</p>
-                <button 
+                <button
                   onClick={() => {
                     localStorage.removeItem('authToken');
                     localStorage.removeItem('user');

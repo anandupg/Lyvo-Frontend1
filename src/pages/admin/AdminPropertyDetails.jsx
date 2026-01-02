@@ -718,6 +718,7 @@ const AdminPropertyDetails = () => {
 
                           {room.description && (
                             <div className="mt-3">
+                              <h4 className="text-xs font-medium text-gray-700 mb-1">Description</h4>
                               <p className="text-sm text-gray-600 line-clamp-2">{room.description}</p>
                             </div>
                           )}
@@ -758,18 +759,18 @@ const AdminPropertyDetails = () => {
                           )}
 
                           {/* Action Buttons */}
-                          <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:items-center sm:space-x-2">
+                          <div className="mt-6 flex flex-wrap items-center gap-2">
                             <button
                               onClick={() => openRoomModal(room)}
-                              className="col-span-2 sm:col-span-1 sm:flex-1 bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors flex items-center justify-center order-1 sm:order-none"
+                              className="flex-1 min-w-[80px] bg-blue-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors flex items-center justify-center shadow-sm"
                             >
-                              <Eye className="w-4 h-4 inline mr-1" />
+                              <Eye className="w-4 h-4 mr-1.5" />
                               View
                             </button>
 
                             {/* Room Approval Buttons */}
                             {room.approval_status === 'pending' && (
-                              <>
+                              <div className="flex flex-1 gap-2">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -780,9 +781,9 @@ const AdminPropertyDetails = () => {
                                       onConfirm: () => approveRoom(room._id, 'approve')
                                     });
                                   }}
-                                  className="flex-1 bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors flex items-center justify-center order-2 sm:order-none"
+                                  className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors flex items-center justify-center shadow-sm"
                                 >
-                                  <CheckCircle2 className="w-4 h-4 inline mr-1" />
+                                  <CheckCircle2 className="w-4 h-4 mr-1.5" />
                                   Approve
                                 </button>
                                 <button
@@ -795,19 +796,19 @@ const AdminPropertyDetails = () => {
                                       onConfirm: () => approveRoom(room._id, 'reject')
                                     });
                                   }}
-                                  className="flex-1 bg-red-600 text-white px-3 py-2 rounded text-sm hover:bg-red-700 transition-colors flex items-center justify-center order-3 sm:order-none"
+                                  className="flex-1 bg-red-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors flex items-center justify-center shadow-sm"
                                 >
-                                  <XCircle className="w-4 h-4 inline mr-1" />
+                                  <XCircle className="w-4 h-4 mr-1.5" />
                                   Reject
                                 </button>
-                              </>
+                              </div>
                             )}
 
                             {/* Show status for approved/rejected rooms */}
                             {room.approval_status === 'approved' && (
-                              <>
-                                <div className="flex-1 bg-green-100 text-green-800 px-3 py-2 rounded text-sm text-center font-medium flex items-center justify-center order-2 sm:order-none">
-                                  <CheckCircle2 className="w-4 h-4 inline mr-1" />
+                              <div className="flex flex-1 items-center gap-2">
+                                <div className="flex-1 bg-green-100 text-green-800 px-3 py-2 rounded-lg text-sm text-center font-medium flex items-center justify-center border border-green-200">
+                                  <CheckCircle2 className="w-4 h-4 mr-1.5" />
                                   Approved
                                 </div>
                                 <button
@@ -820,18 +821,18 @@ const AdminPropertyDetails = () => {
                                       onConfirm: () => approveRoom(room._id, 'reject')
                                     });
                                   }}
-                                  className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors border border-red-200 mt-0 flex items-center justify-center order-3 sm:order-none"
+                                  className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors border border-red-200 flex items-center justify-center"
                                   title="Reject this room"
                                 >
                                   <XCircle className="w-5 h-5" />
                                 </button>
-                              </>
+                              </div>
                             )}
 
                             {room.approval_status === 'rejected' && (
-                              <>
-                                <div className="flex-1 bg-red-100 text-red-800 px-3 py-2 rounded text-sm text-center font-medium flex items-center justify-center order-2 sm:order-none">
-                                  <XCircle className="w-4 h-4 inline mr-1" />
+                              <div className="flex flex-1 items-center gap-2">
+                                <div className="flex-1 bg-red-100 text-red-800 px-3 py-2 rounded-lg text-sm text-center font-medium flex items-center justify-center border border-red-200">
+                                  <XCircle className="w-4 h-4 mr-1.5" />
                                   Rejected
                                 </div>
                                 <button
@@ -844,12 +845,12 @@ const AdminPropertyDetails = () => {
                                       onConfirm: () => approveRoom(room._id, 'approve')
                                     });
                                   }}
-                                  className="p-2 bg-green-50 text-green-600 rounded hover:bg-green-100 transition-colors border border-green-200 mt-0 flex items-center justify-center order-3 sm:order-none"
+                                  className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors border border-green-200 flex items-center justify-center"
                                   title="Re-approve this room"
                                 >
                                   <CheckCircle2 className="w-5 h-5" />
                                 </button>
-                              </>
+                              </div>
                             )}
 
                             {/* Delete Room Button */}
@@ -863,7 +864,7 @@ const AdminPropertyDetails = () => {
                                   onConfirm: () => deleteRoom(room._id)
                                 });
                               }}
-                              className="col-span-2 sm:col-span-1 p-2 bg-gray-50 text-gray-600 rounded hover:bg-red-50 hover:text-red-600 transition-colors border border-gray-200 hover:border-red-200 sm:ml-2 flex items-center justify-center order-4 sm:order-none"
+                              className="p-2 bg-gray-50 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors border border-gray-200 hover:border-red-200 flex items-center justify-center"
                               title="Delete this room"
                             >
                               <Trash2 className="w-5 h-5" />
