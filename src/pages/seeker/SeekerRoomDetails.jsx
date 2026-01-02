@@ -65,6 +65,7 @@ const SeekerRoomDetails = () => {
     const [bookingLoading, setBookingLoading] = useState(false);
     const [mapCenter, setMapCenter] = useState([0, 0]);
     const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+    const [showAllPhotosModal, setShowAllPhotosModal] = useState(false);
     const [tenants, setTenants] = useState([]);
     const [loadingTenants, setLoadingTenants] = useState(false);
 
@@ -510,7 +511,10 @@ const SeekerRoomDetails = () => {
                         )}
 
                         {/* Show All Photos Button */}
-                        <button className="absolute bottom-4 right-4 bg-white border border-black/10 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:shadow-md hover:scale-105 transition-all flex items-center gap-2">
+                        <button
+                            onClick={() => setShowAllPhotosModal(true)}
+                            className="absolute bottom-4 right-4 bg-white border border-black/10 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:shadow-md hover:scale-105 transition-all flex items-center gap-2"
+                        >
                             <Square className="w-4 h-4" /> Show all photos
                         </button>
                     </div>
@@ -572,9 +576,9 @@ const SeekerRoomDetails = () => {
                                     </div>
                                     <button
                                         onClick={handleBookNow}
-                                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg rounded-xl shadow-lg"
+                                        className="w-full py-4 bg-gradient-to-r from-red-600 to-red-500 text-white font-bold text-lg rounded-xl shadow-lg shadow-red-100 hover:from-red-700 hover:to-red-600 transition-all font-outfit uppercase tracking-tight"
                                     >
-                                        Check Availability
+                                        Book Now
                                     </button>
                                 </div>
                             </div>
@@ -583,15 +587,15 @@ const SeekerRoomDetails = () => {
                             <div className="lg:hidden">
                                 <div className="bg-white rounded-2xl shadow-sm p-6 overflow-hidden relative">
                                     <div className="absolute top-0 right-0 p-3">
-                                        <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                                            <Star className="w-4 h-4 text-blue-600" />
+                                        <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center">
+                                            <Star className="w-4 h-4 text-red-600" />
                                         </div>
                                     </div>
-                                    <h3 className="text-lg font-bold text-gray-900 mb-4">Compatibility</h3>
+                                    <h3 className="text-lg font-bold text-gray-900 mb-4 font-outfit">Compatibility</h3>
                                     <div className="space-y-4">
                                         <div className="flex items-end justify-between">
                                             <div>
-                                                <p className="text-3xl font-black text-blue-600">92%</p>
+                                                <p className="text-3xl font-black text-red-600">92%</p>
                                                 <p className="text-xs text-gray-500 font-medium">Lifestyle Match</p>
                                             </div>
                                             <div className="text-right">
@@ -980,7 +984,7 @@ const SeekerRoomDetails = () => {
                 {/* Booking Confirmation Modal */}
                 <AnimatePresence>
                     {showConfirmationModal && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -995,8 +999,8 @@ const SeekerRoomDetails = () => {
                                 </button>
 
                                 <div className="p-8">
-                                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Booking Summary</h2>
-                                    <p className="text-gray-500 mb-6">Please review the costs before proceeding</p>
+                                    <h2 className="text-2xl font-black text-gray-900 mb-2 font-outfit uppercase tracking-tight">Booking Summary</h2>
+                                    <p className="text-gray-500 mb-6 text-sm">Please review the costs before proceeding</p>
 
                                     {/* Room Preview in Modal */}
                                     <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl mb-6">
@@ -1010,7 +1014,7 @@ const SeekerRoomDetails = () => {
                                         <div>
                                             <h4 className="font-bold text-gray-900">Room {room.room_number || room.roomNumber}</h4>
                                             <p className="text-xs text-gray-500">{room.room_type} • {room.bed_type}</p>
-                                            <p className="text-[10px] text-blue-600 font-semibold mt-0.5">{property.property_name}</p>
+                                            <p className="text-[10px] text-red-600 font-semibold mt-0.5">{property.property_name}</p>
                                         </div>
                                     </div>
 
@@ -1025,16 +1029,16 @@ const SeekerRoomDetails = () => {
                                         </div>
                                         <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
                                             <span className="text-gray-900 font-bold">Total Amount</span>
-                                            <span className="text-xl font-bold text-blue-600">₹{parseFloat(room.rent) + parseFloat(property.security_deposit || 0)}</span>
+                                            <span className="text-xl font-bold text-red-600">₹{parseFloat(room.rent) + parseFloat(property.security_deposit || 0)}</span>
                                         </div>
                                     </div>
 
-                                    <div className="bg-blue-50 rounded-xl p-5 mb-8">
+                                    <div className="bg-red-50 rounded-xl p-5 mb-8">
                                         <div className="flex gap-3">
-                                            <Info className="w-6 h-6 text-blue-600 shrink-0" />
+                                            <Info className="w-6 h-6 text-red-600 shrink-0" />
                                             <div>
-                                                <p className="text-sm font-bold text-blue-900">Booking Fee: 10%</p>
-                                                <p className="text-sm text-blue-700 mt-1 leading-relaxed">
+                                                <p className="text-sm font-bold text-red-900">Booking Fee: 10%</p>
+                                                <p className="text-sm text-red-700 mt-1 leading-relaxed">
                                                     You need to pay ₹{((parseFloat(room.rent) + parseFloat(property.security_deposit || 0)) * 0.10).toFixed(2)} to reserve this room. This amount will be adjusted in your first month's payment.
                                                 </p>
                                             </div>
@@ -1044,7 +1048,7 @@ const SeekerRoomDetails = () => {
                                     <button
                                         onClick={initiatePayment}
                                         disabled={bookingLoading}
-                                        className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02]"
+                                        className="w-full py-4 bg-gradient-to-r from-red-600 to-red-500 text-white rounded-xl font-bold text-lg hover:from-red-700 hover:to-red-600 transition-all shadow-lg shadow-red-100 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02]"
                                     >
                                         {bookingLoading ? (
                                             <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -1058,6 +1062,66 @@ const SeekerRoomDetails = () => {
                                 </div>
                             </motion.div>
                         </div>
+                    )}
+                </AnimatePresence>
+
+                {/* All Photos Gallery Modal */}
+                <AnimatePresence>
+                    {showAllPhotosModal && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[3000] bg-white overflow-y-auto"
+                        >
+                            {/* Modal Header */}
+                            <div className="sticky top-0 bg-white/80 backdrop-blur-md z-10 px-4 py-4 md:px-8 border-b border-gray-100 flex items-center justify-between">
+                                <button
+                                    onClick={() => setShowAllPhotosModal(false)}
+                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center gap-2 text-gray-600 font-semibold"
+                                >
+                                    <ArrowLeft className="w-5 h-5" />
+                                    <span>Back</span>
+                                </button>
+                                <h2 className="font-outfit font-black text-xl uppercase tracking-tight text-red-600">Property Gallery</h2>
+                                <div className="w-10" /> {/* Spacer */}
+                            </div>
+
+                            {/* Gallery Content */}
+                            <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
+                                <div className="grid grid-cols-1 gap-8">
+                                    {images.map((img, idx) => (
+                                        <div key={idx} className="space-y-4">
+                                            <div className="rounded-2xl overflow-hidden bg-gray-50 shadow-sm border border-gray-100">
+                                                <img
+                                                    src={img}
+                                                    alt={`Photo ${idx + 1}`}
+                                                    className="w-full h-auto object-contain max-h-[90vh] mx-auto"
+                                                    loading="lazy"
+                                                />
+                                            </div>
+                                            <div className="flex justify-between items-center px-2">
+                                                <span className="text-gray-400 text-sm font-medium">Photo {idx + 1} of {images.length}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Back to top hint */}
+                            <div className="text-center py-12 bg-gray-50 border-t border-gray-100 mt-8">
+                                <p className="text-gray-400 text-sm mb-4 italic">End of gallery</p>
+                                <button
+                                    onClick={() => {
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        setShowAllPhotosModal(false);
+                                    }}
+                                    className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-100"
+                                >
+                                    Back to Room
+                                </button>
+                            </div>
+                        </motion.div>
                     )}
                 </AnimatePresence>
             </div>

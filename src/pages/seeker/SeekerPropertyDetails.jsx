@@ -170,35 +170,63 @@ const SeekerPropertyDetails = () => {
 
   return (
     <SeekerLayout>
-      <div className={`min-h-screen bg-gray-50 pb-20 md:pb-10 ${showAllPhotos ? 'overflow-hidden h-screen' : ''}`}>
+      <div className="min-h-screen bg-gray-50 pb-20 md:pb-10">
 
-        {/* Photo Modal */}
+        {/* Photo Modal - Premium Lightbox */}
         <AnimatePresence>
           {showAllPhotos && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black bg-opacity-95 flex flex-col"
+              className="fixed inset-0 z-[3000] bg-white overflow-y-auto"
             >
-              <div className="flex justify-between items-center p-4 text-white border-b border-gray-800">
+              {/* Modal Header */}
+              <div className="sticky top-0 bg-white/80 backdrop-blur-md z-10 px-4 py-4 md:px-8 border-b border-gray-100 flex items-center justify-between">
                 <button
                   onClick={() => setShowAllPhotos(false)}
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center gap-2 text-gray-600 font-semibold"
                 >
-                  <X className="w-6 h-6" />
+                  <ArrowLeft className="w-5 h-5" />
+                  <span>Back</span>
                 </button>
-                <span className="font-medium">All Photos ({images.length})</span>
+                <h2 className="font-outfit font-black text-xl uppercase tracking-tight text-red-600">Property Gallery</h2>
                 <div className="w-10" /> {/* Spacer */}
               </div>
-              <div className="flex-1 overflow-y-auto p-4 md:p-8">
-                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+              {/* Gallery Content */}
+              <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
+                <div className="grid grid-cols-1 gap-8">
                   {images.map((img, idx) => (
-                    <div key={idx} className="aspect-video relative group overflow-hidden rounded-lg">
-                      <img src={img} alt={`Property ${idx + 1}`} className="w-full h-full object-cover" />
+                    <div key={idx} className="space-y-4">
+                      <div className="rounded-2xl overflow-hidden bg-gray-50 shadow-sm border border-gray-100">
+                        <img
+                          src={img}
+                          alt={`Photo ${idx + 1}`}
+                          className="w-full h-auto object-contain max-h-[90vh] mx-auto"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="flex justify-between items-center px-2">
+                        <span className="text-gray-400 text-sm font-medium">Photo {idx + 1} of {images.length}</span>
+                      </div>
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Back to top hint */}
+              <div className="text-center py-12 bg-gray-50 border-t border-gray-100 mt-8">
+                <p className="text-gray-400 text-sm mb-4 italic">End of gallery</p>
+                <button
+                  onClick={() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    setShowAllPhotos(false);
+                  }}
+                  className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-100"
+                >
+                  Back to Property
+                </button>
               </div>
             </motion.div>
           )}
@@ -277,7 +305,7 @@ const SeekerPropertyDetails = () => {
                   <div className="absolute inset-0 bg-black/30 flex items-center justify-center hover:bg-black/40 transition-colors">
                     <button
                       onClick={(e) => { e.stopPropagation(); setShowAllPhotos(true); }}
-                      className="px-4 py-2 bg-white/90 backdrop-blur-sm rounded-lg text-sm font-semibold shadow-sm hover:scale-105 transition-transform flex items-center gap-2"
+                      className="px-4 py-2 bg-white/90 backdrop-blur-sm rounded-lg text-sm font-semibold shadow-sm hover:scale-105 transition-transform flex items-center gap-2 text-red-600"
                     >
                       <Grid className="w-4 h-4" /> Show all photos
                     </button>
@@ -289,7 +317,7 @@ const SeekerPropertyDetails = () => {
             {/* Mobile 'View All' Button (absolute positioned) */}
             <button
               onClick={() => setShowAllPhotos(true)}
-              className="md:hidden absolute bottom-4 right-4 px-3 py-1.5 bg-white/90 backdrop-blur-md rounded-lg text-xs font-semibold shadow-sm flex items-center gap-2"
+              className="md:hidden absolute bottom-4 right-4 px-3 py-1.5 bg-white/90 backdrop-blur-md rounded-lg text-xs font-semibold shadow-sm flex items-center gap-2 text-red-600"
             >
               <Grid className="w-3 h-3" /> Show all photos
             </button>
@@ -318,20 +346,20 @@ const SeekerPropertyDetails = () => {
                         <span className="text-gray-500 mb-1">/ month</span>
                       </div>
                       <div className="flex flex-wrap gap-3 mt-4">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-50 text-green-700 border border-green-100">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-700 border border-red-100">
                           <CheckCircle className="w-3.5 h-3.5" /> Zero Brokerage
                         </span>
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-700 border border-red-100">
                           <CheckCircle className="w-3.5 h-3.5" /> Instant Booking
                         </span>
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-100">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-700 border border-red-100">
                           <CheckCircle className="w-3.5 h-3.5" /> Verified Listing
                         </span>
                       </div>
                     </div>
                     <button
                       onClick={scrollToRooms}
-                      className="px-8 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg rounded-xl shadow-md hover:shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-2 shrink-0"
+                      className="px-8 py-3.5 bg-gradient-to-r from-red-600 to-red-500 text-white font-bold text-lg rounded-xl shadow-md shadow-red-100 hover:shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-2 shrink-0 font-outfit uppercase tracking-tight"
                     >
                       <CheckCircle className="w-5 h-5" />
                       Check Available Rooms
@@ -452,7 +480,7 @@ const SeekerPropertyDetails = () => {
 
               {/* Available Rooms Section */}
               <div ref={roomsSectionRef} className="space-y-6">
-                <h2 className="text-2xl font-bold text-gray-900">Available Rooms</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Available Rooms ({property.rooms?.length || 0})</h2>
                 {property.rooms && property.rooms.length > 0 ? (
                   <div className="space-y-6">
                     {property.rooms.map((room) => (
