@@ -317,13 +317,16 @@ const SeekerPropertyDetails = () => {
                         <span className="text-3xl font-bold text-gray-900">₹{minPrice.toLocaleString()}</span>
                         <span className="text-gray-500 mb-1">/ month</span>
                       </div>
-                      <div className="flex gap-4 mt-3 text-sm text-gray-600">
-                        <div className="flex items-center gap-1.5">
-                          <CheckCircle className="w-4 h-4 text-green-500" /> <span>Zero Brokerage</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <CheckCircle className="w-4 h-4 text-green-500" /> <span>Instant Booking</span>
-                        </div>
+                      <div className="flex flex-wrap gap-3 mt-4">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-50 text-green-700 border border-green-100">
+                          <CheckCircle className="w-3.5 h-3.5" /> Zero Brokerage
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                          <CheckCircle className="w-3.5 h-3.5" /> Instant Booking
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-100">
+                          <CheckCircle className="w-3.5 h-3.5" /> Verified Listing
+                        </span>
                       </div>
                     </div>
                     <button
@@ -331,7 +334,7 @@ const SeekerPropertyDetails = () => {
                       className="px-8 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg rounded-xl shadow-md hover:shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-2 shrink-0"
                     >
                       <CheckCircle className="w-5 h-5" />
-                      Check Availability
+                      Check Available Rooms
                     </button>
                   </div>
                 </div>
@@ -342,25 +345,56 @@ const SeekerPropertyDetails = () => {
               {/* Key Metrics */}
               <div>
                 <h3 className="text-xl font-bold text-gray-900 mb-6">Property Highlights</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 border border-gray-100 rounded-xl bg-gray-50/50">
-                    <Bed className="w-6 h-6 mb-2 text-gray-700" />
-                    <p className="font-semibold text-gray-900">
-                      {property.rooms?.filter(r => r.isAvailable).length || 0} Active Rooms
-                    </p>
-                    <p className="text-xs text-gray-500">of {property.rooms?.length || 0} Total</p>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Active Rooms */}
+                  <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-300 group">
+                    <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <Bed className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-xl text-gray-900 leading-none mb-1">
+                        {property.rooms?.filter(r => r.is_available).length || 0}
+                        <span className="text-sm font-medium text-gray-400 ml-1">/ {property.rooms?.length || 0}</span>
+                      </p>
+                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Rooms Available</p>
+                    </div>
                   </div>
-                  <div className="p-4 border border-gray-100 rounded-xl bg-gray-50/50">
-                    <Users className="w-6 h-6 mb-2 text-gray-700" />
-                    <p className="font-semibold text-gray-900">Max {property.maxOccupancy || 'N/A'}</p>
+
+                  {/* Max Occupancy */}
+                  <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-300 group">
+                    <div className="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <Users className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-xl text-gray-900 leading-none mb-1">
+                        {property.maxOccupancy || (property.rooms?.reduce((acc, r) => acc + (r.occupancy || 0), 0) || 'N/A')}
+                      </p>
+                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Capacity</p>
+                    </div>
                   </div>
-                  <div className="p-4 border border-gray-100 rounded-xl bg-gray-50/50">
-                    <DollarSign className="w-6 h-6 mb-2 text-gray-700" />
-                    <p className="font-semibold text-gray-900">₹{property.security_deposit || 0} Dep.</p>
+
+                  {/* Security Deposit */}
+                  <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-300 group">
+                    <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <DollarSign className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-xl text-gray-900 leading-none mb-1">
+                        ₹{(property.security_deposit || 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Security Deposit</p>
+                    </div>
                   </div>
-                  <div className="p-4 border border-gray-100 rounded-xl bg-gray-50/50">
-                    <Shield className="w-6 h-6 mb-2 text-gray-700" />
-                    <p className="font-semibold text-gray-900">Verified</p>
+
+                  {/* Verification Status */}
+                  <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-300 group">
+                    <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <Shield className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-xl text-gray-900 leading-none mb-1 text-purple-700">Verified</p>
+                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Listing Status</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -371,11 +405,15 @@ const SeekerPropertyDetails = () => {
               {property.amenities && Object.keys(property.amenities).some(k => property.amenities[k]) && (
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-6">What this place offers</h2>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-8">
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                     {Object.entries(property.amenities).filter(([, v]) => v === true).map(([k]) => (
-                      <div key={k} className="flex items-center gap-3 text-gray-600">
-                        <CheckCircle className="w-5 h-5 text-gray-400" />
-                        <span className="capitalize">{k.replace(/([A-Z])/g, ' $1').trim()}</span>
+                      <div key={k} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-transparent hover:border-blue-100 hover:bg-blue-50/50 transition-colors group">
+                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
+                          <CheckCircle className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <span className="text-gray-700 font-medium capitalize">
+                          {k.replace(/([A-Z0-9])/g, ' $1').trim()}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -390,12 +428,18 @@ const SeekerPropertyDetails = () => {
                   <h2 className="text-2xl font-bold text-gray-900 mb-6">House Rules</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {Object.entries(property.rules).map(([key, value]) => (
-                      <div key={key} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl">
-                        <span className="text-gray-700 capitalize font-medium">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                      <div key={key} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:shadow-md transition-shadow">
+                        <span className="text-gray-700 font-medium capitalize flex items-center gap-2">
+                          {key.replace(/([A-Z0-9])/g, ' $1').trim()}
+                        </span>
                         {value ? (
-                          <span className="text-green-700 text-sm font-bold bg-green-50 px-3 py-1 rounded-full">Allowed</span>
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-100">
+                            Allowed
+                          </span>
                         ) : (
-                          <span className="text-red-700 text-sm font-bold bg-red-50 px-3 py-1 rounded-full">No</span>
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-100">
+                            Not Allowed
+                          </span>
                         )}
                       </div>
                     ))}
