@@ -170,6 +170,12 @@ export const getRedirectUrl = (user) => {
         return '/tenant-dashboard';
       }
 
+      // If user has a confirmed booking but not yet a tenant, send to post-booking dashboard
+      if (user.activeBookingId) {
+        console.log(`getRedirectUrl: User has active booking ${user.activeBookingId}, redirecting to post-booking dashboard`);
+        return `/booking-dashboard/${user.activeBookingId}`;
+      }
+
       console.log('getRedirectUrl: Redirecting seeker to /seeker-dashboard');
       return '/seeker-dashboard';
     default:

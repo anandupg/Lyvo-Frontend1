@@ -60,14 +60,15 @@ const SeekerNavbar = ({ onMenuToggle }) => {
   const fetchNotifications = async () => {
     try {
       setNotificationsLoading(true);
-      if (!user._id) {
+      const userId = user._id || user.id;
+      if (!userId) {
         return;
       }
 
       // Use apiClient which handles base URL and Authorization automatically
       const response = await apiClient.get('/notifications', {
         headers: {
-          'x-user-id': user._id
+          'x-user-id': userId
         }
       });
 
@@ -75,7 +76,7 @@ const SeekerNavbar = ({ onMenuToggle }) => {
         const data = response.data;
         if (data.success) {
           setNotifications(data.data || []);
-          setUnreadCount(data.unread_count || 0);
+          setUnreadCount(data.unreadCount || 0);
         }
       }
     } catch (error) {
@@ -94,9 +95,9 @@ const SeekerNavbar = ({ onMenuToggle }) => {
         return;
       }
 
-      const response = await apiClient.patch(`/notifications/${notificationId}/read`, {}, {
+      const response = await apiClient.put(`/notifications/${notificationId}/read`, {}, {
         headers: {
-          'x-user-id': userData._id || user._id
+          'x-user-id': userData._id || userData.id || user._id || user.id
         }
       });
 
@@ -118,9 +119,9 @@ const SeekerNavbar = ({ onMenuToggle }) => {
         return;
       }
 
-      const response = await apiClient.patch('/notifications/mark-all-read', {}, {
+      const response = await apiClient.put('/notifications/mark-all-read', {}, {
         headers: {
-          'x-user-id': userData._id || user._id
+          'x-user-id': userData._id || userData.id || user._id || user.id
         }
       });
 
@@ -138,13 +139,13 @@ const SeekerNavbar = ({ onMenuToggle }) => {
     try {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
 
-      if (!userData._id && !user._id) {
+      if (!(userData._id || userData.id || user._id || user.id)) {
         return;
       }
 
       const response = await apiClient.delete(`/notifications/${notificationId}`, {
         headers: {
-          'x-user-id': userData._id || user._id
+          'x-user-id': userData._id || userData.id || user._id || user.id
         }
       });
 

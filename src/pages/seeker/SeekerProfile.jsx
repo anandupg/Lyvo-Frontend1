@@ -1,5 +1,6 @@
 // Fixed SeekerProfile syntax
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Edit, Save, X, User, MapPin, Phone, Mail, Calendar, Shield, AlertCircle, Camera, Lock, Eye, EyeOff, LayoutDashboard } from "lucide-react";
@@ -726,11 +727,11 @@ const SeekerProfile = () => {
               </motion.div>
             )}
 
-            {saveStatus.message && (
+            {saveStatus.message && createPortal(
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`fixed top-20 right-4 z-50 px-6 py-3 rounded-xl shadow-lg ${saveStatus.type === 'success'
+                className={`fixed top-20 right-4 z-[1300] px-6 py-3 rounded-xl shadow-lg ${saveStatus.type === 'success'
                   ? 'bg-green-100 border border-green-300 text-green-800'
                   : saveStatus.type === 'error'
                     ? 'bg-red-100 border border-red-300 text-red-800'
@@ -738,11 +739,12 @@ const SeekerProfile = () => {
                   }`}
               >
                 {saveStatus.message}
-              </motion.div>
+              </motion.div>,
+              document.body
             )}
 
-            {showCompletionModal && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            {showCompletionModal && createPortal(
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1300] p-4">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -783,11 +785,12 @@ const SeekerProfile = () => {
                     </button>
                   </div>
                 </motion.div>
-              </div>
+              </div>,
+              document.body
             )}
 
-            {showPasswordModal && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            {showPasswordModal && createPortal(
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1300] p-4">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -854,7 +857,8 @@ const SeekerProfile = () => {
                     </div>
                   </div>
                 </motion.div>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
         </motion.div >

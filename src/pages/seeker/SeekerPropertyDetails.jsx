@@ -533,7 +533,7 @@ const SeekerPropertyDetails = () => {
                                 </h3>
                                 {!room.is_available && (
                                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 uppercase tracking-wide">
-                                    Unavailable
+                                    Room is Full
                                   </span>
                                 )}
                               </div>
@@ -595,8 +595,8 @@ const SeekerPropertyDetails = () => {
                                 <span className="text-xs font-bold">Available Now</span>
                               </div>
                             ) : (
-                              <div className="text-xs font-medium text-gray-400 px-2">
-                                Currently Unavailable
+                              <div className="text-xs font-medium text-red-600 px-2">
+                                Room is Full
                               </div>
                             )}
 

@@ -138,7 +138,7 @@ const Tenants = () => {
       // Update tenant status locally
       setTenants(prev => prev.map(t =>
         t._id === selectedTenant._id
-          ? { ...t, status: 'checked_out' }
+          ? { ...t, status: 'completed' }
           : t
       ));
 

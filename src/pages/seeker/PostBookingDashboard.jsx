@@ -59,7 +59,8 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  LogIn
+  LogIn,
+  LogOut
 } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
 import apiClient from '../../utils/apiClient';
@@ -196,6 +197,7 @@ const PostBookingDashboard = () => {
       case 'pending_approval':
       case 'payment_pending':
         return 'bg-yellow-100 text-yellow-800';
+      case 'checked_out': return 'bg-gray-200 text-gray-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -211,6 +213,7 @@ const PostBookingDashboard = () => {
       case 'pending_approval':
       case 'payment_pending':
         return <Clock className="w-4 h-4" />;
+      case 'checked_out': return <LogOut className="w-4 h-4" />;
       case 'cancelled': return <AlertCircle className="w-4 h-4" />;
       default: return <Clock className="w-4 h-4" />;
     }
@@ -846,26 +849,46 @@ const PostBookingDashboard = () => {
       <SeekerLayout>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center max-w-md mx-auto px-4">
-            <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Booking Pending Approval</h2>
-            <p className="text-gray-600 mb-4">
-              Your booking is currently waiting for the owner's approval. Please set your check-in date below to help the owner process your request.
-            </p>
+            {booking.status === 'checked_out' ? (
+              <>
+                <LogOut className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Checked Out</h2>
+                <p className="text-gray-600 mb-4">
+                  You have successfully checked out of this property. We hope you enjoyed your stay!
+                </p>
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Booking Pending Approval</h2>
+                <p className="text-gray-600 mb-4">
+                  Your booking is currently waiting for the owner's approval. Please set your check-in date below to help the owner process your request.
+                </p>
+              </>
+            )}
 
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 text-left">
               <h3 className="font-semibold text-yellow-800 mb-2">Booking Status:</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Current Status:</span>
-                  <span className="font-semibold text-yellow-600 capitalize">{booking.status}</span>
+                  <span className={`font-semibold capitalize ${booking.status === 'checked_out' ? 'text-gray-600' : 'text-yellow-600'}`}>{booking.status}</span>
                 </div>
-                {booking.checkInDate && (
+                {booking.status === 'checked_out' && (
+                  <div className="flex justify-between border-t border-yellow-200 pt-2">
+                    <span className="text-gray-600">Checked Out On:</span>
+                    <span className="font-semibold text-gray-600">
+                      {booking.actualCheckOutDate ? formatDate(booking.actualCheckOutDate) : 'Unknown Date'}
+                    </span>
+                  </div>
+                )}
+                {booking.status !== 'checked_out' && booking.checkInDate && (
                   <div className="flex justify-between border-t border-yellow-200 pt-2">
                     <span className="text-gray-600">Check-in Date:</span>
                     <span className="font-semibold text-purple-600">{formatDate(booking.checkInDate)}</span>
                   </div>
                 )}
-                {!booking.checkInDate && (
+                {booking.status !== 'checked_out' && !booking.checkInDate && (
                   <div className="flex justify-between border-t border-yellow-200 pt-2">
                     <span className="text-gray-600">Check-in Date:</span>
                     <span className="text-red-500 italic">Not set yet</span>
@@ -874,7 +897,7 @@ const PostBookingDashboard = () => {
               </div>
             </div>
 
-            {booking.checkInDate && (
+            {booking.checkInDate && booking.status !== 'checked_out' && (
               <p className="text-sm text-gray-500 mb-6 italic">
                 You've set your check-in date. The owner will review and approve your booking shortly.
               </p>
@@ -978,8 +1001,8 @@ const PostBookingDashboard = () => {
 
                     {/* Action Buttons */}
                     <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full lg:w-auto">
-                      {/* Check-in button for confirmed bookings */}
-                      {canUpdateCheckInDate && (
+                      {/* Check-in button for confirmed bookings - Hide if checked out */}
+                      {canUpdateCheckInDate && booking.status !== 'checked_out' && (
                         <button
                           onClick={openCheckInModal}
                           className="bg-purple-600 text-white px-4 py-2.5 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center text-sm font-medium min-h-[40px]"
@@ -989,7 +1012,7 @@ const PostBookingDashboard = () => {
                         </button>
                       )}
 
-                      {canCancelBooking() && booking.status !== 'checked_in' && (
+                      {canCancelBooking() && booking.status !== 'checked_in' && booking.status !== 'checked_out' && (
                         <button
                           onClick={cancelBooking}
                           disabled={isCancelling}

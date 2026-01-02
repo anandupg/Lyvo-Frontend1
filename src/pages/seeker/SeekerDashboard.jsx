@@ -721,7 +721,7 @@ const SeekerDashboard = () => {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1, duration: 0.4 }}
-                    className="group bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-[0_20px_50px_rgba(239,68,68,0.15)] hover:border-red-200 transition-all duration-500 cursor-pointer flex flex-col md:flex-row overflow-hidden md:h-56 border-l-4 border-l-red-500"
+                    className="group bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-[0_20px_50px_rgba(239,68,68,0.15)] hover:border-red-200 transition-all duration-500 cursor-pointer flex flex-col md:flex-row overflow-hidden md:min-h-[14rem] border-l-4 border-l-red-500"
                     onClick={() => openPropertyDetails(pg.id)}
                   >
                     {/* Left/Top: Image Section */}
@@ -755,10 +755,10 @@ const SeekerDashboard = () => {
                           <h4 className="font-bold text-gray-900 line-clamp-1 group-hover:text-red-600 transition-colors text-lg leading-tight uppercase font-outfit">
                             {pg.name}
                           </h4>
-                          <p className="text-xs text-gray-500 mt-1 line-clamp-1 flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-gray-400" />
-                            {pg.address}
-                          </p>
+                          <div className="text-xs text-gray-500 mt-1.5 flex items-start gap-1.5 min-w-0">
+                            <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+                            <span className="line-clamp-2 leading-relaxed">{pg.address}</span>
+                          </div>
                         </div>
                         <div className="flex flex-col items-end gap-1 flex-shrink-0">
                           <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100">
@@ -777,7 +777,9 @@ const SeekerDashboard = () => {
                       {/* Room Card - The "Little Big Room Card" */}
                       <div className="bg-red-50/40 rounded-xl p-2 md:p-3 border border-red-100/50 mb-3 group/room">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-[10px] font-black text-red-600 uppercase tracking-wider">Available Rooms</span>
+                          <span className={`text-[10px] font-black uppercase tracking-wider ${pg.roomDetails?.length > 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                            {pg.roomDetails?.length > 0 ? 'Available Rooms' : 'Occupancy Status'}
+                          </span>
                           <ChevronRight className="w-3 h-3 text-red-400 group-hover/room:translate-x-1 transition-transform" />
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -790,7 +792,10 @@ const SeekerDashboard = () => {
                               </div>
                             ))
                           ) : (
-                            <span className="text-[10px] text-gray-400 font-medium italic">General Rooms Available</span>
+                            <div className="flex items-center gap-2 px-2 py-1 bg-gray-100 rounded-lg border border-gray-200 w-full">
+                              <div className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                              <span className="text-[10px] text-gray-600 font-bold uppercase">Fully Occupied</span>
+                            </div>
                           )}
                           {pg.roomDetails.length > 3 && (
                             <div className="bg-white/50 px-2 py-1 rounded-lg border border-dashed border-red-200">
@@ -801,24 +806,30 @@ const SeekerDashboard = () => {
                       </div>
 
                       {/* Footer: Price & Alignment */}
-                      <div className="flex items-center justify-between mt-auto">
-                        <div className="flex flex-col">
-                          <div className="flex items-baseline gap-1.5">
-                            <span className="text-2xl font-black text-gray-900 tracking-tighter font-outfit leading-none">{pg.price}</span>
-                            <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">/mo</span>
+                      <div className="flex flex-row items-end justify-between mt-auto pt-3 border-t border-gray-50/50">
+                        <div className="flex flex-col flex-shrink-0">
+                          <div className="flex items-baseline gap-1">
+                            {pg.roomDetails?.length > 0 ? (
+                              <>
+                                <span className="text-2xl font-black text-gray-900 tracking-tighter font-outfit leading-none">{pg.price}</span>
+                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">/mo</span>
+                              </>
+                            ) : (
+                              <span className="text-sm font-black text-red-600 uppercase tracking-tight font-outfit">FULLY OCCUPIED</span>
+                            )}
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 mb-0.5">
                           {/* Amenities Preview */}
-                          <div className="hidden lg:flex gap-1.5 pr-2 border-r border-gray-100 mr-1">
+                          <div className="hidden sm:flex gap-1 pr-2 border-r border-gray-100">
                             {pg.amenities.slice(0, 2).map((am, i) => (
                               <div key={i} title={am} className="p-1 bg-gray-50 rounded-md border border-gray-100">
-                                <CheckCircle className="w-3 h-3 text-red-400" />
+                                <CheckCircle className="w-3 h-3 text-red-500 opacity-70" />
                               </div>
                             ))}
                           </div>
-                          <div className="bg-gray-900 group-hover:bg-red-600 text-white p-2 md:p-2.5 rounded-xl shadow-lg transition-all duration-300">
+                          <div className="bg-gray-900 group-hover:bg-red-600 text-white p-2 rounded-xl shadow-lg transition-all duration-300 transform group-hover:scale-105">
                             <Search className="w-4 h-4" />
                           </div>
                         </div>
@@ -917,7 +928,11 @@ const SeekerDashboard = () => {
                         {pg.name}
                       </h4>
                       <div className="flex items-center justify-between">
-                        <span className="text-red-600 font-black text-sm font-outfit">{pg.price}</span>
+                        {pg.roomDetails?.length === 0 ? (
+                          <span className="text-red-600 font-black text-[10px] font-outfit uppercase bg-red-50 px-2 py-0.5 rounded">Fully Occupied</span>
+                        ) : (
+                          <span className="text-red-600 font-black text-sm font-outfit">{pg.price}</span>
+                        )}
                         <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{pg.propertyType}</span>
                       </div>
                     </motion.div>
@@ -964,9 +979,15 @@ const SeekerDashboard = () => {
                           {pg.matchScore}% Match
                         </span>
                         {/* Status Badge */}
-                        <span className="px-3 py-1 bg-green-500/90 backdrop-blur-sm text-white text-xs font-bold rounded-full shadow-sm flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3" /> Available
-                        </span>
+                        {pg.roomDetails?.length > 0 ? (
+                          <span className="px-3 py-1 bg-green-500/90 backdrop-blur-sm text-white text-xs font-bold rounded-full shadow-sm flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" /> Available
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 bg-red-600/90 backdrop-blur-sm text-white text-xs font-bold rounded-full shadow-sm flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Fully Occupied
+                          </span>
+                        )}
                       </div>
 
                       <div className="absolute bottom-3 left-3 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -1028,9 +1049,15 @@ const SeekerDashboard = () => {
                       <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
                         <div>
                           <p className="text-xs text-gray-500 font-medium">Starting from</p>
-                          <p className="text-xl font-bold text-blue-600">
-                            {pg.price}
-                            <span className="text-xs text-gray-400 font-normal ml-1">/mo</span>
+                          <p className={`text-xl font-bold ${pg.roomDetails?.length > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                            {pg.roomDetails?.length > 0 ? (
+                              <>
+                                {pg.price}
+                                <span className="text-xs text-gray-400 font-normal ml-1">/mo</span>
+                              </>
+                            ) : (
+                              "Fully Occupied"
+                            )}
                           </p>
                           <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                             <span className="font-medium">Deposit:</span> {pg.securityDeposit}

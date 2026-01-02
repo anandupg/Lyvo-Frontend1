@@ -354,6 +354,8 @@ const SeekerRoomDetails = () => {
                             setBookingStatus({ status: 'pending_approval', bookingId: verifyData.bookingId });
                             setShowConfirmationModal(false);
                             toast({ title: "Booking Requested", description: "Payment successful! Your booking request is now pending owner approval." });
+                            // Redirect to My Bookings page
+                            setTimeout(() => navigate('/seeker-bookings'), 1500);
                         } else {
                             toast({ title: "Booking Failed", description: verifyData.message, variant: "destructive" });
                         }
@@ -552,7 +554,7 @@ const SeekerRoomDetails = () => {
                                 <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-300 group">
                                     <Calendar className="w-8 h-8 mb-3 text-gray-400 group-hover:text-blue-500 transition-colors stroke-[1.5]" />
                                     <p className={`font-bold text-xl leading-none mb-1 capitalize truncate ${room.is_available ? 'text-green-600' : 'text-red-500'}`}>
-                                        {room.is_available ? 'Available' : 'Occupied'}
+                                        {room.is_available ? 'Available' : 'Room is Full'}
                                     </p>
                                     <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Status</p>
                                 </div>
@@ -651,9 +653,14 @@ const SeekerRoomDetails = () => {
                                     </div>
                                     <button
                                         onClick={handleBookNow}
-                                        className="w-full py-4 bg-gradient-to-r from-red-600 to-red-500 text-white font-bold text-lg rounded-xl shadow-lg shadow-red-100 hover:from-red-700 hover:to-red-600 transition-all font-outfit uppercase tracking-tight"
+                                        disabled={bookingLoading || bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved' || bookingStatus?.status === 'pending_approval' || !room.is_available}
+                                        className={`w-full py-4 text-white font-bold text-lg rounded-xl shadow-lg transition-all font-outfit uppercase tracking-tight
+                                          ${!room.is_available && !(bookingStatus && ['confirmed', 'approved', 'pending_approval'].includes(bookingStatus.status))
+                                                ? 'bg-gray-400 cursor-not-allowed'
+                                                : 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 shadow-red-100'
+                                            }`}
                                     >
-                                        Book Now
+                                        {!room.is_available && !(bookingStatus && ['confirmed', 'approved', 'pending_approval'].includes(bookingStatus.status)) ? "Room is Full" : "Book Now"}
                                     </button>
                                 </div>
                             </div>
@@ -886,12 +893,14 @@ const SeekerRoomDetails = () => {
 
                                     <button
                                         onClick={handleBookNow}
-                                        disabled={bookingLoading || bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved' || bookingStatus?.status === 'pending_approval'}
+                                        disabled={bookingLoading || bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved' || bookingStatus?.status === 'pending_approval' || (!room.is_available && !bookingStatus)}
                                         className={`w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all transform active:scale-95 ${bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved'
                                             ? 'bg-green-600 cursor-default'
                                             : bookingStatus?.status === 'pending_approval'
                                                 ? 'bg-amber-500 cursor-default'
-                                                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                                                : !room.is_available
+                                                    ? 'bg-gray-400 cursor-not-allowed'
+                                                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
                                             }`}
                                     >
                                         {bookingLoading ? (
@@ -909,6 +918,8 @@ const SeekerRoomDetails = () => {
                                             </span>
                                         ) : bookingStatus?.status === 'pending_payment' ? (
                                             "Complete Payment"
+                                        ) : !room.is_available ? (
+                                            "Room is Full"
                                         ) : (
                                             "Book Now"
                                         )}

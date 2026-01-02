@@ -27,7 +27,8 @@ import {
   Mail,
   ExternalLink,
   X,
-  LogIn
+  LogIn,
+  LogOut
 } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
 import apiClient from '../../utils/apiClient';
@@ -311,6 +312,12 @@ const SeekerBookings = () => {
           icon: <XCircle className="w-4 h-4" />,
           text: 'Rejected'
         };
+      case 'checked_out':
+        return {
+          color: 'text-gray-600 bg-gray-200',
+          icon: <LogOut className="w-4 h-4" />,
+          text: 'Checked Out'
+        };
       case 'cancelled':
         return {
           color: 'text-gray-600 bg-gray-100',
@@ -411,6 +418,25 @@ const SeekerBookings = () => {
             Manage and track all your room bookings and reservations.
           </p>
         </motion.div>
+
+        {/* Check-in Date Notification Banner */}
+        {bookings.some(b => b.status === 'pending_approval' && !b.checkInDate) && (
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="mb-8 p-4 bg-purple-50 border border-purple-200 rounded-xl flex items-start gap-4 shadow-sm"
+          >
+            <div className="p-2 bg-purple-100 rounded-lg shrink-0">
+              <AlertCircle className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <h4 className="text-purple-900 font-bold">Action Required: Set Check-in Date</h4>
+              <p className="text-purple-700 text-sm mt-1">
+                For bookings pending approval, please set your preferred check-in date. <b>Note: Owner approval is typically granted only after you've specified a check-in date.</b>
+              </p>
+            </div>
+          </motion.div>
+        )}
 
         {/* Filters and Search */}
         <motion.div
@@ -599,7 +625,7 @@ const SeekerBookings = () => {
                                 />
                               )}
                               {/* Additional images from images array */}
-                              {booking.room?.images && booking.room.images.slice(0, 2).map((image, idx) => (
+                              {Array.isArray(booking.room?.images) && booking.room.images.slice(0, 2).map((image, idx) => (
                                 <img
                                   key={idx}
                                   src={image}
@@ -839,14 +865,14 @@ const SeekerBookings = () => {
                             <span>Contact Owner</span>
                           </button>
 
-                          {/* Set Check-in Button */}
-                          {booking.status !== 'checked_in' && booking.status !== 'rejected' && (
+                          {/* Set Check-in Button - Hide if checked out */}
+                          {booking.status !== 'checked_in' && booking.status !== 'rejected' && booking.status !== 'checked_out' && (
                             <button
                               onClick={() => openCheckInModal(booking)}
-                              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
+                              className={`flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r ${!booking.checkInDate ? 'from-purple-600 to-indigo-700 animate-pulse' : 'from-purple-600 to-purple-700'} text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200 shadow-md hover:shadow-lg font-medium`}
                             >
                               <LogIn className="w-4 h-4" />
-                              <span>{booking.checkInDate ? 'Update Check-in' : 'Set Check-in'}</span>
+                              <span>{booking.checkInDate ? 'Change Check-in' : 'Set Check-in Date'}</span>
                             </button>
                           )}
 
@@ -863,8 +889,13 @@ const SeekerBookings = () => {
                             <div className="text-center text-blue-600 text-sm py-2 font-medium">
                               Successfully Checked In
                             </div>
+                          ) : booking.status === 'checked_out' ? (
+                            /* Checked Out Message */
+                            <div className="text-center text-gray-600 text-sm py-2 font-medium">
+                              Checked Out on {booking.actualCheckOutDate ? new Date(booking.actualCheckOutDate).toLocaleDateString() : 'Unknown Date'}
+                            </div>
                           ) : (
-                            /* Cancel Booking Button for non-rejected, non-checked-in bookings */
+                            /* Cancel Booking Button for non-rejected, non-checked-in, non-checked-out bookings */
                             <button
                               onClick={() => openCancelModal(booking)}
                               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-200 shadow-md hover:shadow-lg font-medium border-2 border-red-800"
