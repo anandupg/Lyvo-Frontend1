@@ -941,6 +941,23 @@ const AdminPropertyDetails = () => {
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-2 gap-3 mt-4">
+                    <a
+                      href={`tel:${property.owner?.phone}`}
+                      className={`flex items-center justify-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${!property.owner?.phone ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
+                    >
+                      <Phone className="w-4 h-4 mr-2" />
+                      Call
+                    </a>
+                    <a
+                      href={`sms:${property.owner?.phone}`}
+                      className={`flex items-center justify-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${!property.owner?.phone ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
+                    >
+                      <MessageSquare className="w-4 h-4 mr-2" />
+                      Message
+                    </a>
+                  </div>
+
                   <button
                     onClick={() => {
                       setAdminMessage(`Hi ${property.owner?.name || 'Owner'}, regarding your property "${property.property_name}"...`);
@@ -948,10 +965,10 @@ const AdminPropertyDetails = () => {
                       // Note: This is a simple focus hack, ideally scroll to message box
                       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                     }}
-                    className="w-full mt-2 bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center"
+                    className="w-full mt-3 bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center"
                   >
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    Contact Owner
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Admin Notification
                   </button>
                 </div>
               </motion.div>
@@ -1150,28 +1167,52 @@ const AdminPropertyDetails = () => {
                   </div>
                 </div>
 
+                {/* Room Images */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {selectedRoom.room_image && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700 mb-2">Room Image</h3>
+                      <img
+                        src={selectedRoom.room_image}
+                        alt="Room"
+                        className="w-full h-48 object-cover rounded-lg border-2 border-gray-100"
+                      />
+                    </div>
+                  )}
+                  {selectedRoom.toilet_image && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700 mb-2">Toilet Image</h3>
+                      <img
+                        src={selectedRoom.toilet_image}
+                        alt="Toilet"
+                        className="w-full h-48 object-cover rounded-lg border-2 border-gray-100"
+                      />
+                    </div>
+                  )}
+                </div>
+
                 {selectedRoom.description && (
                   <div>
                     <h3 className="text-sm font-medium text-gray-700 mb-2">Description</h3>
-                    <p className="text-gray-900">{selectedRoom.description}</p>
+                    <p className="text-gray-900 bg-gray-50 p-4 rounded-lg text-sm">{selectedRoom.description}</p>
                   </div>
                 )}
 
-                {selectedRoom.amenities && Object.keys(selectedRoom.amenities).length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-3">Amenities</h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(selectedRoom.amenities).map(([amenity, available]) => (
-                        <div key={amenity} className="flex items-center space-x-2">
-                          <span className={`w-2 h-2 rounded-full ${available ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                          <span className="text-sm text-gray-700 capitalize">
-                            {amenity.replace(/([A-Z])/g, ' $1').trim()}
-                          </span>
+                {/* Amenities Checklist */}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Amenities Checklist</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {['ac', 'wifi', 'tv', 'fridge', 'wardrobe', 'studyTable', 'balcony', 'attachedBathroom'].map((amenity) => {
+                      const available = selectedRoom.amenities?.[amenity];
+                      return (
+                        <div key={amenity} className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm border transition-colors ${available ? 'bg-green-50 border-green-200 text-green-800' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
+                          <span className="capitalize font-medium">{amenity.replace(/([A-Z])/g, ' $1').trim()}</span>
+                          {available ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <span className="w-4 h-4" />}
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
 
                 <div className="flex items-center space-x-3 pt-4 border-t"></div>
               </div>

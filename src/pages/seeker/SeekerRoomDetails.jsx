@@ -69,7 +69,6 @@ const SeekerRoomDetails = () => {
     const [loadingTenants, setLoadingTenants] = useState(false);
 
     // Derived state for images
-    // Derived state for images
     const getPropertyImages = (prop) => {
         if (!prop?.images) return [];
         // Handle if images is an array (legacy?) or object
@@ -86,6 +85,8 @@ const SeekerRoomDetails = () => {
         ...(room?.toilet_image ? [room.toilet_image] : []),
         ...getPropertyImages(property)
     ];
+
+
 
     // Helper: Get User ID
     const getUserId = () => {
@@ -427,196 +428,154 @@ const SeekerRoomDetails = () => {
         <SeekerLayout>
             <div className="min-h-screen bg-gray-50 pb-20 md:pb-10">
 
-                {/* Gallery Hero */}
-                <div className="relative h-[40vh] md:h-[50vh] bg-gray-900 group">
-                    {images.length > 0 ? (
-                        <img
-                            src={images[currentImageIndex]}
-                            alt={property.property_name}
-                            className="w-full h-full object-cover opacity-90"
-                        />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-800 text-gray-500">
-                            <span className="text-lg">No Images Available</span>
-                        </div>
-                    )}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-6 relative">
+                    {/* Back Button */}
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="mb-4 p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600 hover:text-gray-900 inline-flex items-center gap-2"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                        <span className="font-medium text-sm">Back</span>
+                    </button>
 
-                    {/* Overlay Gradient */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-
-                    {/* Top Navigation */}
-                    <div className="absolute top-4 left-4 z-10">
-                        <button
-                            onClick={() => navigate(-1)}
-                            className="p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-all"
-                        >
-                            <ArrowLeft className="w-6 h-6" />
-                        </button>
-                    </div>
-
-                    <div className="absolute top-4 right-4 z-10 flex gap-3">
-                        <button
-                            onClick={handleToggleFavorite}
-                            className="p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-all"
-                        >
-                            <Heart className={`w-6 h-6 ${isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
-                        </button>
-                        <button
-                            onClick={handleShare}
-                            className="p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-all"
-                        >
-                            <Share2 className="w-6 h-6" />
-                        </button>
-                    </div>
-
-                    {/* Bottom Info in Hero */}
-                    <div className="absolute bottom-6 left-4 right-4 md:left-8 md:right-8 text-white">
-                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    {/* Header Section */}
+                    <div className="mb-6">
+                        <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                             <div>
-                                <span className="inline-block px-3 py-1 bg-blue-600 rounded-full text-xs font-semibold mb-2 uppercase tracking-wider">
-                                    {room.room_type || room.type || 'Standard'} Room
-                                </span>
-                                <h1 className="text-3xl md:text-4xl font-bold mb-1">
+                                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
                                     {property.property_name} - Room {room.room_number || room.roomNumber}
                                 </h1>
-                                <p className="text-gray-200 flex items-center gap-1">
-                                    <MapPin className="w-4 h-4" />
-                                    {property.address?.city}, {property.address?.state}
-                                </p>
+                                <div className="flex items-center gap-4 text-sm text-gray-600">
+                                    <span className="flex items-center gap-1 font-medium text-gray-900">
+                                        <Star className="w-4 h-4 fill-black text-black" />
+                                        4.8 <span className="text-gray-500 font-normal">(12 reviews)</span>
+                                    </span>
+                                    <span className="hidden md:inline">•</span>
+                                    <span className="flex items-center gap-1 underline cursor-pointer hover:text-gray-900">
+                                        {property.address?.city}, {property.address?.state}, {property.address?.country || 'India'}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="text-right hidden md:block">
-                                <p className="text-3xl font-bold">₹{room.rent?.toLocaleString()}</p>
-                                <p className="text-sm opacity-80">per month</p>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleShare}
+                                    className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-gray-200 bg-white hover:bg-gray-50 hover:shadow-md transition-all duration-300 text-sm font-semibold text-gray-700 group"
+                                >
+                                    <Share2 className="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors" />
+                                    Share
+                                </button>
+                                <button
+                                    onClick={handleToggleFavorite}
+                                    className={`flex items-center gap-2 px-5 py-2.5 rounded-full border transition-all duration-300 text-sm font-semibold shadow-sm hover:shadow-md group ${isFavorited
+                                        ? 'border-red-100 bg-red-50 text-red-600'
+                                        : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
+                                        }`}
+                                >
+                                    <Heart className={`w-4 h-4 transition-transform group-hover:scale-110 ${isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-600 group-hover:text-red-500'}`} />
+                                    {isFavorited ? 'Saved' : 'Save'}
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    {/* Image Navigation Dots (if multiple) */}
-                    {images.length > 1 && (
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                            {images.map((_, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => setCurrentImageIndex(idx)}
-                                    className={`w-2 h-2 rounded-full transition-all ${idx === currentImageIndex ? 'bg-white w-4' : 'bg-white/50'
-                                        }`}
-                                />
-                            ))}
-                        </div>
-                    )}
+                    {/* Image Grid - Adaptive */}
+                    <div className="relative rounded-xl overflow-hidden shadow-sm h-[40vh] md:h-[60vh]">
+                        {images.length === 1 ? (
+                            <img
+                                src={images[0]}
+                                alt="Room View"
+                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 cursor-pointer"
+                                onClick={() => {
+                                    setCurrentImageIndex(0);
+                                }}
+                            />
+                        ) : images.length >= 2 ? (
+                            <div className="grid grid-cols-2 gap-2 h-full">
+                                {images.slice(0, 2).map((img, idx) => (
+                                    <div key={idx} className="relative overflow-hidden group">
+                                        <img
+                                            src={img}
+                                            alt={`View ${idx + 1}`}
+                                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-500 cursor-pointer"
+                                            onClick={() => setCurrentImageIndex(idx)}
+                                        />
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
+                                <p>No images available</p>
+                            </div>
+                        )}
+
+                        {/* Show All Photos Button */}
+                        <button className="absolute bottom-4 right-4 bg-white border border-black/10 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:shadow-md hover:scale-105 transition-all flex items-center gap-2">
+                            <Square className="w-4 h-4" /> Show all photos
+                        </button>
+                    </div>
                 </div>
 
                 {/* Main Content Grid */}
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
                         {/* Left Column: Details */}
-                        <div className="lg:col-span-2 space-y-6">
+                        <div className="md:col-span-2 space-y-6">
 
-                            {/* Key Metrics Card */}
-                            <div className="bg-white rounded-2xl shadow-sm p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div className="text-center p-3 bg-gray-50 rounded-xl">
-                                    <Users className="w-6 h-6 mx-auto mb-2 text-blue-600" />
-                                    <p className="text-xs text-gray-500 uppercase">Occupancy</p>
-                                    <p className="font-semibold text-gray-900">{room.occupancy} Person(s)</p>
+
+
+                            {/* Key Metrics - Advanced Card Grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                                <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-300 group">
+                                    <Users className="w-8 h-8 mb-3 text-gray-400 group-hover:text-blue-500 transition-colors stroke-[1.5]" />
+                                    <p className="font-bold text-xl text-gray-900 leading-none mb-1">{tenants?.length || 0} / {room.occupancy}</p>
+                                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Occupied</p>
                                 </div>
-                                <div className="text-center p-3 bg-gray-50 rounded-xl">
-                                    <Square className="w-6 h-6 mx-auto mb-2 text-blue-600" />
-                                    <p className="text-xs text-gray-500 uppercase">Size</p>
-                                    <p className="font-semibold text-gray-900">{room.room_size || room.dimension || 'N/A'} sq ft</p>
+                                <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-300 group">
+                                    <Square className="w-8 h-8 mb-3 text-gray-400 group-hover:text-blue-500 transition-colors stroke-[1.5]" />
+                                    <p className="font-bold text-xl text-gray-900 leading-none mb-1">{room.room_size || room.dimension || 'N/A'}</p>
+                                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">sq ft</p>
                                 </div>
-                                <div className="text-center p-3 bg-gray-50 rounded-xl">
-                                    <Bed className="w-6 h-6 mx-auto mb-2 text-blue-600" />
-                                    <p className="text-xs text-gray-500 uppercase">Bed Type</p>
-                                    <p className="font-semibold text-gray-900 capitalize">{room.bed_type || 'N/A'}</p>
+                                <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-300 group">
+                                    <Bed className="w-8 h-8 mb-3 text-gray-400 group-hover:text-blue-500 transition-colors stroke-[1.5]" />
+                                    <p className="font-bold text-xl text-gray-900 leading-none mb-1 capitalize truncate">{room.bed_type || 'N/A'}</p>
+                                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Bed Type</p>
                                 </div>
-                                <div className="text-center p-3 bg-gray-50 rounded-xl">
-                                    <Calendar className="w-6 h-6 mx-auto mb-2 text-blue-600" />
-                                    <p className="text-xs text-gray-500 uppercase">Status</p>
-                                    <p className="font-semibold text-gray-900 capitalize">{room.is_available ? 'Available' : 'Occupied'}</p>
+                                <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-300 group">
+                                    <Calendar className="w-8 h-8 mb-3 text-gray-400 group-hover:text-blue-500 transition-colors stroke-[1.5]" />
+                                    <p className={`font-bold text-xl leading-none mb-1 capitalize truncate ${room.is_available ? 'text-green-600' : 'text-red-500'}`}>
+                                        {room.is_available ? 'Available' : 'Occupied'}
+                                    </p>
+                                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Status</p>
                                 </div>
                             </div>
 
-                            {/* About Section */}
-                            <div className="bg-white rounded-2xl shadow-sm p-6">
-                                <h2 className="text-xl font-bold text-gray-900 mb-4">About the Property</h2>
-                                <p className="text-gray-600 leading-relaxed">
+                            {/* About Section - Shadowed Card */}
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow duration-300">
+                                <h2 className="text-2xl font-bold text-gray-900 mb-4">About this place</h2>
+                                <p className="text-gray-600 leading-relaxed text-lg">
                                     {property.description || "A beautiful property located in a prime area, offering comfortable living spaces and modern amenities for a hassle-free stay."}
                                 </p>
                             </div>
 
-                            {/* Mobile-only Booking Card */}
-                            <div className="lg:hidden">
+                            <hr className="border-gray-100" />
+
+                            {/* Mobile-only Booking Card - Simplified */}
+                            <div className="md:hidden">
                                 <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
                                     <div className="flex justify-between items-center mb-6">
                                         <div>
                                             <span className="text-3xl font-bold text-gray-900">₹{room.rent?.toLocaleString()}</span>
                                             <span className="text-gray-500">/month</span>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-xs text-gray-500">Deposit</p>
-                                            <p className="font-semibold text-gray-700">₹{property.security_deposit?.toLocaleString()}</p>
-                                        </div>
                                     </div>
-
-                                    <hr className="border-gray-100 my-4" />
-
-                                    <div className="space-y-3 mb-6">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Service Fee</span>
-                                            <span className="font-medium text-gray-900">₹0</span>
-                                        </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Maintenance</span>
-                                            <span className="font-medium text-gray-900">Included</span>
-                                        </div>
-                                    </div>
-
                                     <button
                                         onClick={handleBookNow}
-                                        disabled={bookingLoading || bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved' || bookingStatus?.status === 'pending_approval'}
-                                        className={`w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all transform active:scale-95 ${bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved'
-                                            ? 'bg-green-600 cursor-default'
-                                            : bookingStatus?.status === 'pending_approval'
-                                                ? 'bg-amber-500 cursor-default'
-                                                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
-                                            }`}
+                                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg rounded-xl shadow-lg"
                                     >
-                                        {bookingLoading ? (
-                                            <span className="flex items-center justify-center gap-2">
-                                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                Processing...
-                                            </span>
-                                        ) : bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved' ? (
-                                            <span className="flex items-center justify-center gap-2">
-                                                <CheckCircle className="w-5 h-5" /> Booked
-                                            </span>
-                                        ) : bookingStatus?.status === 'pending_approval' ? (
-                                            <span className="flex items-center justify-center gap-2">
-                                                <Clock className="w-5 h-5" /> Waiting for Approval
-                                            </span>
-                                        ) : bookingStatus?.status === 'pending_payment' ? (
-                                            "Complete Payment"
-                                        ) : (
-                                            "Book Now"
-                                        )}
+                                        Check Availability
                                     </button>
-
-                                    {(bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved' || bookingStatus?.status === 'pending_approval') && (
-                                        <button
-                                            onClick={handleCancelBooking}
-                                            disabled={bookingLoading}
-                                            className="w-full mt-3 py-3 rounded-xl border border-red-200 text-red-600 font-semibold hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            <X className="w-4 h-4" /> Cancel Booking
-                                        </button>
-                                    )}
-
-                                    <p className="text-xs text-center text-gray-400 mt-4">
-                                        {bookingStatus?.status === 'pending_approval'
-                                            ? "Your request is being reviewed by the owner."
-                                            : "You'll pay a 10% booking fee to reserve."}
-                                    </p>
                                 </div>
                             </div>
 
@@ -654,92 +613,109 @@ const SeekerRoomDetails = () => {
                                 </div>
                             </div>
 
-                            {/* Room Features */}
-                            <div className="bg-white rounded-2xl shadow-sm p-6">
-                                <h2 className="text-xl font-bold text-gray-900 mb-6 font-primary">Room Features</h2>
+                            {/* Room Features - Card Grid */}
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-900 mb-6">Room Features</h2>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {room.amenities && Object.entries(room.amenities).map(([key, value]) => {
                                         if (!value) return null;
                                         const iconMap = {
-                                            ac: <Wind className="w-5 h-5 text-blue-600" />,
-                                            wifi: <Wifi className="w-5 h-5 text-blue-600" />,
-                                            tv: <Tv className="w-5 h-5 text-blue-600" />,
-                                            fridge: <Utensils className="w-5 h-5 text-blue-600" />, // Use Utensils for fridge or similar
-                                            wardrobe: <Square className="w-5 h-5 text-blue-600" />,
-                                            studyTable: <Square className="w-5 h-5 text-blue-600" />,
-                                            balcony: <Square className="w-5 h-5 text-blue-600" />,
-                                            attachedBathroom: <Shield className="w-5 h-5 text-blue-600" />
+                                            ac: <Wind className="w-6 h-6" />,
+                                            wifi: <Wifi className="w-6 h-6" />,
+                                            tv: <Tv className="w-6 h-6" />,
+                                            fridge: <Utensils className="w-6 h-6" />,
+                                            wardrobe: <Square className="w-6 h-6" />,
+                                            studyTable: <Square className="w-6 h-6" />,
+                                            balcony: <Square className="w-6 h-6" />,
+                                            attachedBathroom: <Shield className="w-6 h-6" />
                                         };
                                         return (
-                                            <div key={key} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl border border-gray-100 transition-hover hover:border-blue-200">
-                                                {iconMap[key] || <CheckCircle className="w-5 h-5 text-blue-600" />}
-                                                <span className="text-xs font-medium text-gray-600 mt-2 text-center capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                            <div key={key} className="flex flex-col items-center justify-center p-4 bg-white border border-gray-100 rounded-2xl hover:border-blue-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group cursor-default">
+                                                <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-50 transition-colors">
+                                                    <span className="text-gray-500 group-hover:text-blue-600 transition-colors">
+                                                        {iconMap[key] || <CheckCircle className="w-6 h-6" />}
+                                                    </span>
+                                                </div>
+                                                <span className="text-sm font-bold text-gray-700 capitalize text-center leading-tight group-hover:text-gray-900">
+                                                    {key.replace(/([A-Z])/g, ' $1').trim()}
+                                                </span>
                                             </div>
                                         );
                                     })}
                                     {(!room.amenities || Object.values(room.amenities).every(v => !v)) && (
-                                        <p className="text-sm text-gray-500 italic col-span-full">No specific room features listed.</p>
+                                        <div className="col-span-full p-6 bg-gray-50 rounded-2xl text-center border border-dashed border-gray-200">
+                                            <p className="text-gray-500 font-medium">No specific room features listed.</p>
+                                        </div>
                                     )}
                                 </div>
                             </div>
 
-                            {/* Property Amenities */}
-                            <div className="bg-white rounded-2xl shadow-sm p-6">
-                                <h2 className="text-xl font-bold text-gray-900 mb-6 font-primary">Property Amenities</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Property Amenities - Shadowed Card */}
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow duration-300">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-2xl font-bold text-gray-900">Property Amenities</h2>
+                                    <span className="text-xs font-bold bg-gray-100 text-gray-600 px-3 py-1 rounded-full uppercase tracking-wider">Common Areas</span>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {property.amenities && Object.entries(property.amenities)
                                         .filter(([_, v]) => v)
                                         .map(([key]) => (
-                                            <div key={key} className="flex items-center gap-3 p-3 bg-blue-50/30 rounded-xl border border-blue-50">
-                                                <div className="p-2 bg-white rounded-lg text-blue-600 shadow-sm">
-                                                    {key.includes('parking') ? <Car className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
+                                            <div key={key} className="flex flex-col items-center justify-center p-4 rounded-2xl hover:bg-gray-50 transition-colors group cursor-default">
+                                                <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-indigo-100 transition-colors">
+                                                    <CheckCircle className="w-6 h-6 text-indigo-500 group-hover:scale-110 transition-transform" />
                                                 </div>
-                                                <span className="text-sm font-medium text-gray-700 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                                <span className="text-sm font-bold text-gray-700 capitalize text-center leading-tight group-hover:text-gray-900">
+                                                    {key.replace(/([A-Z])/g, ' $1').trim()}
+                                                </span>
                                             </div>
                                         ))
                                     }
                                 </div>
                             </div>
 
-                            {/* House Rules */}
-                            <div className="bg-white rounded-2xl shadow-sm p-6">
-                                <h2 className="text-xl font-bold text-gray-900 mb-6 font-primary">House Rules</h2>
+                            <hr className="border-gray-100" />
+
+                            {/* House Rules - Shadowed Card */}
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow duration-300">
+                                <h2 className="text-2xl font-bold text-gray-900 mb-6">House Rules</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {property.rules && Object.entries(property.rules).map(([key, value]) => {
-                                        const labelMap = {
-                                            petsAllowed: value ? "Pets Welcome" : "No Pets Allowed",
-                                            smokingAllowed: value ? "Smoking Allowed" : "No Smoking",
-                                            visitorsAllowed: value ? "Visitors Allowed" : "No Visitors",
-                                            cookingAllowed: value ? "Cooking Allowed" : "No Cooking Indoors"
-                                        };
-                                        const iconMap = {
-                                            petsAllowed: <Dog className={`w-5 h-5 ${value ? 'text-green-600' : 'text-red-500'}`} />,
-                                            smokingAllowed: <Wind className={`w-5 h-5 ${value ? 'text-green-600' : 'text-red-500'}`} />,
-                                            visitorsAllowed: <Users className={`w-5 h-5 ${value ? 'text-green-600' : 'text-red-500'}`} />,
-                                            cookingAllowed: <Utensils className={`w-5 h-5 ${value ? 'text-green-600' : 'text-red-500'}`} />
-                                        };
                                         return (
-                                            <div key={key} className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
-                                                <div className={`p-2 rounded-full ${value ? 'bg-green-50' : 'bg-red-50'}`}>
-                                                    {iconMap[key]}
-                                                </div>
-                                                <div>
-                                                    <p className={`text-sm font-semibold ${value ? 'text-gray-900' : 'text-gray-700'}`}>{labelMap[key]}</p>
-                                                    <p className="text-xs text-gray-500">{value ? 'Permitted' : 'Strictly prohibited'}</p>
-                                                </div>
+                                            <div key={key} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl">
+                                                <span className="text-gray-700 capitalize font-medium">{key.replace(/([A-Z])/g, ' $1').replace('Allowed', '').trim()}</span>
+                                                {value ? (
+                                                    <span className="text-green-700 text-sm font-bold bg-green-50 px-3 py-1 rounded-full">Allowed</span>
+                                                ) : (
+                                                    <span className="text-red-700 text-sm font-bold bg-red-50 px-3 py-1 rounded-full">No</span>
+                                                )}
                                             </div>
                                         );
                                     })}
                                 </div>
                             </div>
 
-                            {/* Current Tenants Section */}
-                            <div className="bg-white rounded-2xl shadow-sm p-6 overflow-hidden relative">
+                            <hr className="border-gray-100" />
+
+                            {/* Current Tenants Section - Detailed Cards */}
+                            <div>
                                 <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-xl font-bold text-gray-900 font-primary">Living With</h2>
-                                    <span className="text-xs font-semibold bg-blue-50 text-blue-600 px-3 py-1 rounded-full uppercase tracking-wider">
-                                        {tenants.length} / {room.occupancy || 1} Occupied
-                                    </span>
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-gray-900">Living With</h2>
+                                        <p className="text-sm text-gray-500 mt-1">Get to know your potential future housemates</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex -space-x-2">
+                                            {tenants.slice(0, 3).map((t, i) => (
+                                                <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-200 overflow-hidden">
+                                                    <img src={t.profilePicture || t.userId?.profilePicture || `https://ui-avatars.com/api/?name=${t.userName}&background=random`} alt="" className="w-full h-full object-cover" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <span className="text-xs font-bold bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full">
+                                            {tenants.length} Residents
+                                        </span>
+                                    </div>
                                 </div>
 
                                 {loadingTenants ? (
@@ -748,18 +724,21 @@ const SeekerRoomDetails = () => {
                                         <p className="text-sm text-gray-500 animate-pulse">Finding your future roommates...</p>
                                     </div>
                                 ) : tenants.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         {tenants.map((tenant, idx) => (
-                                            <motion.div
-                                                initial={{ opacity: 0, x: -10 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                transition={{ delay: idx * 0.1 }}
+                                            <div
                                                 key={tenant._id || idx}
-                                                className="group p-4 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300"
+                                                className="group relative p-5 bg-white border border-gray-100 rounded-2xl hover:shadow-xl hover:shadow-blue-500/5 hover:border-blue-100 transition-all duration-300"
                                             >
-                                                <div className="flex items-center gap-4">
-                                                    <div className="relative">
-                                                        <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
+                                                <div className="absolute top-4 right-4">
+                                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 text-green-700 text-[10px] font-bold uppercase tracking-wide">
+                                                        <CheckCircle className="w-3 h-3" /> Verified
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex items-start gap-4">
+                                                    <div className="relative shrink-0">
+                                                        <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-white shadow-md bg-gray-100 group-hover:scale-105 transition-transform duration-300">
                                                             {(tenant.profilePicture || tenant.userId?.profilePicture) ? (
                                                                 <img
                                                                     src={tenant.profilePicture || tenant.userId?.profilePicture}
@@ -767,77 +746,67 @@ const SeekerRoomDetails = () => {
                                                                     className="w-full h-full object-cover"
                                                                 />
                                                             ) : (
-                                                                <User className="w-6 h-6 text-blue-400" />
+                                                                <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
+                                                                    <User className="w-8 h-8" />
+                                                                </div>
                                                             )}
                                                         </div>
-                                                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full flex items-center justify-center">
-                                                            <CheckCircle className="w-3 h-3 text-white" />
+                                                        <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500 border-2 border-white rounded-full flex items-center justify-center shadow-sm z-10">
+                                                            <Users className="w-3 h-3 text-white" />
                                                         </div>
                                                     </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center justify-between">
-                                                            <h3 className="font-bold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
-                                                                {tenant.userName || 'Resident'}
-                                                            </h3>
-                                                        </div>
-                                                        <div className="flex flex-col gap-1 mt-1">
-                                                            <p className="text-xs text-gray-500 flex items-center gap-1">
-                                                                <Mail className="w-3 h-3 text-blue-500" /> {tenant.userEmail}
-                                                            </p>
-                                                            {tenant.userPhone && (
-                                                                <p className="text-xs text-gray-500 flex items-center gap-1">
-                                                                    <Phone className="w-3 h-3 text-green-500" /> {tenant.userPhone}
-                                                                </p>
-                                                            )}
-                                                            <p className="text-xs text-gray-500 flex items-center gap-1">
-                                                                <Calendar className="w-3 h-3 text-purple-500" /> Member since {tenant.actualCheckInDate ? new Date(tenant.actualCheckInDate).getFullYear() : new Date().getFullYear()}
-                                                            </p>
+
+                                                    <div className="pt-1">
+                                                        <h3 className="font-bold text-gray-900 text-lg leading-tight group-hover:text-blue-600 transition-colors">
+                                                            {tenant.userName || 'Resident'}
+                                                        </h3>
+                                                        <p className="text-xs text-gray-500 font-medium mt-1">
+                                                            Joined {tenant.actualCheckInDate ? new Date(tenant.actualCheckInDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Recently'}
+                                                        </p>
+
+                                                        {/* Optional tags or info could go here */}
+                                                        <div className="flex gap-2 mt-3">
+                                                            <span className="text-[10px] font-semibold text-gray-500 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
+                                                                Student
+                                                            </span>
+                                                            <span className="text-[10px] font-semibold text-gray-500 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
+                                                                Non-Smoker
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </motion.div>
+                                            </div>
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="bg-gray-50 rounded-2xl p-8 border border-dashed border-gray-200 text-center">
-                                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100">
-                                            <Users className="w-8 h-8 text-gray-300" />
+                                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8 text-center border border-white shadow-sm">
+                                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm text-blue-500">
+                                            <Users className="w-8 h-8" />
                                         </div>
-                                        <h3 className="text-gray-900 font-bold mb-1">Room is Currently Empty</h3>
-                                        <p className="text-sm text-gray-500 max-w-[250px] mx-auto leading-relaxed">
-                                            Be the first one to move in and set the vibe for this beautiful space!
+                                        <h3 className="text-gray-900 font-bold text-lg mb-2">Room is Currently Empty</h3>
+                                        <p className="text-sm text-gray-600 max-w-[280px] mx-auto leading-relaxed">
+                                            You have the unique opportunity to set the vibe! Be the first to move in.
                                         </p>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Location (Text Only) */}
-                            <div className="bg-white rounded-2xl shadow-sm p-6">
-                                <h2 className="text-xl font-bold text-gray-900 mb-4 font-primary">Location Details</h2>
-                                <div className="space-y-3">
-                                    <div className="flex items-start gap-3">
-                                        <MapPin className="w-5 h-5 text-blue-600 shrink-0 mt-1" />
-                                        <div>
-                                            <p className="text-gray-900 font-medium">Address</p>
-                                            <p className="text-gray-600">
-                                                {property.address?.street}, {property.address?.city}, {property.address?.state}, {property.address?.pincode}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {property.address?.landmark && (
-                                        <div className="flex items-start gap-3">
-                                            <Info className="w-5 h-5 text-blue-600 shrink-0 mt-1" />
-                                            <div>
-                                                <p className="text-gray-900 font-medium">Landmark</p>
-                                                <p className="text-gray-600">{property.address.landmark}</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                            <hr className="border-gray-100" />
+
+                            {/* Location */}
+                            <div className="space-y-4">
+                                <h2 className="text-2xl font-bold text-gray-900">Location Details</h2>
+                                <p className="text-gray-600 flex items-start gap-2">
+                                    <MapPin className="w-5 h-5 text-gray-400 mt-1 shrink-0" />
+                                    <span>
+                                        {property.address?.street}, {property.address?.city}, {property.address?.state}, {property.address?.pincode}
+                                        {property.address?.landmark && <span className="block text-sm text-gray-500 mt-1">Landmark: {property.address.landmark}</span>}
+                                    </span>
+                                </p>
 
                                 {/* Leaflet Map */}
                                 {mapCenter[0] !== 0 && (
-                                    <div className="mt-6 h-64 w-full rounded-2xl overflow-hidden border border-gray-100 shadow-inner relative" style={{ zIndex: 1 }}>
+                                    <div className="mt-4 h-[250px] w-full rounded-2xl overflow-hidden relative z-0 border border-gray-200">
                                         <MapContainer
                                             center={mapCenter}
                                             zoom={15}
@@ -852,7 +821,6 @@ const SeekerRoomDetails = () => {
                                                 <Popup>
                                                     <div className="p-2">
                                                         <p className="font-bold text-gray-900">{property.property_name}</p>
-                                                        <p className="text-xs text-gray-600 mt-1">{property.address?.city}</p>
                                                     </div>
                                                 </Popup>
                                             </Marker>
@@ -863,33 +831,30 @@ const SeekerRoomDetails = () => {
                         </div>
 
                         {/* Right Column: Pricing & Owner (Sticky on Desktop) */}
-                        <div className="lg:col-span-1">
-                            <div className="sticky top-24 space-y-6">
+                        <div className="md:col-span-1">
+                            <div className="sticky top-24 space-y-6 mt-6">
 
                                 {/* Booking Card (Desktop) */}
-                                <div className="hidden lg:block bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <div>
-                                            <span className="text-3xl font-bold text-gray-900">₹{room.rent?.toLocaleString()}</span>
-                                            <span className="text-gray-500">/month</span>
+                                <div className="hidden md:block bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className="flex flex-col">
+                                            <span className="text-3xl font-bold text-gray-900 tracking-tight">₹{room.rent?.toLocaleString()}</span>
+                                            <span className="text-gray-500 text-sm font-medium">/month</span>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-xs text-gray-500">Deposit</p>
-                                            <p className="font-semibold text-gray-700">₹{property.security_deposit?.toLocaleString()}</p>
+                                            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">Deposit</p>
+                                            <p className="font-bold text-lg text-gray-900">₹{property.security_deposit?.toLocaleString()}</p>
                                         </div>
                                     </div>
 
                                     <hr className="border-gray-100 my-4" />
 
                                     <div className="space-y-3 mb-6">
-                                        <div className="flex justify-between text-sm">
+                                        <div className="flex justify-between text-base">
                                             <span className="text-gray-600">Service Fee</span>
                                             <span className="font-medium text-gray-900">₹0</span>
                                         </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Maintenance</span>
-                                            <span className="font-medium text-gray-900">Included</span>
-                                        </div>
+                                        {/* Additional rows can be added here */}
                                     </div>
 
                                     <button
@@ -941,7 +906,7 @@ const SeekerRoomDetails = () => {
 
                                 {/* Owner Card */}
                                 {owner && (
-                                    <div className="bg-white rounded-2xl shadow-sm p-6">
+                                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow duration-300">
                                         <div className="flex items-center gap-4 mb-4">
                                             <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden">
                                                 {owner.profilePicture ? (
@@ -976,7 +941,7 @@ const SeekerRoomDetails = () => {
                                 )}
 
                                 {/* Behavioral Match (Desktop) */}
-                                <div className="hidden lg:block bg-white rounded-2xl shadow-sm p-6 overflow-hidden relative">
+                                <div className="hidden md:block bg-white rounded-2xl shadow-lg border border-gray-100 p-6 overflow-hidden relative hover:shadow-xl transition-shadow duration-300">
                                     <div className="absolute top-0 right-0 p-3">
                                         <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
                                             <Star className="w-4 h-4 text-blue-600" />
@@ -1009,94 +974,93 @@ const SeekerRoomDetails = () => {
 
                             </div>
                         </div>
-
                     </div>
                 </div>
-            </div>
 
-            {/* Booking Confirmation Modal */}
-            <AnimatePresence>
-                {showConfirmationModal && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative"
-                        >
-                            <button
-                                onClick={() => setShowConfirmationModal(false)}
-                                className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
+                {/* Booking Confirmation Modal */}
+                <AnimatePresence>
+                    {showConfirmationModal && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative"
                             >
-                                <X className="w-5 h-5" />
-                            </button>
+                                <button
+                                    onClick={() => setShowConfirmationModal(false)}
+                                    className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
 
-                            <div className="p-8">
-                                <h2 className="text-2xl font-bold text-gray-900 mb-2">Booking Summary</h2>
-                                <p className="text-gray-500 mb-6">Please review the costs before proceeding</p>
+                                <div className="p-8">
+                                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Booking Summary</h2>
+                                    <p className="text-gray-500 mb-6">Please review the costs before proceeding</p>
 
-                                {/* Room Preview in Modal */}
-                                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl mb-6">
-                                    <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 shadow-sm border border-white">
-                                        <img
-                                            src={room.room_image || room.roomImage || (Array.isArray(property.images) ? property.images[0] : property.image)}
-                                            alt="Room"
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-gray-900">Room {room.room_number || room.roomNumber}</h4>
-                                        <p className="text-xs text-gray-500">{room.room_type} • {room.bed_type}</p>
-                                        <p className="text-[10px] text-blue-600 font-semibold mt-0.5">{property.property_name}</p>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4 mb-8">
-                                    <div className="flex justify-between items-center text-gray-600">
-                                        <span>Monthly Rent</span>
-                                        <span className="font-semibold text-gray-900">₹{room.rent}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-gray-600">
-                                        <span>Security Deposit</span>
-                                        <span className="font-semibold text-gray-900">₹{property.security_deposit || 0}</span>
-                                    </div>
-                                    <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
-                                        <span className="text-gray-900 font-bold">Total Amount</span>
-                                        <span className="text-xl font-bold text-blue-600">₹{parseFloat(room.rent) + parseFloat(property.security_deposit || 0)}</span>
-                                    </div>
-                                </div>
-
-                                <div className="bg-blue-50 rounded-xl p-5 mb-8">
-                                    <div className="flex gap-3">
-                                        <Info className="w-6 h-6 text-blue-600 shrink-0" />
+                                    {/* Room Preview in Modal */}
+                                    <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl mb-6">
+                                        <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 shadow-sm border border-white">
+                                            <img
+                                                src={room.room_image || room.roomImage || (Array.isArray(property.images) ? property.images[0] : property.image)}
+                                                alt="Room"
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
                                         <div>
-                                            <p className="text-sm font-bold text-blue-900">Booking Fee: 10%</p>
-                                            <p className="text-sm text-blue-700 mt-1 leading-relaxed">
-                                                You need to pay ₹{((parseFloat(room.rent) + parseFloat(property.security_deposit || 0)) * 0.10).toFixed(2)} to reserve this room. This amount will be adjusted in your first month's payment.
-                                            </p>
+                                            <h4 className="font-bold text-gray-900">Room {room.room_number || room.roomNumber}</h4>
+                                            <p className="text-xs text-gray-500">{room.room_type} • {room.bed_type}</p>
+                                            <p className="text-[10px] text-blue-600 font-semibold mt-0.5">{property.property_name}</p>
                                         </div>
                                     </div>
-                                </div>
 
-                                <button
-                                    onClick={initiatePayment}
-                                    disabled={bookingLoading}
-                                    className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02]"
-                                >
-                                    {bookingLoading ? (
-                                        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    ) : (
-                                        <>Pay ₹{((parseFloat(room.rent) + parseFloat(property.security_deposit || 0)) * 0.10).toFixed(2)} & Book Now</>
-                                    )}
-                                </button>
-                                <p className="text-center text-xs text-gray-400 mt-5">
-                                    By proceeding, you agree to Lyvo's Terms and Conditions
-                                </p>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+                                    <div className="space-y-4 mb-8">
+                                        <div className="flex justify-between items-center text-gray-600">
+                                            <span>Monthly Rent</span>
+                                            <span className="font-semibold text-gray-900">₹{room.rent}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-gray-600">
+                                            <span>Security Deposit</span>
+                                            <span className="font-semibold text-gray-900">₹{property.security_deposit || 0}</span>
+                                        </div>
+                                        <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
+                                            <span className="text-gray-900 font-bold">Total Amount</span>
+                                            <span className="text-xl font-bold text-blue-600">₹{parseFloat(room.rent) + parseFloat(property.security_deposit || 0)}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-blue-50 rounded-xl p-5 mb-8">
+                                        <div className="flex gap-3">
+                                            <Info className="w-6 h-6 text-blue-600 shrink-0" />
+                                            <div>
+                                                <p className="text-sm font-bold text-blue-900">Booking Fee: 10%</p>
+                                                <p className="text-sm text-blue-700 mt-1 leading-relaxed">
+                                                    You need to pay ₹{((parseFloat(room.rent) + parseFloat(property.security_deposit || 0)) * 0.10).toFixed(2)} to reserve this room. This amount will be adjusted in your first month's payment.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={initiatePayment}
+                                        disabled={bookingLoading}
+                                        className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02]"
+                                    >
+                                        {bookingLoading ? (
+                                            <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        ) : (
+                                            <>Pay ₹{((parseFloat(room.rent) + parseFloat(property.security_deposit || 0)) * 0.10).toFixed(2)} & Book Now</>
+                                        )}
+                                    </button>
+                                    <p className="text-center text-xs text-gray-400 mt-5">
+                                        By proceeding, you agree to Lyvo's Terms and Conditions
+                                    </p>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
+            </div>
         </SeekerLayout>
     );
 };

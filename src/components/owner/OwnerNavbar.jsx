@@ -58,17 +58,6 @@ const OwnerNavbar = ({ onMenuToggle }) => {
     };
   }, []);
 
-  // Listen for notification events
-  useEffect(() => {
-    const handleNewNotification = (event) => {
-      console.log('🔔 OwnerNavbar received new-notification event:', event.detail);
-      // Force fetch regardless of loading state
-      fetchNotifications(true);
-    };
-
-    window.addEventListener('new-notification', handleNewNotification);
-    return () => window.removeEventListener('new-notification', handleNewNotification);
-  }, []);
 
   // Fetch notifications
   const fetchNotifications = async (force = false) => {
@@ -81,17 +70,18 @@ const OwnerNavbar = ({ onMenuToggle }) => {
     try {
       if (!force) setNotificationsLoading(true);
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = userData._id || userData.id;
 
-      if (!userData._id) {
+      if (!userId) {
         console.log('Skipping fetch: Not authenticated');
         return;
       }
 
-      console.log('Fetching notifications for user:', userData._id);
+      console.log('Fetching notifications for user:', userId);
 
       const response = await apiClient.get('/notifications', {
         headers: {
-          'x-user-id': userData._id
+          'x-user-id': userId
         }
       });
 
@@ -101,6 +91,9 @@ const OwnerNavbar = ({ onMenuToggle }) => {
           console.log('Notifications fetched:', data.data.length);
           setNotifications(data.data || []);
           setUnreadCount(data.unreadCount || 0);
+
+          // Debugging log
+          console.log('Unread count set to:', data.unreadCount);
         }
       } else {
         console.error('Fetch failed:', response.status);
@@ -163,7 +156,19 @@ const OwnerNavbar = ({ onMenuToggle }) => {
   // Listen for notification events
   useEffect(() => {
     const handleNewNotification = (event) => {
-      console.log('🔔 OwnerNavbar received new-notification event:', event.detail);
+      console.log('📨 OwnerNavbar: RECEIVED NOTIFICATION via Socket:', event.detail);
+
+      const newNotification = event.detail;
+
+      // Optimistic update
+      setNotifications(prev => {
+        // Prevent duplicates
+        if (prev.some(n => n._id === newNotification._id)) return prev;
+        return [newNotification, ...prev];
+      });
+      setUnreadCount(prev => prev + 1);
+
+      console.log('🔢 Refreshing unread count (fetching for consistency)...');
       fetchNotifications(true);
     };
 

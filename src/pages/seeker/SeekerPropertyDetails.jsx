@@ -319,7 +319,10 @@ const SeekerPropertyDetails = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-4 border border-gray-100 rounded-xl bg-gray-50/50">
                     <Bed className="w-6 h-6 mb-2 text-gray-700" />
-                    <p className="font-semibold text-gray-900">{property.rooms?.length || 0} Rooms</p>
+                    <p className="font-semibold text-gray-900">
+                      {property.rooms?.filter(r => r.isAvailable).length || 0} Active Rooms
+                    </p>
+                    <p className="text-xs text-gray-500">of {property.rooms?.length || 0} Total</p>
                   </div>
                   <div className="p-4 border border-gray-100 rounded-xl bg-gray-50/50">
                     <Users className="w-6 h-6 mb-2 text-gray-700" />
@@ -381,55 +384,120 @@ const SeekerPropertyDetails = () => {
               <div ref={roomsSectionRef} className="space-y-6">
                 <h2 className="text-2xl font-bold text-gray-900">Available Rooms</h2>
                 {property.rooms && property.rooms.length > 0 ? (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     {property.rooms.map((room) => (
                       <div
                         key={room._id}
-                        className="flex flex-col md:flex-row gap-4 p-4 border border-gray-200 rounded-2xl hover:border-black transition-colors cursor-pointer group"
+                        className={`relative flex flex-col md:flex-row gap-6 p-5 bg-white border rounded-2xl transition-all duration-300 group cursor-pointer
+                          ${room.is_available
+                            ? 'border-gray-100 hover:border-blue-100 shadow-sm hover:shadow-lg'
+                            : 'border-gray-100 bg-gray-50/50 opacity-90'
+                          }`}
                         onClick={() => navigate(`/seeker/room/${room._id}`, { state: { fromPropertyId: id } })}
                       >
-                        {/* Room Image Thumbnail */}
-                        <div className="w-full md:w-48 h-32 bg-gray-100 rounded-xl overflow-hidden shrink-0">
+                        {/* Room Image with Overlay */}
+                        <div className="w-full md:w-64 h-48 rounded-xl overflow-hidden shrink-0 relative bg-gray-200">
                           {room.room_image ? (
-                            <img src={room.room_image} alt={`Room ${room.roomNumber}`} className="w-full h-full object-cover" />
+                            <img
+                              src={room.room_image}
+                              alt={`Room ${room.roomNumber}`}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-gray-400">
-                              <Bed className="w-8 h-8" />
+                              <Bed className="w-10 h-10" />
                             </div>
                           )}
+                          {/* Type Badge */}
+                          <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-lg text-xs font-bold text-gray-700 shadow-sm">
+                            {room.room_type || room.type}
+                          </div>
                         </div>
 
-                        <div className="flex-1 flex flex-col justify-between">
-                          <div>
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-                                  Room {room.roomNumber}
-                                  <span className="ml-2 text-sm font-normal text-gray-500 capitalize">({room.type})</span>
+                        {/* Content Section */}
+                        <div className="flex-1 flex flex-col">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <div className="flex items-center gap-3 mb-1">
+                                <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                                  Room {room.roomNumber || room.room_number}
                                 </h3>
-                                <p className="text-sm text-gray-500 mt-1">{room.occupancy} Person Occupancy • {room.dimension} sq ft </p>
+                                {!room.is_available && (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 uppercase tracking-wide">
+                                    Unavailable
+                                  </span>
+                                )}
                               </div>
-                              <div className="text-right">
-                                <span className="text-xl font-bold text-gray-900">₹{room.rent?.toLocaleString()}</span>
-                                <p className="text-xs text-gray-500">/ month</p>
+                              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                                <span className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded-md">
+                                  <Users className="w-4 h-4" />
+                                  {room.occupancy} Capacity
+                                </span>
+                                {room.current_occupants > 0 && (
+                                  <span className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2 py-1 rounded-md">
+                                    <Users className="w-4 h-4" />
+                                    {room.current_occupants} Occupant{room.current_occupants !== 1 ? 's' : ''}
+                                  </span>
+                                )}
+                                <span className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded-md">
+                                  <Square className="w-4 h-4" />
+                                  {room.room_size || room.dimension} sq ft
+                                </span>
                               </div>
                             </div>
-
-                            {/* Room Amenities Tags */}
-                            <div className="flex flex-wrap gap-2 mt-3">
-                              {room.amenities && Object.entries(room.amenities).slice(0, 3).filter(([, v]) => v).map(([k]) => (
-                                <span key={k} className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-md capitalize">
-                                  {k.replace(/([A-Z])/g, ' $1').trim()}
-                                </span>
-                              ))}
+                            <div className="text-right">
+                              <div className="flex items-baseline justify-end gap-1">
+                                <span className="text-2xl font-bold text-blue-600">₹{room.rent?.toLocaleString()}</span>
+                              </div>
+                              <p className="text-xs text-gray-500 font-medium">per month</p>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between mt-4 md:mt-0">
-                            <span className={`text-xs font-semibold px-2 py-1 rounded-md ${room.isAvailable ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'}`}>
-                              {room.isAvailable ? 'Available Now' : 'Not Available'}
+                          {/* Divider */}
+                          <div className="h-px bg-gray-50 my-4" />
+
+                          {/* Amenities Preview */}
+                          <div className="mb-4">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Includes</p>
+                            <div className="flex flex-wrap gap-2">
+                              {room.amenities && Object.entries(room.amenities)
+                                .filter(([, v]) => v)
+                                .slice(0, 5) // Show up to 5 amenities
+                                .map(([k]) => (
+                                  <span
+                                    key={k}
+                                    className="px-2.5 py-1.5 bg-gray-50 border border-gray-100 rounded-lg text-xs font-medium text-gray-600 capitalize group-hover:bg-blue-50/50 group-hover:text-blue-700 group-hover:border-blue-100 transition-colors"
+                                  >
+                                    {k.replace(/([A-Z])/g, ' $1').trim()}
+                                  </span>
+                                ))}
+                              {room.amenities && Object.values(room.amenities).filter(v => v).length > 5 && (
+                                <span className="px-2 py-1 text-xs text-gray-400 self-center">
+                                  +{Object.values(room.amenities).filter(v => v).length - 5} more
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Footer / CTA */}
+                          <div className="mt-auto flex items-center justify-between pt-2">
+                            {room.is_available ? (
+                              <div className="flex items-center gap-2 text-green-600 bg-green-50/50 px-3 py-1.5 rounded-full">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                </span>
+                                <span className="text-xs font-bold">Available Now</span>
+                              </div>
+                            ) : (
+                              <div className="text-xs font-medium text-gray-400 px-2">
+                                Currently Unavailable
+                              </div>
+                            )}
+
+                            <span className="flex items-center gap-1 text-sm font-semibold text-blue-600 group-hover:translate-x-1 transition-transform">
+                              View Details <ArrowLeft className="w-4 h-4 rotate-180" />
                             </span>
-                            <span className="text-sm font-semibold underline">View Details</span>
                           </div>
                         </div>
                       </div>

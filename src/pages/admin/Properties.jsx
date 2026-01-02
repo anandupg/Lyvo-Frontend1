@@ -1,14 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Search, Filter, MoreVertical, Edit, Trash2, Eye, MapPin, DollarSign, Users, Star, Calendar, CheckCircle2, XCircle, User, Building, ArrowRight } from 'lucide-react';
+import { Home, Search, Filter, MoreVertical, Edit, Trash2, Eye, MapPin, DollarSign, Users, Star, Calendar, CheckCircle2, XCircle, User, Building, ArrowRight, AlertCircle } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import apiClient from '../../utils/apiClient';
 
 const PropertiesPage = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [activeTab, setActiveTab] = useState('all'); // 'all', 'pending', 'approved'
+  const [selectedOwner, setSelectedOwner] = useState('all');
   const [selectedProperties, setSelectedProperties] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -63,11 +64,25 @@ const PropertiesPage = () => {
     return (properties || []).filter(p => {
       const title = (p.property_name || '').toLowerCase();
       const location = `${p.address?.street || ''} ${p.address?.city || ''} ${p.address?.state || ''}`.toLowerCase();
-      const matchesSearch = !term || title.includes(term) || location.includes(term) || (p.owner?.name || '').toLowerCase().includes(term);
-      const matchesStatus = filterStatus === 'all' || (p.approval_status || 'pending') === filterStatus || (p.status || 'active') === filterStatus;
-      return matchesSearch && matchesStatus;
+      const ownerName = (p.owner?.name || '').toLowerCase();
+
+      const matchesSearch = !term || title.includes(term) || location.includes(term) || ownerName.includes(term);
+
+      // Tab filtering
+      let matchesTab = true;
+      if (activeTab === 'pending') {
+        const hasPendingRooms = (p.rooms || []).some(r => (r.approval_status || 'pending') === 'pending');
+        matchesTab = (p.approval_status || 'pending') === 'pending' || hasPendingRooms;
+      } else if (activeTab === 'approved') {
+        matchesTab = (p.approval_status || 'pending') === 'approved';
+      }
+
+      // Owner filtering
+      const matchesOwner = selectedOwner === 'all' || (p.owner?.name || p.owner_id) === selectedOwner;
+
+      return matchesSearch && matchesTab && matchesOwner;
     });
-  }, [properties, searchTerm, filterStatus]);
+  }, [properties, searchTerm, activeTab, selectedOwner]);
 
   const groupedByOwner = useMemo(() => {
     const groups = {};
@@ -88,9 +103,9 @@ const PropertiesPage = () => {
       (p.approval_status === 'approved' || p.status === 'active') && p.status !== 'inactive'
     ).length;
 
-    // Pending approval: properties with approval_status = 'pending'
+    // Pending approval: properties with approval_status = 'pending' OR with any pending rooms
     const pendingApproval = properties.filter(p =>
-      p.approval_status === 'pending'
+      p.approval_status === 'pending' || (p.rooms || []).some(r => (r.approval_status || 'pending') === 'pending')
     ).length;
 
     // Total revenue: sum of all room rents from all properties (monthly)
@@ -256,87 +271,119 @@ const PropertiesPage = () => {
               </div>
             </div>
           </motion.div>
+        </div>
 
+        {/* Tabs and Filters */}
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Tabs */}
+            <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
+              {[
+                { id: 'all', label: 'All Properties', count: stats.totalProperties },
+                { id: 'pending', label: 'Pending Approval', count: stats.pendingApproval, color: 'text-yellow-600' },
+                { id: 'approved', label: 'Approved', count: stats.activeListings, color: 'text-green-600' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${activeTab === tab.id
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                  <span className={activeTab === tab.id ? tab.color : ''}>{tab.label}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === tab.id ? 'bg-gray-100 text-gray-900' : 'bg-gray-200 text-gray-600'
+                    }`}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Owner Filter */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center space-x-2 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
+                <Users className="w-4 h-4 text-gray-400" />
+                <select
+                  value={selectedOwner}
+                  onChange={(e) => setSelectedOwner(e.target.value)}
+                  className="text-sm font-medium focus:outline-none bg-transparent min-w-[150px]"
+                >
+                  <option value="all">All Owners</option>
+                  {Object.keys(groupedByOwner).sort().map(owner => (
+                    <option key={owner} value={owner}>{owner}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Filters and Search */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.4 }}
             className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalRevenue}</p>
+            <div className="flex flex-col md:flex-row gap-4">
+              {/* Search */}
+              <div className="flex-1 relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search by property name, location, or owner..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+                />
               </div>
-              <div className="p-3 rounded-lg bg-green-50">
-                <DollarSign className="w-6 h-6 text-green-500" />
-              </div>
+
+              {/* Bulk Actions */}
+              <AnimatePresence>
+                {selectedProperties.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    className="flex items-center space-x-2"
+                  >
+                    <span className="text-sm font-medium text-gray-600 whitespace-nowrap">{selectedProperties.length} selected</span>
+                    <div className="flex gap-2">
+                      <button className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors shadow-sm">
+                        Approve
+                      </button>
+                      <button className="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors shadow-sm">
+                        Reject
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         </div>
-
-        {/* Filters and Search */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
-        >
-          <div className="flex flex-col md:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search properties by title or location..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              />
-            </div>
-
-            {/* Status Filter */}
-            <div className="flex items-center space-x-2">
-              <Filter className="w-4 h-4 text-gray-400" />
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="pending">Pending</option>
-                <option value="inactive">Inactive</option>
-                <option value="suspended">Suspended</option>
-              </select>
-            </div>
-
-            {/* Bulk Actions */}
-            {selectedProperties.length > 0 && (
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">{selectedProperties.length} selected</span>
-                <button className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200">
-                  Approve Selected
-                </button>
-                <button className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200">
-                  Reject Selected
-                </button>
-              </div>
-            )}
-          </div>
-        </motion.div>
 
         {/* Grouped by Owner */}
         <div className="space-y-8">
           {Object.entries(groupedByOwner).map(([ownerName, list]) => (
             <div key={ownerName} className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
-                  <User className="w-5 h-5 text-gray-700" />
+              <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+                    <User className="w-6 h-6 text-red-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">{ownerName}</h2>
+                    <p className="text-gray-500 text-sm font-medium">{list[0]?.owner?.email || ''} • {list.length} Properties</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">{ownerName}</h2>
-                  <p className="text-gray-500 text-sm">{list[0]?.owner?.email || ''}</p>
+                <div className="flex items-center gap-2">
+                  <div className="hidden sm:flex flex-col items-end">
+                    <span className="text-sm font-bold text-gray-900">₹{
+                      list.reduce((acc, p) => acc + (p.rooms?.reduce((rAcc, r) => rAcc + (r.rent || 0), 0) || 0), 0).toLocaleString()
+                    }</span>
+                    <span className="text-xs text-gray-500">Total Potential Rent</span>
+                  </div>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -396,19 +443,27 @@ const PropertiesPage = () => {
                           <span className="truncate">{`${property.address?.city || ''}, ${property.address?.state || ''}`}</span>
                         </div>
 
-                        <div className="space-y-2 mb-4">
+                        <div className="space-y-3 mb-6">
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Total Rooms</span>
-                            <span className="font-semibold text-gray-900">{rooms.length}</span>
+                            <span className="text-gray-500 font-medium">Room Status</span>
+                            <span className="text-xs font-bold text-gray-700">{approvedRooms}/{rooms.length} Approved</span>
                           </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Approved</span>
-                            <span className="font-semibold text-green-600">{approvedRooms}</span>
+                          <div className="flex w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className="bg-green-500 h-full transition-all duration-500"
+                              style={{ width: `${(approvedRooms / (rooms.length || 1)) * 100}%` }}
+                            />
+                            <div
+                              className="bg-yellow-400 h-full transition-all duration-500"
+                              style={{ width: `${(pendingRooms / (rooms.length || 1)) * 100}%` }}
+                            />
                           </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Pending</span>
-                            <span className="font-semibold text-yellow-600">{pendingRooms}</span>
-                          </div>
+                          {pendingRooms > 0 && (
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-yellow-600 bg-yellow-50 px-2 py-1 rounded-md w-fit">
+                              <AlertCircle className="w-3.5 h-3.5" />
+                              {pendingRooms} {pendingRooms === 1 ? 'Room Needs' : 'Rooms Need'} Review
+                            </div>
+                          )}
                         </div>
 
                         {/* Quick Actions */}
@@ -446,18 +501,26 @@ const PropertiesPage = () => {
           className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
         >
           <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              Showing <span className="font-medium">{Object.keys(groupedByOwner).length}</span> owner groups • <span className="font-medium">{filteredProperties.length}</span> properties
+            <div className="text-sm font-medium text-gray-500">
+              Showing <span className="text-gray-900 font-bold">{Object.keys(groupedByOwner).length}</span> owner groups • <span className="text-gray-900 font-bold">{filteredProperties.length}</span> properties
             </div>
-            <div className="flex items-center space-x-2">
-              <button className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50">
-                Previous
+            <div className="flex items-center gap-1.5">
+              <button className="p-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50">
+                <ArrowRight className="w-4 h-4 rotate-180" />
               </button>
-              <button className="px-3 py-1 text-sm bg-red-600 text-white rounded-md">1</button>
-              <button className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50">2</button>
-              <button className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50">3</button>
-              <button className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50">
-                Next
+              {[1, 2, 3].map(page => (
+                <button
+                  key={page}
+                  className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-bold transition-all duration-200 ${page === 1
+                    ? 'bg-red-600 text-white shadow-lg shadow-red-200'
+                    : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button className="p-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>

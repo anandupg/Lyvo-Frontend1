@@ -149,7 +149,7 @@ const PropertyDetails = () => {
         studyTable: false,
         balcony: false,
         attachedBathroom: false,
-        ...room.amenities
+        ...(typeof room.amenities === 'string' ? JSON.parse(room.amenities) : room.amenities || {})
       },
       room_image: room.room_image,
       toilet_image: room.toilet_image
@@ -298,7 +298,17 @@ const PropertyDetails = () => {
       delete roomPayload.toilet_image;
       delete roomPayload.toilet_image_file;
 
+      // Append roomData JSON for backends that expect it
       formData.append('roomData', JSON.stringify(roomPayload));
+
+      // Append individual fields for backends that rely on req.body keys from multer
+      Object.keys(roomPayload).forEach(key => {
+        if (key === 'amenities' || typeof roomPayload[key] === 'object') {
+          formData.append(key, JSON.stringify(roomPayload[key]));
+        } else {
+          formData.append(key, roomPayload[key]);
+        }
+      });
 
       if (addRoomData.room_image_file) {
         formData.append('room_image', addRoomData.room_image_file);
@@ -575,7 +585,17 @@ const PropertyDetails = () => {
       delete roomDataToSend.room_image;
       delete roomDataToSend.toilet_image;
 
+      // Append roomData JSON for backends that expect it
       formData.append('roomData', JSON.stringify(roomDataToSend));
+
+      // Append individual fields for backends that rely on req.body keys from multer
+      Object.keys(roomDataToSend).forEach(key => {
+        if (key === 'amenities' || typeof roomDataToSend[key] === 'object') {
+          formData.append(key, JSON.stringify(roomDataToSend[key]));
+        } else {
+          formData.append(key, roomDataToSend[key]);
+        }
+      });
 
       // Add images if they exist
       if (editRoomData.room_image_file) {
@@ -717,13 +737,13 @@ const PropertyDetails = () => {
         setProperty(prev => ({
           ...prev,
           rooms: prev.rooms.map(room =>
-            room._id === roomId ? { ...room, status: newStatus } : room
+            room._id === roomId ? { ...room, status: newStatus, is_available: newStatus === 'active' } : room
           )
         }));
 
         // Update selected room if it's the same
         if (selectedRoom && selectedRoom._id === roomId) {
-          setSelectedRoom(prev => ({ ...prev, status: newStatus }));
+          setSelectedRoom(prev => ({ ...prev, status: newStatus, is_available: newStatus === 'active' }));
         }
 
         console.log('Room status updated successfully');
@@ -805,8 +825,44 @@ const PropertyDetails = () => {
 
         const result = response.data;
         if (result.success) {
-          console.log('Property details fetched:', result.data);
-          setProperty(result.data);
+          // Robust parsing of amenities and rules if they come as strings
+          const processedData = { ...result.data };
+
+          try {
+            if (typeof processedData.amenities === 'string') {
+              processedData.amenities = JSON.parse(processedData.amenities);
+            }
+          } catch (e) {
+            console.error('Error parsing property amenities:', e);
+            processedData.amenities = {};
+          }
+
+          try {
+            if (typeof processedData.rules === 'string') {
+              processedData.rules = JSON.parse(processedData.rules);
+            }
+          } catch (e) {
+            console.error('Error parsing property rules:', e);
+            processedData.rules = {};
+          }
+
+          if (processedData.rooms) {
+            processedData.rooms = processedData.rooms.map(room => {
+              const processedRoom = { ...room };
+              try {
+                if (typeof processedRoom.amenities === 'string') {
+                  processedRoom.amenities = JSON.parse(processedRoom.amenities);
+                }
+              } catch (e) {
+                console.error(`Error parsing amenities for room ${room.room_number}:`, e);
+                processedRoom.amenities = {};
+              }
+              return processedRoom;
+            });
+          }
+
+          console.log('Property details fetched and processed:', processedData);
+          setProperty(processedData);
         } else {
           console.error('Failed to fetch property:', result.message);
         }
@@ -1190,7 +1246,7 @@ const PropertyDetails = () => {
                           </div>
 
                           {/* Room Images */}
-                          <div className={`grid gap-4 mb-4 ${room.room_image && room.toilet_image && room.amenities?.attachedBathroom ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                          <div className={`grid gap-4 mb-4 ${room.room_image && room.toilet_image ? 'grid-cols-2' : 'grid-cols-1'}`}>
                             {room.room_image && (
                               <div>
                                 <p className="text-sm font-medium text-gray-700 mb-2">Room Image</p>
@@ -1204,7 +1260,7 @@ const PropertyDetails = () => {
                                 />
                               </div>
                             )}
-                            {room.toilet_image && room.amenities?.attachedBathroom && (
+                            {room.toilet_image && (
                               <div>
                                 <p className="text-sm font-medium text-gray-700 mb-2">Toilet Image</p>
                                 <img
@@ -1793,7 +1849,7 @@ const PropertyDetails = () => {
                       </div>
                     )}
 
-                    {selectedRoom.toilet_image && selectedRoom.amenities?.attachedBathroom && (
+                    {selectedRoom.toilet_image && (
                       <div>
                         <p className="text-sm font-medium text-gray-700 mb-2">Toilet Image</p>
                         <img
@@ -1849,25 +1905,23 @@ const PropertyDetails = () => {
                     )}
 
                     {/* Amenities */}
-                    {selectedRoom.amenities && Object.keys(selectedRoom.amenities).length > 0 && (
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-900 mb-3">Amenities</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {Object.entries(selectedRoom.amenities).map(([amenity, available]) => {
-                            if (available) {
-                              const IconComponent = getAmenityIcon(amenity);
-                              return (
-                                <div key={amenity} className="flex items-center space-x-1 px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm">
-                                  <IconComponent className="w-4 h-4" />
-                                  <span className="capitalize">{amenity.replace(/([A-Z])/g, ' $1').trim()}</span>
-                                </div>
-                              );
-                            }
-                            return null;
-                          })}
-                        </div>
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-3">Amenities</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        {['ac', 'wifi', 'tv', 'fridge', 'wardrobe', 'studyTable', 'balcony', 'attachedBathroom'].map((amenity) => {
+                          const available = selectedRoom.amenities?.[amenity];
+                          // Fallback in case icon helper is missing for some reason, though it shouldn't be
+                          const IconComponent = getAmenityIcon(amenity) || CheckCircle;
+                          return (
+                            <div key={amenity} className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm border transition-colors ${available ? 'bg-green-50 border-green-200 text-green-800 font-medium' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
+                              <IconComponent className={`w-4 h-4 ${available ? 'text-green-600' : 'text-gray-400'}`} />
+                              <span className="capitalize flex-1">{amenity.replace(/([A-Z])/g, ' $1').trim()}</span>
+                              {available && <CheckCircle className="w-4 h-4 text-green-600" />}
+                            </div>
+                          );
+                        })}
                       </div>
-                    )}
+                    </div>
 
                     {/* Room Status Management */}
                     <div>
@@ -1875,8 +1929,8 @@ const PropertyDetails = () => {
                       <div className="flex space-x-2">
                         <button
                           onClick={() => updateRoomStatus(selectedRoom._id, 'active')}
-                          disabled={roomStatusLoading[selectedRoom._id] || selectedRoom.status === 'active'}
-                          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedRoom.status === 'active'
+                          disabled={roomStatusLoading[selectedRoom._id] || selectedRoom.is_available}
+                          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedRoom.is_available
                             ? 'bg-green-100 text-green-800 cursor-not-allowed'
                             : 'bg-green-50 text-green-700 hover:bg-green-100'
                             }`}
@@ -1891,8 +1945,8 @@ const PropertyDetails = () => {
 
                         <button
                           onClick={() => updateRoomStatus(selectedRoom._id, 'inactive')}
-                          disabled={roomStatusLoading[selectedRoom._id] || selectedRoom.status === 'inactive'}
-                          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedRoom.status === 'inactive'
+                          disabled={roomStatusLoading[selectedRoom._id] || !selectedRoom.is_available}
+                          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${!selectedRoom.is_available
                             ? 'bg-gray-100 text-gray-800 cursor-not-allowed'
                             : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                             }`}
@@ -1989,7 +2043,7 @@ const PropertyDetails = () => {
                     </div>
 
                     {/* Toilet Image */}
-                    {editRoomData.amenities?.attachedBathroom && (
+                    {(editRoomData.amenities?.attachedBathroom || editRoomData.toilet_image) && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Toilet Image</label>
                         {editRoomData.toilet_image ? (

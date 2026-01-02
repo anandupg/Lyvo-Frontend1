@@ -74,6 +74,8 @@ import OwnerAnalytics from "./pages/owner/OwnerAnalytics";
 import OwnerMaintenance from "./pages/owner/OwnerMaintenance";
 import OwnerPayments from "./pages/owner/OwnerPayments";
 import OwnerTenantDetails from "./pages/owner/OwnerTenantDetails";
+import Notifications from "./pages/owner/Notifications";
+import NotificationListener from "./components/NotificationListener";
 
 // Protected Route Component for Admin
 const ProtectedAdminRoute = ({ children }) => {
@@ -599,6 +601,11 @@ function AppRoutesWithLoader() {
               <OwnerPayments />
             </ProtectedOwnerRoute>
           } />
+          <Route path="/owner-notifications" element={
+            <ProtectedOwnerRoute>
+              <Notifications />
+            </ProtectedOwnerRoute>
+          } />
 
           {/* Admin routes - protected with role-based authentication */}
           <Route path="/admin-dashboard" element={
@@ -719,6 +726,7 @@ function App() {
   return (
     <BrowserRouter>
       <RoleRepairProvider>
+        <NotificationListener />
         <RootAuthCheck>
           <AppContent />
         </RootAuthCheck>
