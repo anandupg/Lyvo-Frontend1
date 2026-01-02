@@ -36,6 +36,8 @@ const BookingDetails = () => {
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [showConfirmApprove, setShowConfirmApprove] = useState(false);
+  const [showConfirmCheckIn, setShowConfirmCheckIn] = useState(false);
   const [actionType, setActionType] = useState(null);
 
   useEffect(() => {
@@ -64,8 +66,14 @@ const BookingDetails = () => {
         let data;
         if (resp && resp.ok) {
           data = await resp.json();
-          setBooking(data.booking);
-          console.log('Booking Data:', data.booking); // Debug log
+          setBooking({
+            ...data.booking,
+            seekerProfile: data.seekerProfile,
+            kycAddress: data.kycAddress,
+            isKycVerified: data.isKycVerified,
+            aadharImages: data.aadharImages
+          });
+          console.log('Booking Data with Extended Info:', data); // Debug log
           setSource(data.source || 'booking');
         } else {
           // Second attempt: Public lookup if no direct access or failed
@@ -487,7 +495,7 @@ const BookingDetails = () => {
                     <div className="flex flex-wrap gap-4">
                       <button
                         disabled={updating || !booking.checkInDate}
-                        onClick={() => updateStatus('approve')}
+                        onClick={() => setShowConfirmApprove(true)}
                         className="flex-1 min-w-[200px] bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-xl font-semibold hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {updating ? (
@@ -563,7 +571,7 @@ const BookingDetails = () => {
 
                     <button
                       disabled={updating}
-                      onClick={finalizeCheckIn}
+                      onClick={() => setShowConfirmCheckIn(true)}
                       className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-3"
                     >
                       {updating ? (
@@ -599,17 +607,24 @@ const BookingDetails = () => {
                   </div>
                   <div className="p-6 space-y-4">
                     <div className="flex justify-center mb-4">
-                      {(booking.userId?.profilePicture || booking.userId?.picture) ? (
-                        <img
-                          src={booking.userId?.profilePicture || booking.userId?.picture}
-                          alt="Seeker Profile"
-                          className="w-24 h-24 rounded-full object-cover border-4 border-indigo-50 shadow-md"
-                        />
-                      ) : (
-                        <div className="w-24 h-24 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-300">
-                          <User className="w-12 h-12" />
-                        </div>
-                      )}
+                      <div className="relative">
+                        {(booking.seekerProfile?.profilePicture || booking.userId?.profilePicture || booking.userId?.picture) ? (
+                          <img
+                            src={booking.seekerProfile?.profilePicture || booking.userId?.profilePicture || booking.userId?.picture}
+                            alt="Seeker Profile"
+                            className="w-24 h-24 rounded-full object-cover border-4 border-indigo-50 shadow-md"
+                          />
+                        ) : (
+                          <div className="w-24 h-24 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-300 border-4 border-indigo-50 shadow-md">
+                            <User className="w-12 h-12" />
+                          </div>
+                        )}
+                        {booking.isKycVerified && (
+                          <div className="absolute bottom-0 right-0 bg-green-500 border-2 border-white rounded-full p-1 shadow-sm">
+                            <CheckCircle className="w-4 h-4 text-white" />
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Name</label>
@@ -617,6 +632,54 @@ const BookingDetails = () => {
                         {booking.userSnapshot?.name || 'N/A'}
                       </p>
                     </div>
+
+                    {/* Gender & Occupation */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Gender</label>
+                        <p className="mt-1 text-gray-900 capitalize">
+                          {booking.seekerProfile?.gender || 'N/A'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Occupation</label>
+                        <p className="mt-1 text-gray-900 capitalize">
+                          {booking.seekerProfile?.occupation || 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Aadhar Card Image */}
+                    {booking.aadharImages?.front && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500 flex items-center gap-2 mb-2">
+                          <Shield className="w-4 h-4" />
+                          Aadhar Card
+                          {booking.isKycVerified && (
+                            <span className="bg-green-100 text-green-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                              Verified
+                            </span>
+                          )}
+                        </label>
+                        <img
+                          src={booking.aadharImages.front}
+                          alt="Aadhar Card Front"
+                          className="w-full h-auto rounded-xl border border-gray-200 shadow-sm object-cover"
+                          onClick={() => window.open(booking.aadharImages.front, '_blank')}
+                        />
+                      </div>
+                    )}
+
+                    {!booking.aadharImages?.front && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500 flex items-center gap-2 mb-2">
+                          <Shield className="w-4 h-4" />
+                          Review
+                        </label>
+                        <p className="text-sm text-gray-400 italic">No ID proof uploaded yet.</p>
+                      </div>
+                    )}
+
                     <div>
                       <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                         <Mail className="w-4 h-4" />
@@ -626,6 +689,7 @@ const BookingDetails = () => {
                         {booking.userSnapshot?.email || 'N/A'}
                       </p>
                     </div>
+
                     <div>
                       <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                         <Phone className="w-4 h-4" />
@@ -635,6 +699,32 @@ const BookingDetails = () => {
                         {booking.userSnapshot?.phone || 'N/A'}
                       </p>
                     </div>
+
+                    {/* Contact Buttons */}
+                    {(booking.userSnapshot?.phone) && (
+                      <div className="flex gap-3 pt-2">
+                        <a
+                          href={`tel:${booking.userSnapshot.phone}`}
+                          className="flex-1 bg-white border border-gray-300 text-gray-700 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors font-medium text-sm"
+                        >
+                          <Phone className="w-4 h-4" />
+                          Call
+                        </a>
+                        <a
+                          href={`https://wa.me/${booking.userSnapshot.phone.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 bg-green-50 border border-green-200 text-green-700 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-green-100 transition-colors font-medium text-sm"
+                        >
+                          <img
+                            src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
+                            alt="WhatsApp"
+                            className="w-4 h-4"
+                          />
+                          Message
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
 
@@ -738,6 +828,78 @@ const BookingDetails = () => {
           ) : null}
         </div>
       </div>
+
+      {/* Confirmation Modal for Approval */}
+      {showConfirmApprove && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center"
+          >
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-10 h-10 text-yellow-600" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Approve Booking?</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to approve this booking? The seeker will be notified immediately.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowConfirmApprove(false)}
+                className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-all duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowConfirmApprove(false);
+                  updateStatus('approve');
+                }}
+                className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-xl font-semibold hover:from-green-700 hover:to-green-800 transition-all duration-200"
+              >
+                Confirm Approval
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Check-in */}
+      {showConfirmCheckIn && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center"
+          >
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <MapPin className="w-10 h-10 text-blue-600" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Confirm Check-in?</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to check in this seeker? This will add them as an active tenant and update room occupancy.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowConfirmCheckIn(false)}
+                className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-all duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowConfirmCheckIn(false);
+                  finalizeCheckIn();
+                }}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200"
+              >
+                Confirm Check-in
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Approval Success Modal */}
       {showApprovalModal && (
