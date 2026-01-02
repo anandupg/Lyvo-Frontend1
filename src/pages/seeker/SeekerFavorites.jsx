@@ -67,15 +67,20 @@ const SeekerFavorites = () => {
 
       if (response.status === 200) {
         const data = response.data;
-        console.log('Favorites data received:', data);
+        console.log('Favorites RAW data:', JSON.stringify(data, null, 2)); // Debug Log
 
         // Map backend fields to frontend expectations
         const mappedFavorites = (data.favorites || []).map(fav => ({
           ...fav,
           property: {
             ...fav.propertyId,
-            propertyName: fav.propertyId?.property_name, // Map snake_case to camelCase
-            address: fav.propertyId?.address // Ensure address is accessible
+            propertyName: fav.propertyId?.property_name,
+            address: fav.propertyId?.address,
+            // Map Owner Details for Modal
+            ownerName: fav.propertyId?.owner_id?.name || 'Property Owner',
+            ownerPhone: fav.propertyId?.owner_id?.phone || fav.propertyId?.owner_id?.phoneNumber,
+            ownerEmail: fav.propertyId?.owner_id?.email,
+            ownerProfilePicture: fav.propertyId?.owner_id?.profilePicture
           },
           room: {
             ...fav.roomId,

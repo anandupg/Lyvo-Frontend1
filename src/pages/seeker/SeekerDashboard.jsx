@@ -18,7 +18,10 @@ import {
   CheckCircle,
   AlertCircle,
   SlidersHorizontal,
-  Layers
+  Layers,
+  Sparkles,
+  ChevronRight,
+  Eye
 } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
 
@@ -39,6 +42,7 @@ const SeekerDashboard = () => {
   const [nearbyPGs, setNearbyPGs] = useState([]);
   const [allProperties, setAllProperties] = useState([]); // Store all properties
   const [recentSearches, setRecentSearches] = useState([]); // Store recent searches
+  const [recentlyViewed, setRecentlyViewed] = useState([]); // Store recently viewed properties
   const navigate = useNavigate();
   const [locationError, setLocationError] = useState(null);
 
@@ -67,7 +71,7 @@ const SeekerDashboard = () => {
       address: locationData.address,
       lat: locationData.lat,
       lng: locationData.lng,
-      timestamp: new Date().toLocaleString(),
+      timestamp: new Date().toISOString(),
       radius: radius,
       pgCount: 0 // Will be updated after search
     };
@@ -80,6 +84,27 @@ const SeekerDashboard = () => {
     // Add to beginning of array
     const newSearches = [searchEntry, ...filteredSearches].slice(0, 5); // Keep only last 5
     setRecentSearches(newSearches);
+
+    // Persist to localStorage
+    localStorage.setItem('lyvo_recent_searches', JSON.stringify(newSearches));
+  };
+
+  // Add property to recently viewed
+  const addToRecentlyViewed = (property) => {
+    const viewEntry = {
+      ...property,
+      viewedAt: new Date().toISOString()
+    };
+
+    // Remove if already exists
+    const filteredViews = recentlyViewed.filter(view => view.id !== property.id);
+
+    // Add to beginning
+    const newViews = [viewEntry, ...filteredViews].slice(0, 4); // Keep last 4
+    setRecentlyViewed(newViews);
+
+    // Persist to localStorage
+    localStorage.setItem('lyvo_recently_viewed', JSON.stringify(newViews));
   };
 
   // Get current location using Nominatim
@@ -131,7 +156,7 @@ const SeekerDashboard = () => {
       // Transform properties to match the expected format and filter by radius
       const nearbyProperties = properties
         .filter(property => property.latitude && property.longitude) // Only include properties with coordinates
-        .map((property) => {
+        .map((property, index) => {
           const dKm = getDistanceKm(lat, lng, property.latitude, property.longitude);
           return {
             id: property._id,
@@ -139,7 +164,8 @@ const SeekerDashboard = () => {
             address: formatAddress(property.address),
             lat: property.latitude,
             lng: property.longitude,
-            price: property.rent ? `₹${property.rent.toLocaleString()}` : 'Price not available',
+            price: property.min_rent ? `₹${property.min_rent.toLocaleString()}` : (property.rent ? `₹${property.rent.toLocaleString()}` : 'Price not available'),
+            securityDeposit: property.security_deposit ? `₹${property.security_deposit.toLocaleString()}` : 'N/A',
             rating: 4.5, // Default rating since we don't have ratings yet
             distance: `${dKm.toFixed(1)} km`,
             _distanceKm: dKm,
@@ -148,6 +174,8 @@ const SeekerDashboard = () => {
             totalRooms: property.totalRooms || property.maxOccupancy || 'N/A',
             images: property.images ? [property.images.front, property.images.hall, ...(property.images.gallery || [])].filter(Boolean) : [],
             ownerName: property.ownerName || 'Unknown Owner',
+            roomDetails: property.room_details || [],
+            matchScore: 90 - (index * 4) // Mock match score
           };
         })
         .filter(pg => pg._distanceKm <= radiusKm)
@@ -165,13 +193,15 @@ const SeekerDashboard = () => {
 
   // Update recent search with PG count
   const updateRecentSearchPGCount = (lat, lng, pgCount) => {
-    setRecentSearches(prevSearches =>
-      prevSearches.map(search =>
+    setRecentSearches(prevSearches => {
+      const newSearches = prevSearches.map(search =>
         Math.abs(search.lat - lat) < 0.001 && Math.abs(search.lng - lng) < 0.001
           ? { ...search, pgCount }
           : search
-      )
-    );
+      );
+      localStorage.setItem('lyvo_recent_searches', JSON.stringify(newSearches));
+      return newSearches;
+    });
   };
 
   // Calculate distance between two coordinates
@@ -203,7 +233,8 @@ const SeekerDashboard = () => {
             address: formatAddress(property.address),
             lat: property.latitude,
             lng: property.longitude,
-            price: property.rent ? `₹${property.rent.toLocaleString()}` : 'Price not available',
+            price: property.min_rent ? `₹${property.min_rent.toLocaleString()}` : (property.rent ? `₹${property.rent.toLocaleString()}` : 'Price not available'),
+            securityDeposit: property.security_deposit ? `₹${property.security_deposit.toLocaleString()}` : 'N/A',
             rating: 4.5, // Default rating since we don't have ratings yet
             distance: '0 km', // Will be calculated when user searches
             _distanceKm: 0,
@@ -225,6 +256,11 @@ const SeekerDashboard = () => {
 
   // Open property modal and fetch full details
   const openPropertyDetails = (propertyId) => {
+    // Find the property in either nearbyPGs or recommendations to save to recently viewed
+    const property = [...nearbyPGs, ...recommendations, ...allProperties].find(p => p.id === propertyId);
+    if (property) {
+      addToRecentlyViewed(property);
+    }
     navigate(`/seeker/property/${propertyId}`);
   };
 
@@ -310,8 +346,30 @@ const SeekerDashboard = () => {
       if (!redirected) {
         setIsCheckingStatus(false);
         // Only fetch data if no redirect happened
-        // Clear mock sections until real endpoints exist
-        setRecentSearches([]);
+
+        // Load and filter persistent data (2 day expiry)
+        const TWO_DAYS = 2 * 24 * 60 * 60 * 1000;
+        const now = new Date().getTime();
+
+        const storedSearches = JSON.parse(localStorage.getItem('lyvo_recent_searches') || '[]');
+        const validSearches = storedSearches.filter(s => {
+          const timestamp = s.timestamp ? new Date(s.timestamp).getTime() : 0;
+          return now - timestamp < TWO_DAYS;
+        });
+        setRecentSearches(validSearches);
+        if (validSearches.length !== storedSearches.length) {
+          localStorage.setItem('lyvo_recent_searches', JSON.stringify(validSearches));
+        }
+
+        const storedViews = JSON.parse(localStorage.getItem('lyvo_recently_viewed') || '[]');
+        const validViews = storedViews.filter(v => {
+          const timestamp = v.viewedAt ? new Date(v.viewedAt).getTime() : 0;
+          return now - timestamp < TWO_DAYS;
+        });
+        setRecentlyViewed(validViews);
+        if (validViews.length !== storedViews.length) {
+          localStorage.setItem('lyvo_recently_viewed', JSON.stringify(validViews));
+        }
 
         // Fetch real data
         fetchPropertyRecommendations();
@@ -375,8 +433,9 @@ const SeekerDashboard = () => {
         .map((property, index) => ({
           id: property._id,
           name: property.property_name || property.propertyName || 'Unnamed Property',
-          location: formatAddress(property.address),
-          price: property.rent ? `₹${property.rent.toLocaleString()}` : 'Price not available',
+          location: property.address ? [property.address.landmark, property.address.city, property.address.state].filter(Boolean).join(', ') : 'Location not available',
+          price: property.min_rent ? `₹${property.min_rent.toLocaleString()}` : (property.rent ? `₹${property.rent.toLocaleString()}` : 'Price not available'),
+          securityDeposit: property.security_deposit ? `₹${property.security_deposit.toLocaleString()}` : 'N/A',
           rating: 4.5, // Default rating
           image: (property.images?.front || property.images?.hall || (property.images?.gallery && property.images.gallery[0]))
             ? (property.images?.front || property.images?.hall || property.images?.gallery?.[0])
@@ -384,8 +443,9 @@ const SeekerDashboard = () => {
           distance: `${(index + 1) * 2}.${index + 1} km`, // Mock distance for now
           matchScore: 95 - (index * 5), // Decreasing match score
           propertyType: property.propertyType || 'PG',
-          totalRooms: property.maxOccupancy || 'N/A', // Using maxOccupancy as fallback since rooms array is not available in this endpoint
-          amenities: property.amenities || []
+          totalRooms: property.maxOccupancy || 'N/A',
+          amenities: property.amenities ? Object.entries(property.amenities).filter(([key, value]) => value === true).map(([key]) => key) : [],
+          roomDetails: property.room_details || []
         }));
 
       setRecommendations(recommendations);
@@ -559,150 +619,208 @@ const SeekerDashboard = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="flex flex-col md:flex-row gap-6">
             {/* Search Input */}
-            <div className="lg:col-span-2">
+            <div className="flex-1">
               <UniversalSearchInput
                 mapType="leaflet"
                 onLocationSelect={handleLocationSelect}
-                placeholder="Search for a location (e.g., Koramangala, Bangalore)"
+                placeholder="Search location (e.g. Koramangala)"
               />
             </div>
 
-          </div>
-
-          {/* Radius Setting */}
-          <div className="mt-4 flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <SlidersHorizontal className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Search Radius:</span>
-            </div>
-            <div className="flex items-center space-x-2">
+            {/* Radius Setting - Modern Pill */}
+            <div className="flex items-center bg-gray-50 px-4 py-2 rounded-lg border border-gray-200 min-w-[280px]">
+              <div className="flex items-center space-x-2 mr-4">
+                <SlidersHorizontal className="w-4 h-4 text-red-600" />
+                <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Radius: <span className="text-red-600">{radius} km</span></span>
+              </div>
               <input
                 type="range"
                 min="1"
                 max="20"
                 value={radius}
                 onChange={handleRadiusChange}
-                className="w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-600"
               />
-              <span className="text-sm font-medium text-gray-700 min-w-[3rem]">{radius} km</span>
             </div>
           </div>
 
           {/* Selected Location Info */}
           {selectedLocation && (
-            <div className="mt-4 p-3 bg-red-50 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <MapPin className="w-4 h-4 text-red-600" />
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="mt-4 p-3 bg-red-50 border border-red-100 rounded-lg flex items-center justify-between"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="bg-white p-2 rounded-full shadow-sm">
+                  <MapPin className="w-4 h-4 text-red-600" />
+                </div>
                 <div>
-                  <p className="font-medium text-gray-900">{selectedLocation.name}</p>
-                  <p className="text-sm text-gray-600">{selectedLocation.address}</p>
+                  <p className="font-semibold text-gray-900 text-sm">{selectedLocation.name}</p>
+                  <p className="text-xs text-gray-600 line-clamp-1">{selectedLocation.address}</p>
                 </div>
               </div>
-            </div>
+              <button
+                onClick={() => { setSelectedLocation(null); setSearchQuery(''); }}
+                className="text-xs text-red-600 hover:text-red-800 font-medium px-2"
+              >
+                Clear
+              </button>
+            </motion.div>
           )}
 
           {/* Loading State */}
           {isSearching && (
-            <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                  <div className="w-4 h-4 border-2 border-yellow-600 border-t-transparent rounded-full animate-spin"></div>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-gray-900">Getting Your Location...</h4>
-                  <p className="text-sm text-gray-600">Please allow location access and wait a moment.</p>
-                </div>
-              </div>
+            <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200 flex items-center space-x-3">
+              <div className="w-5 h-5 border-2 border-yellow-600 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm font-medium text-yellow-800">Locating you...</span>
             </div>
           )}
-
 
           {/* Error State */}
           {locationError && (
-            <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
-              <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <AlertCircle className="w-4 h-4 text-red-600" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-1">Location Error</h4>
-                  <p className="text-sm text-gray-600 mb-2">{locationError}</p>
-                  <button
-                    onClick={() => setLocationError(null)}
-                    className="text-xs text-red-600 hover:text-red-800 underline"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              </div>
+            <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200 text-sm text-red-700 flex items-center justify-between">
+              <span>{locationError}</span>
+              <button onClick={() => setLocationError(null)} className="text-red-900 underline font-medium">Dismiss</button>
             </div>
           )}
 
-
           {/* Map Container - Leaflet Only */}
-          <div className="mt-4">
+          <div className="mt-6 rounded-2xl overflow-hidden border border-gray-200 shadow-inner relative group">
             <LeafletMap
               properties={selectedLocation ? nearbyPGs : allProperties}
               selectedLocation={selectedLocation}
               radius={radius}
               onPropertyClick={openPropertyDetails}
-              height="320px"
+              height="350px"
               showRadius={!!selectedLocation}
             />
-
-            {/* Map Info */}
-            <div className="mt-2 text-xs text-gray-500">
-              <span className="text-green-600">✓ Leaflet Map Loaded</span>
-              <span className="ml-2 text-blue-600">OpenStreetMap Tiles</span>
+            <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded text-[10px] text-gray-500 z-[400] shadow-sm pointer-events-none">
+              OpenStreetMap
             </div>
           </div>
 
-          {/* Nearby PGs Results */}
+          {/* Nearby PGs Results - Horizontal Cards */}
           {nearbyPGs.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Found {nearbyPGs.length} PGs within {radius} km
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="mt-8">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+                <h3 className="text-2xl font-black text-gray-900 font-outfit tracking-tight">
+                  Found {nearbyPGs.length} PGs nearby
+                </h3>
+                <span className="text-[10px] bg-red-50 text-red-600 px-3 py-1 rounded-full font-bold w-fit border border-red-100 uppercase tracking-wider">
+                  Within {radius} km
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {nearbyPGs.map((pg, index) => (
                   <motion.div
                     key={pg.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1, duration: 0.5 }}
-                    className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1, duration: 0.4 }}
+                    className="group bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-[0_20px_50px_rgba(239,68,68,0.15)] hover:border-red-200 transition-all duration-500 cursor-pointer flex flex-col md:flex-row overflow-hidden md:h-56 border-l-4 border-l-red-500"
                     onClick={() => openPropertyDetails(pg.id)}
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-semibold text-gray-900 text-sm">{pg.name}</h4>
-                      <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">
-                        {pg.distance}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-600 mb-2">{pg.address}</p>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-1">
-                        <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                        <span className="text-xs text-gray-600">{pg.rating}</span>
-                      </div>
-                      <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
-                        {pg.propertyType}
-                      </span>
-                    </div>
-                    <div className="space-y-1 text-xs text-gray-600">
-                      <div className="flex items-center justify-between">
-                        <span>Total Rooms:</span>
-                        <span className="font-medium">{pg.totalRooms || 'N/A'}</span>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {pg.amenities.slice(0, 3).map((amenity, idx) => (
-                        <span key={idx} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                          {amenity}
+                    {/* Left/Top: Image Section */}
+                    <div className="w-full md:w-48 h-44 md:h-full relative flex-shrink-0 overflow-hidden">
+                      <img
+                        src={pg.images && pg.images[0] ? pg.images[0] : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=400&fit=crop'}
+                        alt={pg.name}
+                        className="w-full h-full object-cover group-hover:scale-110 group-hover:brightness-90 transition-all duration-700 will-change-transform"
+                        onError={(e) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=400&fit=crop';
+                        }}
+                      />
+                      <div className="absolute top-3 left-3 flex flex-col gap-2">
+                        <span className="bg-white/95 backdrop-blur-sm text-gray-900 text-[10px] font-black px-2 py-1 rounded-lg shadow-md flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-red-500" />
+                          {pg.distance}
                         </span>
-                      ))}
+                      </div>
+                      <div className="absolute top-3 right-3">
+                        <div className="bg-red-600 text-white p-1.5 rounded-full shadow-lg">
+                          <Sparkles className="w-3.5 h-3.5" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Content */}
+                    {/* Right/Bottom: Content Section */}
+                    <div className="flex-1 p-4 flex flex-col min-w-0">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-gray-900 line-clamp-1 group-hover:text-red-600 transition-colors text-lg leading-tight uppercase font-outfit">
+                            {pg.name}
+                          </h4>
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-1 flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-gray-400" />
+                            {pg.address}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100">
+                            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                            <span className="text-xs font-bold text-yellow-700">{pg.rating}</span>
+                          </div>
+                          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-red-600 to-red-400 text-white text-[9px] font-black shadow-sm uppercase tracking-tighter">
+                            <Sparkles className="w-2.5 h-2.5" />
+                            <span>{pg.matchScore}% Match</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Room Card - The "Little Big Room Card" */}
+                      <div className="bg-red-50/40 rounded-xl p-2 md:p-3 border border-red-100/50 mb-3 group/room">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-black text-red-600 uppercase tracking-wider">Available Rooms</span>
+                          <ChevronRight className="w-3 h-3 text-red-400 group-hover/room:translate-x-1 transition-transform" />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {pg.roomDetails && pg.roomDetails.length > 0 ? (
+                            pg.roomDetails.slice(0, 3).map((room, i) => (
+                              <div key={i} className="bg-white px-2 py-1 rounded-lg shadow-sm border border-red-100 flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
+                                <span className="text-[10px] font-bold text-gray-800">R{room.room_number}: {room.room_type}</span>
+                                <span className="text-[10px] font-black text-red-600 ml-0.5">₹{room.rent?.toLocaleString()}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-[10px] text-gray-400 font-medium italic">General Rooms Available</span>
+                          )}
+                          {pg.roomDetails.length > 3 && (
+                            <div className="bg-white/50 px-2 py-1 rounded-lg border border-dashed border-red-200">
+                              <span className="text-[9px] font-bold text-red-400">+{pg.roomDetails.length - 3}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Footer: Price & Alignment */}
+                      <div className="flex items-center justify-between mt-auto">
+                        <div className="flex flex-col">
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-2xl font-black text-gray-900 tracking-tighter font-outfit leading-none">{pg.price}</span>
+                            <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">/mo</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          {/* Amenities Preview */}
+                          <div className="hidden lg:flex gap-1.5 pr-2 border-r border-gray-100 mr-1">
+                            {pg.amenities.slice(0, 2).map((am, i) => (
+                              <div key={i} title={am} className="p-1 bg-gray-50 rounded-md border border-gray-100">
+                                <CheckCircle className="w-3 h-3 text-red-400" />
+                              </div>
+                            ))}
+                          </div>
+                          <div className="bg-gray-900 group-hover:bg-red-600 text-white p-2 md:p-2.5 rounded-xl shadow-lg transition-all duration-300">
+                            <Search className="w-4 h-4" />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </motion.div>
                 ))}
@@ -713,7 +831,7 @@ const SeekerDashboard = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-8 order-1 lg:order-1">
             {/* Recent Searches */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -722,7 +840,7 @@ const SeekerDashboard = () => {
               className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
             >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">Recent Searches</h2>
+                <h2 className="text-xl font-bold text-gray-900 font-outfit">Recent Searches</h2>
               </div>
               <div className="space-y-3">
                 {recentSearches.map((search, index) => (
@@ -762,6 +880,50 @@ const SeekerDashboard = () => {
               </div>
             </motion.div>
 
+            {/* Recently Viewed Properties */}
+            {recentlyViewed.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.25 }}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-gray-900 font-outfit flex items-center gap-2">
+                    <Eye className="w-5 h-5 text-red-500" />
+                    Recently Viewed Rooms
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                  {recentlyViewed.map((pg, index) => (
+                    <motion.div
+                      key={`view-${pg.id}-${index}`}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.3 + index * 0.1, duration: 0.4 }}
+                      className="group bg-gray-50 rounded-xl border border-gray-100 p-3 hover:bg-white hover:shadow-[0_10px_30px_-5px_rgba(239,68,68,0.1)] hover:border-red-200 transition-all duration-300 cursor-pointer"
+                      onClick={() => openPropertyDetails(pg.id)}
+                    >
+                      <div className="aspect-video rounded-lg overflow-hidden mb-3">
+                        <img
+                          src={pg.image || (pg.images && pg.images[0]) || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop'}
+                          alt={pg.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 will-change-transform"
+                        />
+                      </div>
+                      <h4 className="font-bold text-gray-900 text-sm line-clamp-1 mb-1 group-hover:text-red-600 transition-colors font-outfit">
+                        {pg.name}
+                      </h4>
+                      <div className="flex items-center justify-between">
+                        <span className="text-red-600 font-black text-sm font-outfit">{pg.price}</span>
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{pg.propertyType}</span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
             {/* Recommendations */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -770,72 +932,111 @@ const SeekerDashboard = () => {
               className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
             >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">Available Rooms</h2>
+                <h2 className="text-xl font-bold text-gray-900 font-outfit">Available Rooms</h2>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {recommendations.map((pg, index) => (
                   <motion.div
                     key={pg.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 + index * 0.1, duration: 0.5 }}
-                    className="group cursor-pointer"
+                    className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full"
                     onClick={() => openPropertyDetails(pg.id)}
                   >
-                    <div className="relative overflow-hidden rounded-lg">
+                    {/* Image Header */}
+                    <div className="relative h-48 overflow-hidden">
                       <img
                         src={pg.image}
                         alt={pg.name}
-                        className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        onError={(e) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=400&fit=crop';
+                        }}
                       />
-                      <div className="absolute top-2 right-2 flex flex-col gap-1">
-                        <div className="bg-red-600 text-white text-xs px-2 py-1 rounded-full font-medium">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                      {/* Floating Badges */}
+                      <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
+                        <span className="px-3 py-1 bg-white/95 backdrop-blur-sm text-blue-600 text-xs font-bold rounded-full shadow-sm">
                           {pg.matchScore}% Match
-                        </div>
-                        {pg.rooms && pg.rooms.length > 0 && (
-                          <div className={`text-xs px-2 py-1 rounded-full font-medium ${pg.rooms.filter(room => room.room_status === 'available' && room.isAvailable).length > 0
-                            ? 'bg-green-600 text-white'
-                            : 'bg-orange-600 text-white'
-                            }`}>
-                            {pg.rooms.filter(room => room.room_status === 'available' && room.isAvailable).length > 0
-                              ? 'Rooms Available'
-                              : 'Fully Booked'
-                            }
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mt-3">
-                      <h3 className="font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
-                        {pg.name}
-                      </h3>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <MapPin className="w-3 h-3 text-gray-400" />
-                        <span className="text-sm text-gray-600">{pg.location}</span>
-                        <span className="text-xs text-gray-400">• {pg.distance}</span>
-                      </div>
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center space-x-1">
-                          <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                          <span className="text-sm text-gray-600">{pg.rating}</span>
-                        </div>
-                        <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
-                          {pg.propertyType}
+                        </span>
+                        {/* Status Badge */}
+                        <span className="px-3 py-1 bg-green-500/90 backdrop-blur-sm text-white text-xs font-bold rounded-full shadow-sm flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" /> Available
                         </span>
                       </div>
-                      <div className="space-y-1 text-xs text-gray-600 mt-2">
-                        <div className="flex items-center justify-between">
-                          <span>Total Rooms:</span>
-                          <span className="font-medium">{pg.totalRooms || 'N/A'}</span>
+
+                      <div className="absolute bottom-3 left-3 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <p className="text-xs font-medium flex items-center gap-1">
+                          <MapPin className="w-3 h-3" /> View on Map
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Content Body */}
+                    <div className="p-5 flex flex-col flex-grow">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                            {pg.name}
+                          </h3>
+                          <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+                            <MapPin className="w-3 h-3 text-gray-400" />
+                            <span className="line-clamp-1">{pg.location}</span>
+                          </p>
                         </div>
-                        {pg.rooms && pg.rooms.length > 0 && (
-                          <div className="flex items-center justify-between">
-                            <span>Available:</span>
-                            <span className="font-medium text-green-600">
-                              {pg.rooms.filter(room => room.room_status === 'available' && room.isAvailable).length}/{pg.rooms.length}
-                            </span>
+                        <div className="flex flex-col items-end">
+                          <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100">
+                            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                            <span className="text-xs font-bold text-yellow-700">{pg.rating}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Room Summary & Amenities Preview */}
+                      <div className="space-y-3 mt-3 mb-4">
+                        {/* Room Numbers & Types */}
+                        {pg.roomDetails && pg.roomDetails.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {pg.roomDetails.slice(0, 4).map((room, i) => (
+                              <span key={i} className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded border border-red-100 font-medium">
+                                Room {room.room_number}: {room.room_type}
+                              </span>
+                            ))}
+                            {pg.roomDetails.length > 4 && <span className="text-[10px] text-gray-400 font-medium">+{pg.roomDetails.length - 4}</span>}
                           </div>
                         )}
+
+                        {/* Amenities Preview */}
+                        <div className="flex flex-wrap gap-2">
+                          {pg.amenities.slice(0, 3).map((amenity, idx) => (
+                            <span key={idx} className="px-2 py-1 bg-gray-50 text-gray-600 text-[10px] font-medium uppercase tracking-wide rounded-md border border-gray-100">
+                              {amenity.replace(/([A-Z])/g, ' $1').trim()}
+                            </span>
+                          ))}
+                          {pg.amenities.length > 3 && (
+                            <span className="px-2 py-1 bg-gray-50 text-gray-400 text-[10px] font-medium rounded-md border border-gray-100">
+                              +{pg.amenities.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-gray-500 font-medium">Starting from</p>
+                          <p className="text-xl font-bold text-blue-600">
+                            {pg.price}
+                            <span className="text-xs text-gray-400 font-normal ml-1">/mo</span>
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                            <span className="font-medium">Deposit:</span> {pg.securityDeposit}
+                          </p>
+                        </div>
+                        <button className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors shadow-sm group-hover:shadow-md">
+                          View Details
+                        </button>
                       </div>
                     </div>
                   </motion.div>

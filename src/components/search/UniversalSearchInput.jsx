@@ -140,7 +140,7 @@ const UniversalSearchInput = ({
   }, []);
 
   return (
-    <div className={`relative z-20 ${className}`}>
+    <div className={`relative z-[500] ${className}`}>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
         <input
@@ -190,8 +190,8 @@ const UniversalSearchInput = ({
       {mapType === 'leaflet' && showResults && searchResults.length > 0 && (
         <div
           ref={resultsRef}
-          className="absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto"
-          style={{ zIndex: 30 }}
+          className="absolute z-[1001] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-2xl max-h-80 overflow-y-auto"
+          style={{ zIndex: 1001 }}
         >
           {searchResults.map((result, index) => (
             <button

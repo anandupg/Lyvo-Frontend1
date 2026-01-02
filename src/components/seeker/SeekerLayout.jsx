@@ -115,7 +115,7 @@ const SeekerLayout = ({ children, hideFooter = false, hideNavbar = false }) => {
       <div className="lg:ml-64">
         {/* Navbar */}
         {!hideNavbar && (
-          <div className="sticky top-0 z-30 bg-white shadow-sm">
+          <div className="sticky top-0 z-[1100] bg-white shadow-sm">
             <SeekerNavbar onMenuToggle={toggleSidebar} />
           </div>
         )}

@@ -60,15 +60,20 @@ class LocationService {
 
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=5&addressdetails=1`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=5&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'LyvoPlus-App'
+          }
+        }
       );
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const results = await response.json();
-      
+
       return results.map(result => ({
         id: result.place_id,
         name: result.display_name.split(',')[0], // Get the first part as name
@@ -138,15 +143,20 @@ class LocationService {
   async reverseGeocodeWithNominatim(lat, lng) {
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'LyvoPlus-App'
+          }
+        }
       );
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const result = await response.json();
-      
+
       let locationName = 'Current Location';
       let address = result.display_name;
 
@@ -214,7 +224,7 @@ class LocationService {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
-          
+
           try {
             const locationData = await this.reverseGeocode(latitude, longitude, mapType);
             resolve({
@@ -236,7 +246,7 @@ class LocationService {
         },
         (error) => {
           let errorMessage = 'Unable to get your current location. ';
-          switch(error.code) {
+          switch (error.code) {
             case error.PERMISSION_DENIED:
               errorMessage += 'Location access denied by user.';
               break;
