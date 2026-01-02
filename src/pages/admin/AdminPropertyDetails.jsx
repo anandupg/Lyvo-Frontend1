@@ -706,7 +706,9 @@ const AdminPropertyDetails = () => {
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-sm text-gray-600">Occupancy</span>
-                              <span className="font-semibold text-gray-900">{room.occupancy || 'N/A'}</span>
+                              <span className={`font-semibold ${(room.current_occupants || 0) >= room.occupancy ? 'text-red-600' : 'text-green-600'}`}>
+                                {room.current_occupants || 0} / {room.occupancy}
+                              </span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-sm text-gray-600">Bed Type</span>

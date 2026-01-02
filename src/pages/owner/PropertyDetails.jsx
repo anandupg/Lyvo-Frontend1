@@ -1284,7 +1284,9 @@ const PropertyDetails = () => {
                               </div>
                               <div>
                                 <span className="text-gray-500">Occupancy:</span>
-                                <span className="ml-2 font-medium">{room.occupancy} people</span>
+                                <span className={`ml-2 font-medium ${(room.current_occupants || 0) >= room.occupancy ? 'text-red-500' : 'text-green-600'}`}>
+                                  {room.current_occupants || 0} / {room.occupancy} Occupied
+                                </span>
                               </div>
                             </div>
 
