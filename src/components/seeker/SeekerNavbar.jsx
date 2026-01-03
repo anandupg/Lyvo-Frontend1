@@ -304,17 +304,7 @@ const SeekerNavbar = ({ onMenuToggle }) => {
                     transition={{ duration: 0.2 }}
                   >
                     <div className="p-4 border-b border-gray-200">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
-                        {unreadCount > 0 && (
-                          <button
-                            onClick={markAllAsRead}
-                            className="text-sm text-red-600 hover:text-red-700 transition-colors"
-                          >
-                            Mark all as read
-                          </button>
-                        )}
-                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
                     </div>
                     <div className="max-h-96 overflow-y-auto">
                       {notificationsLoading ? (
@@ -326,7 +316,7 @@ const SeekerNavbar = ({ onMenuToggle }) => {
                         notifications.map((notification) => (
                           <div
                             key={notification._id}
-                            className={`p-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors ${!notification.is_read ? 'bg-blue-50' : ''
+                            className={`p-4 mb-2 mx-2 rounded-lg border border-gray-200 ${!notification.is_read ? 'bg-blue-50 border-blue-200' : 'bg-white'
                               }`}
                           >
                             <div className="flex items-start space-x-3">

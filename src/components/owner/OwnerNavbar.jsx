@@ -319,18 +319,10 @@ const OwnerNavbar = ({ onMenuToggle }) => {
                       notifications.filter(n => !n.is_read).slice(0, 5).map((notification) => (
                         <motion.div
                           key={notification._id}
-                          className="relative p-4 border-b border-gray-100 bg-blue-50 hover:bg-blue-100 group"
+                          className="relative p-4 mb-2 mx-2 rounded-lg border border-gray-200 bg-blue-50 border-blue-200"
                           transition={{ duration: 0.2 }}
                         >
-                          <div
-                            className="cursor-pointer pr-8"
-                            onClick={() => {
-                              if (notification.action_url) {
-                                navigate(notification.action_url);
-                                setShowNotifications(false);
-                              }
-                            }}
-                          >
+                          <div className="pr-8">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
                                 <p className="text-sm font-medium text-gray-900">{notification.title}</p>
@@ -346,7 +338,7 @@ const OwnerNavbar = ({ onMenuToggle }) => {
                               e.stopPropagation();
                               deleteNotification(notification._id);
                             }}
-                            className="absolute top-3 right-3 p-1 rounded-full hover:bg-red-100 transition-colors opacity-0 group-hover:opacity-100"
+                            className="absolute top-3 right-3 p-1 rounded-full hover:bg-red-100 transition-colors"
                             title="Delete notification"
                           >
                             <XCircle className="w-4 h-4 text-gray-400 hover:text-red-600" />

@@ -6,7 +6,7 @@ import OwnerLayout from '../../components/owner/OwnerLayout';
 import {
     DollarSign, Search, RefreshCw, ArrowUpRight, CheckCircle, Clock,
     AlertCircle, User, Phone, Mail, Building, Bed, Calendar, Send,
-    Eye, History, Plus, X
+    Eye, History, Plus, X, MessageSquare
 } from 'lucide-react';
 
 const OwnerPayments = () => {
@@ -23,6 +23,11 @@ const OwnerPayments = () => {
         amount: '',
         reason: '',
         dueDate: ''
+    });
+    const [confirmPaymentModal, setConfirmPaymentModal] = useState({
+        show: false,
+        paymentId: null,
+        paymentDetails: null
     });
 
     useEffect(() => {
@@ -177,15 +182,27 @@ const OwnerPayments = () => {
                         {payment.status !== 'paid' && (
                             <>
                                 <button
-                                    onClick={() => handleSendPaymentRequest(payment.tenantId?._id)}
-                                    className="px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium flex items-center gap-1.5"
+                                    onClick={() => window.location.href = `tel:${payment.tenantId?.userPhone || ''}`}
+                                    className="px-3 sm:px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium flex items-center gap-1.5"
+                                    disabled={!payment.tenantId?.userPhone}
                                 >
-                                    <Send className="w-4 h-4" />
-                                    <span className="hidden sm:inline">Remind</span>
-                                    <span className="sm:hidden">Remind</span>
+                                    <Phone className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Call</span>
                                 </button>
                                 <button
-                                    onClick={() => handleMarkAsPaid(payment._id)}
+                                    onClick={() => window.location.href = `sms:${payment.tenantId?.userPhone || ''}`}
+                                    className="px-3 sm:px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm font-medium flex items-center gap-1.5"
+                                    disabled={!payment.tenantId?.userPhone}
+                                >
+                                    <MessageSquare className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Message</span>
+                                </button>
+                                <button
+                                    onClick={() => setConfirmPaymentModal({
+                                        show: true,
+                                        paymentId: payment._id,
+                                        paymentDetails: payment
+                                    })}
                                     className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-1.5"
                                 >
                                     <CheckCircle className="w-4 h-4" />
@@ -267,6 +284,7 @@ const OwnerPayments = () => {
                 setPayments(prev => prev.map(p =>
                     p._id === paymentId ? { ...p, status: 'paid', daysOverdue: 0, paidAt: new Date().toISOString() } : p
                 ));
+                setConfirmPaymentModal({ show: false, paymentId: null, paymentDetails: null });
             }
         } catch (error) {
             console.error('Error marking as paid:', error);
@@ -594,6 +612,87 @@ const OwnerPayments = () => {
                         </motion.div>
                     </div>
                 )}
+
+                {/* Confirmation Modal for Mark as Paid */}
+                <AnimatePresence>
+                    {confirmPaymentModal.show && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
+                            >
+                                {/* Modal Header */}
+                                <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                                            <CheckCircle className="w-6 h-6 text-white" />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-white">Confirm Payment</h3>
+                                    </div>
+                                    <button
+                                        onClick={() => setConfirmPaymentModal({ show: false, paymentId: null, paymentDetails: null })}
+                                        className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-1 transition-colors"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                {/* Modal Body */}
+                                <div className="p-6">
+                                    <p className="text-gray-700 mb-4">
+                                        Are you sure you want to mark this payment as <span className="font-bold text-green-600">PAID</span>?
+                                    </p>
+
+                                    {confirmPaymentModal.paymentDetails && (
+                                        <div className="bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-200">
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-600">Tenant:</span>
+                                                <span className="text-sm font-semibold text-gray-900">
+                                                    {confirmPaymentModal.paymentDetails.tenantId?.userName || 'Unknown'}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-600">Amount:</span>
+                                                <span className="text-sm font-bold text-green-600">
+                                                    {formatCurrency(confirmPaymentModal.paymentDetails.amount)}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-600">Description:</span>
+                                                <span className="text-sm font-medium text-gray-900">
+                                                    {confirmPaymentModal.paymentDetails.description}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <p className="text-xs text-gray-500 mt-4">
+                                        This action will update the payment status and notify the tenant.
+                                    </p>
+                                </div>
+
+                                {/* Modal Footer */}
+                                <div className="bg-gray-50 px-6 py-4 flex gap-3">
+                                    <button
+                                        onClick={() => setConfirmPaymentModal({ show: false, paymentId: null, paymentDetails: null })}
+                                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={() => handleMarkAsPaid(confirmPaymentModal.paymentId)}
+                                        className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <CheckCircle className="w-5 h-5" />
+                                        Confirm Payment
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
             </div>
         </OwnerLayout>
     );
