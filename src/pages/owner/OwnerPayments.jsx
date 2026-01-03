@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import apiClient from '../../utils/apiClient';
 import OwnerLayout from '../../components/owner/OwnerLayout';
 import {
     DollarSign, Search, RefreshCw, ArrowUpRight, CheckCircle, Clock,
@@ -10,12 +11,13 @@ import {
 
 const OwnerPayments = () => {
     const navigate = useNavigate();
-    const [tenants, setTenants] = useState([]);
+    const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [showCustomPaymentModal, setShowCustomPaymentModal] = useState(false);
+    const [tenantsList, setTenantsList] = useState([]); // For dropdown
     const [customPayment, setCustomPayment] = useState({
         tenantId: '',
         amount: '',
@@ -23,89 +25,207 @@ const OwnerPayments = () => {
         dueDate: ''
     });
 
-    // Mock data - Replace with actual API call
-    const mockTenants = [
-        {
-            id: 1,
-            tenantName: 'John Doe',
-            tenantEmail: 'john@example.com',
-            tenantPhone: '+91 98765 43210',
-            propertyName: 'Sunshine Apartments',
-            roomNumber: '101',
-            monthlyRent: 15000,
-            lastPaymentDate: '2024-12-25',
-            nextDueDate: '2025-01-25',
-            paymentStatus: 'pending',
-            daysOverdue: 5
-        },
-        {
-            id: 2,
-            tenantName: 'Jane Smith',
-            tenantEmail: 'jane@example.com',
-            tenantPhone: '+91 98765 43211',
-            propertyName: 'Green Valley PG',
-            roomNumber: '205',
-            monthlyRent: 12000,
-            lastPaymentDate: '2025-01-20',
-            nextDueDate: '2025-02-20',
-            paymentStatus: 'paid',
-            daysOverdue: 0
-        },
-        {
-            id: 3,
-            tenantName: 'Bob Wilson',
-            tenantEmail: 'bob@example.com',
-            tenantPhone: '+91 98765 43212',
-            propertyName: 'Sunshine Apartments',
-            roomNumber: '303',
-            monthlyRent: 18000,
-            lastPaymentDate: '2024-12-15',
-            nextDueDate: '2025-01-15',
-            paymentStatus: 'overdue',
-            daysOverdue: 15
-        }
-    ];
-
     useEffect(() => {
-        // Simulate API call
-        setTimeout(() => {
-            setTenants(mockTenants);
-            setLoading(false);
-        }, 500);
+        fetchData();
     }, []);
 
-    const filteredTenants = useMemo(() => {
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            await Promise.all([fetchPayments(), fetchTenantsList()]);
+        } catch (error) {
+            console.error('Error fetching initial data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchPayments = async () => {
+        try {
+            const response = await apiClient.get('/property/owner/payments');
+            if (response.data.success) {
+                setPayments(response.data.payments);
+            }
+        } catch (error) {
+            console.error('Error fetching payments:', error);
+            // toast({ ... })
+        }
+    };
+
+    const fetchTenantsList = async () => {
+        try {
+            const response = await apiClient.get('/property/owner/tenants?status=active');
+            if (response.data.success) {
+                setTenantsList(response.data.tenants);
+            }
+        } catch (e) { console.error(e); }
+    };
+
+    // Helper to get selected tenant details
+    const selectedTenant = useMemo(() => {
+        return tenantsList.find(t => t._id === customPayment.tenantId);
+    }, [customPayment.tenantId, tenantsList]);
+
+    const { rentPayments, otherPayments } = useMemo(() => {
         const q = searchQuery.trim().toLowerCase();
-        return tenants
-            .filter((t) => {
+
+        // Filter and sort items (LIFO - Newest First by Due Date)
+        const allFiltered = payments
+            .filter((p) => {
                 if (statusFilter === 'all') return true;
-                return t.paymentStatus === statusFilter;
+                return p.status === statusFilter;
             })
-            .filter((t) => {
+            .filter((p) => {
                 if (!q) return true;
-                const tenant = `${t.tenantName} ${t.tenantEmail}`.toLowerCase();
-                const property = t.propertyName.toLowerCase();
-                const room = t.roomNumber.toLowerCase();
-                return tenant.includes(q) || property.includes(q) || room.includes(q);
+                const tenant = p.tenantId ? `${p.tenantId.userName} ${p.tenantId.userEmail}`.toLowerCase() : 'Unknown';
+                const property = p.tenantId ? (p.tenantId.propertyName || '').toLowerCase() : '';
+                const room = p.tenantId ? (p.tenantId.roomNumber || '').toLowerCase() : '';
+                const desc = (p.description || '').toLowerCase();
+                return tenant.includes(q) || property.includes(q) || room.includes(q) || desc.includes(q);
             })
-            .sort((a, b) => b.daysOverdue - a.daysOverdue);
-    }, [tenants, searchQuery, statusFilter]);
+            .sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate)); // LIFO Sorting: Newest Due Date First
+
+        // Split into Rent and Other
+        const rent = [];
+        const other = [];
+
+        allFiltered.forEach(p => {
+            if (p.type === 'rent') {
+                rent.push(p);
+            } else {
+                other.push(p);
+            }
+        });
+
+        return { rentPayments: rent, otherPayments: other };
+    }, [payments, searchQuery, statusFilter]);
+
+    // Reusable Payment Card Component
+    const PaymentCard = ({ payment, index }) => (
+        <motion.div
+            key={payment._id || index}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+            className={`bg-white border-2 rounded-lg shadow-sm hover:shadow-md transition-shadow ${payment.status === 'overdue' ? 'border-red-300 bg-red-50' :
+                payment.type === 'rent' ? 'border-blue-100' : 'border-purple-100'
+                }`}
+        >
+            <div className="p-4 sm:p-6">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    {/* Left: Tenant/Payment Info */}
+                    <div className="flex items-center gap-3 sm:gap-4 flex-1">
+                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center ${payment.status === 'overdue' ? 'bg-red-100' :
+                            payment.type === 'rent' ? 'bg-blue-100' : 'bg-purple-100'
+                            }`}>
+                            {payment.type === 'rent' ? (
+                                <Building className={`w-6 h-6 sm:w-7 sm:h-7 ${payment.status === 'overdue' ? 'text-red-600' : 'text-blue-600'}`} />
+                            ) : (
+                                <DollarSign className={`w-6 h-6 sm:w-7 sm:h-7 ${payment.status === 'overdue' ? 'text-red-600' : 'text-purple-600'}`} />
+                            )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <h3 className="text-lg sm:text-xl font-bold text-gray-900">{payment.tenantId ? payment.tenantId.userName : 'Unknown Tenant'}</h3>
+                                {payment.tenantId?.userEmail && (
+                                    <span className="text-sm text-gray-500 font-normal">({payment.tenantId.userEmail})</span>
+                                )}
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}>
+                                    {payment.status}
+                                </span>
+                                {payment.daysOverdue > 0 && (
+                                    <span className="px-2.5 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                                        {payment.daysOverdue} days overdue
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-gray-600">
+                                <span className="font-medium text-gray-800">{payment.description}</span>
+                                <span className="text-gray-400">|</span>
+                                <div className="flex items-center gap-1">
+                                    <Building className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                    <span>{payment.tenantId?.propertyName}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <Bed className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                    <span>Room {payment.tenantId?.roomNumber}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Middle: Payment Info */}
+                    <div className="hidden lg:flex items-center gap-6 xl:gap-8 min-w-max">
+                        <div className="text-center">
+                            <p className="text-xs text-gray-500 mb-1">Amount</p>
+                            <p className="text-base font-bold text-green-600">{formatCurrency(payment.amount)}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-xs text-gray-500 mb-1">Due Date</p>
+                            <p className="text-sm font-semibold text-gray-900">{formatDate(payment.dueDate)}</p>
+                        </div>
+                        {payment.paidAt && (
+                            <div className="text-center">
+                                <p className="text-xs text-gray-500 mb-1">Paid On</p>
+                                <p className="text-sm font-semibold text-gray-900">{formatDate(payment.paidAt)}</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right: Actions */}
+                    <div className="flex flex-wrap gap-2">
+                        {payment.status !== 'paid' && (
+                            <>
+                                <button
+                                    onClick={() => handleSendPaymentRequest(payment.tenantId?._id)}
+                                    className="px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium flex items-center gap-1.5"
+                                >
+                                    <Send className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Remind</span>
+                                    <span className="sm:hidden">Remind</span>
+                                </button>
+                                <button
+                                    onClick={() => handleMarkAsPaid(payment._id)}
+                                    className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-1.5"
+                                >
+                                    <CheckCircle className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Mark Paid</span>
+                                    <span className="sm:hidden">Paid</span>
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                {/* Mobile View Items */}
+                <div className="lg:hidden mt-4 pt-4 border-t border-gray-200 grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                        <p className="text-xs text-gray-500 mb-0.5">Amount</p>
+                        <p className="font-bold text-green-600">{formatCurrency(payment.amount)}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs text-gray-500 mb-0.5">Due Date</p>
+                        <p className="font-semibold text-gray-900">{formatDate(payment.dueDate)}</p>
+                    </div>
+                </div>
+            </div>
+        </motion.div>
+    );
 
     const stats = useMemo(() => {
-        const total = tenants.length;
-        const pending = tenants.filter(t => t.paymentStatus === 'pending').length;
-        const overdue = tenants.filter(t => t.paymentStatus === 'overdue').length;
-        const collectedThisMonth = tenants
-            .filter(t => t.paymentStatus === 'paid')
-            .reduce((sum, t) => sum + t.monthlyRent, 0);
+        const total = payments.length;
+        const pending = payments.filter(p => p.status === 'pending').length;
+        const overdue = payments.filter(p => p.status === 'overdue').length;
+        const collectedThisMonth = payments
+            .filter(p => p.status === 'paid')
+            .reduce((sum, p) => sum + p.amount, 0); // Check if paidAt is this month? Simplified for now.
         return { total, pending, overdue, collectedThisMonth };
-    }, [tenants]);
+    }, [payments]);
 
     const refresh = async () => {
         setIsRefreshing(true);
-        setTimeout(() => {
-            setIsRefreshing(false);
-        }, 1000);
+        await fetchPayments();
+        setTimeout(() => setIsRefreshing(false), 500);
     };
 
     const formatCurrency = (amount) => {
@@ -117,6 +237,7 @@ const OwnerPayments = () => {
     };
 
     const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
         return new Date(dateString).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
@@ -129,28 +250,48 @@ const OwnerPayments = () => {
             case 'paid': return 'bg-green-100 text-green-800';
             case 'pending': return 'bg-yellow-100 text-yellow-800';
             case 'overdue': return 'bg-red-100 text-red-800';
+            case 'cancelled': return 'bg-gray-100 text-gray-800';
             default: return 'bg-gray-100 text-gray-800';
         }
     };
 
     const handleSendPaymentRequest = (tenantId) => {
-        alert(`Payment request sent to tenant ${tenantId}`);
+        alert(`Payment request sent (Not Implemented - Auto-Notification sent on creation)`);
     };
 
-    const handleMarkAsPaid = (tenantId) => {
-        setTenants(prev => prev.map(t =>
-            t.id === tenantId ? { ...t, paymentStatus: 'paid', daysOverdue: 0 } : t
-        ));
+    const handleMarkAsPaid = async (paymentId) => {
+        try {
+            const response = await apiClient.put(`/property/owner/payments/${paymentId}/paid`);
+            if (response.data.success) {
+                // Optimistic update or refresh
+                setPayments(prev => prev.map(p =>
+                    p._id === paymentId ? { ...p, status: 'paid', daysOverdue: 0, paidAt: new Date().toISOString() } : p
+                ));
+            }
+        } catch (error) {
+            console.error('Error marking as paid:', error);
+            alert('Failed to mark as paid');
+        }
     };
 
-    const handleCreateCustomPayment = () => {
+    const handleCreateCustomPayment = async () => {
         if (!customPayment.tenantId || !customPayment.amount || !customPayment.reason) {
             alert('Please fill in all required fields');
             return;
         }
-        alert(`Custom payment request created:\nTenant: ${tenants.find(t => t.id === parseInt(customPayment.tenantId))?.tenantName}\nAmount: ${formatCurrency(customPayment.amount)}\nReason: ${customPayment.reason}`);
-        setShowCustomPaymentModal(false);
-        setCustomPayment({ tenantId: '', amount: '', reason: '', dueDate: '' });
+
+        try {
+            const response = await apiClient.post('/property/owner/payments/create', customPayment);
+            if (response.data.success) {
+                alert('Payment request created successfully!');
+                setShowCustomPaymentModal(false);
+                setCustomPayment({ tenantId: '', amount: '', reason: '', dueDate: '' });
+                fetchPayments(); // Refresh list
+            }
+        } catch (error) {
+            console.error('Error creating payment:', error);
+            alert('Failed to create payment request');
+        }
     };
 
     if (loading) {
@@ -159,7 +300,7 @@ const OwnerPayments = () => {
                 <div className="flex items-center justify-center min-h-screen">
                     <div className="text-center">
                         <RefreshCw className="w-12 h-12 animate-spin text-green-600 mx-auto mb-4" />
-                        <p className="text-gray-600">Loading payment information...</p>
+                        <p className="text-gray-600">Loading payment ledger...</p>
                     </div>
                 </div>
             </OwnerLayout>
@@ -174,7 +315,7 @@ const OwnerPayments = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900 mb-2">Payment Management</h1>
-                            <p className="text-gray-600">Manage tenant rent payments</p>
+                            <p className="text-gray-600">Track and manage tenant payments</p>
                         </div>
                         <div className="flex items-center gap-2">
                             <button
@@ -279,125 +420,48 @@ const OwnerPayments = () => {
                     </div>
                 </div>
 
-                {/* Tenants List */}
-                {filteredTenants.length === 0 ? (
-                    <div className="text-center py-12 bg-gray-50 rounded-lg">
-                        <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No Tenants Found</h3>
-                        <p className="text-gray-600">
-                            {searchQuery ? 'Try adjusting your search criteria' : 'No tenants with payment information'}
-                        </p>
+                {/* Payments List Sections */}
+                <div className="space-y-8">
+                    {/* Rent Section */}
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2 px-1">
+                            <Building className="w-5 h-5 text-blue-600" />
+                            Monthly Rent & Dues
+                        </h2>
+                        {rentPayments.length === 0 ? (
+                            <p className="text-gray-500 italic px-1">No rent records found.</p>
+                        ) : (
+                            <div className="space-y-4">
+                                {rentPayments.map((p, i) => <PaymentCard payment={p} index={i} key={p._id} />)}
+                            </div>
+                        )}
                     </div>
-                ) : (
-                    <div className="space-y-4">
-                        {filteredTenants.map((tenant, index) => (
-                            <motion.div
-                                key={tenant.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                                className={`bg-white border-2 rounded-lg shadow-sm hover:shadow-md transition-shadow ${tenant.paymentStatus === 'overdue' ? 'border-red-300 bg-red-50' : 'border-gray-200'
-                                    }`}
-                            >
-                                <div className="p-4 sm:p-6">
-                                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                                        {/* Left: Tenant Info */}
-                                        <div className="flex items-center gap-3 sm:gap-4 flex-1">
-                                            <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center ${tenant.paymentStatus === 'overdue' ? 'bg-red-100' : 'bg-green-100'
-                                                }`}>
-                                                <User className={`w-6 h-6 sm:w-7 sm:h-7 ${tenant.paymentStatus === 'overdue' ? 'text-red-600' : 'text-green-600'
-                                                    }`} />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                    <h3 className="text-lg sm:text-xl font-bold text-gray-900">{tenant.tenantName}</h3>
-                                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(tenant.paymentStatus)}`}>
-                                                        {tenant.paymentStatus}
-                                                    </span>
-                                                    {tenant.daysOverdue > 0 && (
-                                                        <span className="px-2.5 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
-                                                            {tenant.daysOverdue} days overdue
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-gray-600">
-                                                    <div className="flex items-center gap-1">
-                                                        <Building className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                                        <span>{tenant.propertyName}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <Bed className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                                        <span>Room {tenant.roomNumber}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
 
-                                        {/* Middle: Payment Info */}
-                                        <div className="hidden lg:flex items-center gap-6 xl:gap-8">
-                                            <div className="text-center">
-                                                <p className="text-xs text-gray-500 mb-1">Monthly Rent</p>
-                                                <p className="text-base font-bold text-green-600">{formatCurrency(tenant.monthlyRent)}</p>
-                                            </div>
-                                            <div className="text-center">
-                                                <p className="text-xs text-gray-500 mb-1">Last Payment</p>
-                                                <p className="text-sm font-semibold text-gray-900">{formatDate(tenant.lastPaymentDate)}</p>
-                                            </div>
-                                            <div className="text-center">
-                                                <p className="text-xs text-gray-500 mb-1">Next Due</p>
-                                                <p className="text-sm font-semibold text-gray-900">{formatDate(tenant.nextDueDate)}</p>
-                                            </div>
-                                        </div>
+                    {/* Other Section */}
+                    {otherPayments.length > 0 && (
+                        <div>
+                            <div className="flex items-center justify-between mb-4 px-1">
+                                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                    <DollarSign className="w-5 h-5 text-purple-600" />
+                                    Other Payments & Requests
+                                </h2>
+                            </div>
+                            <div className="space-y-4">
+                                {otherPayments.map((p, i) => <PaymentCard payment={p} index={i} key={p._id} />)}
+                            </div>
+                        </div>
+                    )}
 
-                                        {/* Right: Actions */}
-                                        <div className="flex flex-wrap gap-2">
-                                            {tenant.paymentStatus !== 'paid' && (
-                                                <>
-                                                    <button
-                                                        onClick={() => handleSendPaymentRequest(tenant.id)}
-                                                        className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-1.5"
-                                                    >
-                                                        <Send className="w-4 h-4" />
-                                                        <span className="hidden sm:inline">Send Request</span>
-                                                        <span className="sm:hidden">Request</span>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleMarkAsPaid(tenant.id)}
-                                                        className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-1.5"
-                                                    >
-                                                        <CheckCircle className="w-4 h-4" />
-                                                        <span className="hidden sm:inline">Mark Paid</span>
-                                                        <span className="sm:hidden">Paid</span>
-                                                    </button>
-                                                </>
-                                            )}
-                                            <button className="px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium flex items-center gap-1.5">
-                                                <History className="w-4 h-4" />
-                                                <span className="hidden sm:inline">History</span>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Mobile: Additional Info */}
-                                    <div className="lg:hidden mt-4 pt-4 border-t border-gray-200 grid grid-cols-2 gap-3 text-sm">
-                                        <div>
-                                            <p className="text-xs text-gray-500 mb-0.5">Monthly Rent</p>
-                                            <p className="font-bold text-green-600">{formatCurrency(tenant.monthlyRent)}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500 mb-0.5">Last Payment</p>
-                                            <p className="font-semibold text-gray-900">{formatDate(tenant.lastPaymentDate)}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500 mb-0.5">Next Due Date</p>
-                                            <p className="font-semibold text-gray-900">{formatDate(tenant.nextDueDate)}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
-                )}
+                    {rentPayments.length === 0 && otherPayments.length === 0 && (
+                        <div className="text-center py-12 bg-gray-50 rounded-lg">
+                            <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">No Payments Found</h3>
+                            <p className="text-gray-600">
+                                {searchQuery ? 'Try adjusting your search criteria' : 'No payment records found'}
+                            </p>
+                        </div>
+                    )}
+                </div>
 
                 {/* Custom Payment Request Modal */}
                 {showCustomPaymentModal && (
@@ -434,13 +498,40 @@ const OwnerPayments = () => {
                                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                     >
                                         <option value="">Choose a tenant...</option>
-                                        {tenants.map(tenant => (
-                                            <option key={tenant.id} value={tenant.id}>
-                                                {tenant.tenantName} - {tenant.propertyName} Room {tenant.roomNumber}
+                                        {tenantsList.map(tenant => (
+                                            <option key={tenant._id} value={tenant._id}>
+                                                {tenant.userName} ({tenant.userPhone || 'No Phone'}) — {tenant.propertyName} ({tenant.roomNumber})
                                             </option>
                                         ))}
                                     </select>
                                 </div>
+
+                                {/* Selected Tenant Details Card */}
+                                <AnimatePresence>
+                                    {selectedTenant && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            className="bg-purple-50 rounded-lg p-4 border border-purple-100 text-sm overflow-hidden"
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-purple-200 flex items-center justify-center flex-shrink-0">
+                                                    <User className="w-5 h-5 text-purple-700" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-semibold text-gray-900">{selectedTenant.userName}</p>
+                                                    <p className="text-gray-600 font-medium">{selectedTenant.propertyName} <span className="mx-1">•</span> Room {selectedTenant.roomNumber}</p>
+                                                    <div className="mt-2 text-xs text-gray-500 space-y-1">
+                                                        {selectedTenant.userEmail && <p className="flex items-center gap-1">📧 {selectedTenant.userEmail}</p>}
+                                                        {selectedTenant.userPhone && <p className="flex items-center gap-1">📱 {selectedTenant.userPhone}</p>}
+                                                        <p className="flex items-center gap-1 font-medium text-green-700">💰 Rent: {formatCurrency(selectedTenant.monthlyRent)}/mo</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
 
                                 {/* Amount */}
                                 <div>

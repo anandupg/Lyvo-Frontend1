@@ -23,12 +23,6 @@ const SeekerFooter = () => {
     'Account': [
       { name: 'Profile', href: '/seeker-profile', icon: User },
       { name: 'Settings', href: '/seeker-settings', icon: Settings },
-    ],
-    'Support': [
-      { name: 'Help Center', href: '/help', icon: null },
-      { name: 'Contact Us', href: '/contact', icon: null },
-      { name: 'Privacy Policy', href: '/privacy', icon: null },
-      { name: 'Terms of Service', href: '/terms', icon: null },
     ]
   };
 
