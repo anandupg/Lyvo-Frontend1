@@ -29,6 +29,7 @@ const OwnerPayments = () => {
         paymentId: null,
         paymentDetails: null
     });
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -77,7 +78,7 @@ const OwnerPayments = () => {
         // Filter and sort items (LIFO - Newest First by Due Date)
         const allFiltered = payments
             .filter((p) => {
-                if (statusFilter === 'all') return true;
+                if (statusFilter === 'all') return p.status === 'pending' || p.status === 'overdue'; // Only unpaid
                 return p.status === statusFilter;
             })
             .filter((p) => {
@@ -120,13 +121,17 @@ const OwnerPayments = () => {
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     {/* Left: Tenant/Payment Info */}
                     <div className="flex items-center gap-3 sm:gap-4 flex-1">
-                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center ${payment.status === 'overdue' ? 'bg-red-100' :
+                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center overflow-hidden ${payment.status === 'overdue' ? 'bg-red-100' :
                             payment.type === 'rent' ? 'bg-blue-100' : 'bg-purple-100'
                             }`}>
-                            {payment.type === 'rent' ? (
-                                <Building className={`w-6 h-6 sm:w-7 sm:h-7 ${payment.status === 'overdue' ? 'text-red-600' : 'text-blue-600'}`} />
+                            {payment.tenantId?.profilePicture ? (
+                                <img
+                                    src={payment.tenantId.profilePicture}
+                                    alt={payment.tenantId.userName || 'Tenant'}
+                                    className="w-full h-full object-cover"
+                                />
                             ) : (
-                                <DollarSign className={`w-6 h-6 sm:w-7 sm:h-7 ${payment.status === 'overdue' ? 'text-red-600' : 'text-purple-600'}`} />
+                                <User className={`w-6 h-6 sm:w-7 sm:h-7 ${payment.status === 'overdue' ? 'text-red-600' : 'text-gray-600'}`} />
                             )}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -226,17 +231,50 @@ const OwnerPayments = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Payment Details Section - Separate Area for Paid Payments */}
+            {payment.status === 'paid' && (
+                <div className="mt-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        <h4 className="text-sm font-semibold text-green-900">Payment Details</h4>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        <div>
+                            <p className="text-xs text-green-700 mb-1">Payment Method</p>
+                            <p className="font-semibold text-green-900 capitalize">
+                                {payment.paymentMethod || 'Cash'}
+                            </p>
+                        </div>
+                        {payment.transactionId && (
+                            <div>
+                                <p className="text-xs text-green-700 mb-1">Transaction ID</p>
+                                <p className="font-semibold text-green-900 text-xs truncate">
+                                    {payment.transactionId}
+                                </p>
+                            </div>
+                        )}
+                        <div>
+                            <p className="text-xs text-green-700 mb-1">Paid On</p>
+                            <p className="font-semibold text-green-900">
+                                {formatDate(payment.paidAt)}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </motion.div>
     );
 
     const stats = useMemo(() => {
-        const total = payments.length;
         const pending = payments.filter(p => p.status === 'pending').length;
         const overdue = payments.filter(p => p.status === 'overdue').length;
+        const paid = payments.filter(p => p.status === 'paid').length;
+        const total = pending + overdue; // Only unpaid payments
         const collectedThisMonth = payments
             .filter(p => p.status === 'paid')
             .reduce((sum, p) => sum + p.amount, 0); // Check if paidAt is this month? Simplified for now.
-        return { total, pending, overdue, collectedThisMonth };
+        return { total, pending, overdue, paid, collectedThisMonth };
     }, [payments]);
 
     const refresh = async () => {
@@ -301,9 +339,9 @@ const OwnerPayments = () => {
         try {
             const response = await apiClient.post('/property/owner/payments/create', customPayment);
             if (response.data.success) {
-                alert('Payment request created successfully!');
                 setShowCustomPaymentModal(false);
                 setCustomPayment({ tenantId: '', amount: '', reason: '', dueDate: '' });
+                setShowSuccessModal(true);
                 fetchPayments(); // Refresh list
             }
         } catch (error) {
@@ -362,7 +400,7 @@ const OwnerPayments = () => {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
                     <div
                         className={`bg-gradient-to-br from-blue-50 to-blue-100 border rounded-xl p-6 hover:shadow-lg transition-shadow cursor-pointer ${statusFilter === 'all' ? 'border-blue-400 ring-2 ring-blue-200' : 'border-blue-200'
                             }`}
@@ -370,7 +408,7 @@ const OwnerPayments = () => {
                     >
                         <div className="flex items-center justify-between">
                             <div>
-                                <div className="text-sm font-medium text-blue-600 mb-1">Total Tenants</div>
+                                <div className="text-sm font-medium text-blue-600 mb-1">Total Unpaid</div>
                                 <div className="text-3xl font-bold text-blue-900">{stats.total}</div>
                             </div>
                             <div className="w-12 h-12 bg-blue-200 rounded-lg flex items-center justify-center">
@@ -407,6 +445,22 @@ const OwnerPayments = () => {
                             </div>
                             <div className="w-12 h-12 bg-red-200 rounded-lg flex items-center justify-center">
                                 <AlertCircle className="w-6 h-6 text-red-600" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        className={`bg-gradient-to-br from-emerald-50 to-emerald-100 border rounded-xl p-6 hover:shadow-lg transition-shadow cursor-pointer ${statusFilter === 'paid' ? 'border-emerald-400 ring-2 ring-emerald-200' : 'border-emerald-200'
+                            }`}
+                        onClick={() => setStatusFilter('paid')}
+                    >
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div className="text-sm font-medium text-emerald-600 mb-1">Paid</div>
+                                <div className="text-3xl font-bold text-emerald-900">{stats.paid}</div>
+                            </div>
+                            <div className="w-12 h-12 bg-emerald-200 rounded-lg flex items-center justify-center">
+                                <CheckCircle className="w-6 h-6 text-emerald-600" />
                             </div>
                         </div>
                     </div>
@@ -687,6 +741,51 @@ const OwnerPayments = () => {
                                     >
                                         <CheckCircle className="w-5 h-5" />
                                         Confirm Payment
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
+
+                {/* Success Modal for Custom Payment Request */}
+                <AnimatePresence>
+                    {showSuccessModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
+                            >
+                                {/* Modal Header */}
+                                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                                            <Send className="w-6 h-6 text-white" />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-white">Request Sent!</h3>
+                                    </div>
+                                </div>
+
+                                {/* Modal Body */}
+                                <div className="p-6 text-center">
+                                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <CheckCircle className="w-10 h-10 text-purple-600" />
+                                    </div>
+                                    <h4 className="text-lg font-bold text-gray-900 mb-2">Payment Request Created Successfully!</h4>
+                                    <p className="text-gray-600 mb-4">
+                                        The tenant has been notified about the payment request.
+                                    </p>
+                                </div>
+
+                                {/* Modal Footer */}
+                                <div className="bg-gray-50 px-6 py-4">
+                                    <button
+                                        onClick={() => setShowSuccessModal(false)}
+                                        className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors"
+                                    >
+                                        Close
                                     </button>
                                 </div>
                             </motion.div>
