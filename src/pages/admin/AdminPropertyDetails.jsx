@@ -32,13 +32,14 @@ import {
 } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { motion } from 'framer-motion';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, LayersControl } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import apiClient from '../../utils/apiClient';
 import L from 'leaflet';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
+// Default icon (blue)
 let DefaultIcon = L.icon({
   iconUrl: icon,
   shadowUrl: iconShadow,
@@ -46,6 +47,24 @@ let DefaultIcon = L.icon({
   iconAnchor: [12, 41]
 });
 L.Marker.prototype.options.icon = DefaultIcon;
+
+// Custom red icon for current property
+const RedIcon = L.icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34]
+});
+
+// Custom blue icon for other properties
+const BlueIcon = L.icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34]
+});
 
 const AdminPropertyDetails = () => {
   const { propertyId } = useParams();
@@ -68,6 +87,7 @@ const AdminPropertyDetails = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [adminMessage, setAdminMessage] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [allProperties, setAllProperties] = useState([]);
 
 
   // Calculate hasCoords early to avoid reference errors
@@ -111,6 +131,39 @@ const AdminPropertyDetails = () => {
       fetchPropertyDetails();
     }
   }, [propertyId]);
+
+  // Fetch all properties for map display
+  useEffect(() => {
+    const fetchAllProperties = async () => {
+      try {
+        const authToken = localStorage.getItem('authToken');
+        const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+        const userId = user._id || user.id || '';
+
+        const resp = await apiClient.get('/property/admin/properties', {
+          headers: {
+            'x-user-id': userId
+          }
+        });
+
+        if (resp.status === 200 && resp.data.success) {
+          // Filter properties that have valid coordinates
+          const propertiesWithCoords = resp.data.data.filter(
+            p => typeof p.latitude === 'number' &&
+              typeof p.longitude === 'number' &&
+              !Number.isNaN(p.latitude) &&
+              !Number.isNaN(p.longitude)
+          );
+          setAllProperties(propertiesWithCoords);
+          console.log(`Loaded ${propertiesWithCoords.length} properties with coordinates for map`);
+        }
+      } catch (e) {
+        console.error('Failed to fetch all properties:', e);
+      }
+    };
+
+    fetchAllProperties();
+  }, []);
 
   const approveRoom = async (roomId, action) => {
     try {
@@ -1002,20 +1055,56 @@ const AdminPropertyDetails = () => {
                     <div className="h-64 relative z-0">
                       <MapContainer
                         center={[property.latitude, property.longitude]}
-                        zoom={15}
+                        zoom={13}
                         scrollWheelZoom={false}
                         className="w-full h-full"
                         style={{ height: '100%', width: '100%' }}
                       >
-                        <TileLayer
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                        />
-                        <Marker position={[property.latitude, property.longitude]}>
-                          <Popup>
-                            {property.property_name}
-                          </Popup>
-                        </Marker>
+                        <LayersControl position="topright">
+                          <LayersControl.BaseLayer checked name="Street Map">
+                            <TileLayer
+                              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            />
+                          </LayersControl.BaseLayer>
+                          <LayersControl.BaseLayer name="Satellite">
+                            <TileLayer
+                              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                              attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
+                            />
+                          </LayersControl.BaseLayer>
+                          <LayersControl.BaseLayer name="Terrain">
+                            <TileLayer
+                              url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+                              attribution='&copy; <a href="https://opentopomap.org">OpenTopoMap</a> contributors'
+                            />
+                          </LayersControl.BaseLayer>
+                        </LayersControl>
+                        {/* Display all properties */}
+                        {allProperties.map((prop) => {
+                          const isCurrentProperty = prop._id === propertyId;
+                          return (
+                            <Marker
+                              key={prop._id}
+                              position={[prop.latitude, prop.longitude]}
+                              icon={isCurrentProperty ? RedIcon : BlueIcon}
+                            >
+                              <Popup>
+                                <div className="text-sm">
+                                  <strong>{prop.property_name}</strong>
+                                  {isCurrentProperty && (
+                                    <div className="text-xs text-red-600 font-semibold mt-1">
+                                      (Current Property)
+                                    </div>
+                                  )}
+                                  <div className="text-xs text-gray-600 mt-1">
+                                    {prop.address?.city}, {prop.address?.state}
+                                  </div>
+                                </div>
+                              </Popup>
+                            </Marker>
+                          );
+                        })}
                       </MapContainer>
                     </div>
                   </div>
@@ -1314,8 +1403,18 @@ const AdminPropertyDetails = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="bg-white rounded-xl w-full max-w-4xl overflow-hidden shadow-xl">
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-                <div className="text-lg font-semibold text-gray-900">Property Location</div>
+                <div className="text-lg font-semibold text-gray-900">All Properties Location</div>
                 <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-4 mr-4 text-xs">
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <span className="text-gray-600">Current Property</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                      <span className="text-gray-600">Other Properties</span>
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setIsMapOpen(false)}
@@ -1328,28 +1427,67 @@ const AdminPropertyDetails = () => {
               <div style={{ width: '100%', height: '500px' }}>
                 <MapContainer
                   center={[property.latitude, property.longitude]}
-                  zoom={16}
+                  zoom={13}
                   scrollWheelZoom={true}
                   className="w-full h-full"
                   style={{ height: '100%', width: '100%' }}
                 >
-                  <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  />
-                  <Marker position={[property.latitude, property.longitude]}>
-                    <Popup>
-                      {property.property_name}
-                    </Popup>
-                  </Marker>
+                  <LayersControl position="topright">
+                    <LayersControl.BaseLayer checked name="Street Map">
+                      <TileLayer
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      />
+                    </LayersControl.BaseLayer>
+                    <LayersControl.BaseLayer name="Satellite">
+                      <TileLayer
+                        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                        attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
+                      />
+                    </LayersControl.BaseLayer>
+                    <LayersControl.BaseLayer name="Terrain">
+                      <TileLayer
+                        url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+                        attribution='&copy; <a href="https://opentopomap.org">OpenTopoMap</a> contributors'
+                      />
+                    </LayersControl.BaseLayer>
+                  </LayersControl>
+                  {/* Display all properties */}
+                  {allProperties.map((prop) => {
+                    const isCurrentProperty = prop._id === propertyId;
+                    return (
+                      <Marker
+                        key={prop._id}
+                        position={[prop.latitude, prop.longitude]}
+                        icon={isCurrentProperty ? RedIcon : BlueIcon}
+                      >
+                        <Popup>
+                          <div className="text-sm">
+                            <strong>{prop.property_name}</strong>
+                            {isCurrentProperty && (
+                              <div className="text-xs text-red-600 font-semibold mt-1">
+                                (Current Property)
+                              </div>
+                            )}
+                            <div className="text-xs text-gray-600 mt-1">
+                              {prop.address?.city}, {prop.address?.state}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              Lat: {prop.latitude.toFixed(4)}, Lng: {prop.longitude.toFixed(4)}
+                            </div>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    );
+                  })}
                 </MapContainer>
               </div>
               <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-600 flex items-center justify-between">
                 <div>
-                  Lat: {property?.latitude || '—'} | Lng: {property?.longitude || '—'}
+                  Showing {allProperties.length} properties with location data
                 </div>
                 <div className="text-xs text-gray-500">
-                  {property?.name || 'Property Location'}
+                  {property?.property_name || 'Property Location'}
                 </div>
               </div>
             </div>
