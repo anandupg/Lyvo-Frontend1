@@ -339,10 +339,20 @@ const TenantDashboard = () => {
                                 </div>
                                 <div className="p-6">
                                     <div className="text-center mb-4">
-                                        <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                            <User className="w-10 h-10 text-indigo-600" />
-                                        </div>
-                                        <p className="text-lg font-semibold text-gray-900">{tenantData.ownerName}</p>
+                                        {tenantData.owner?.profilePicture ? (
+                                            <div className="w-20 h-20 rounded-full mx-auto mb-3 overflow-hidden border-2 border-indigo-100 shadow-sm">
+                                                <img
+                                                    src={tenantData.owner.profilePicture}
+                                                    alt={tenantData.ownerName}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                <User className="w-10 h-10 text-indigo-600" />
+                                            </div>
+                                        )}
+                                        <p className="text-lg font-semibold text-gray-900">{tenantData.ownerName || tenantData.owner?.name}</p>
                                     </div>
                                     <div className="space-y-3">
                                         <button

@@ -62,9 +62,13 @@ const TenantDetails = () => {
                     return (val._id || val.id || val).toString();
                 };
 
+                const loggedInUser = JSON.parse(localStorage.getItem('user'));
+                const currentUserId = loggedInUser?.id || loggedInUser?._id || loggedInUser?.userId;
+
                 allTenants.forEach(tenant => {
                     const uid = getStrId(tenant.userId);
-                    if (uid && !seenUserIds.has(uid)) {
+                    // Add distinct check and exclude current user
+                    if (uid && !seenUserIds.has(uid) && uid !== getStrId(currentUserId)) {
                         seenUserIds.add(uid);
                         uniqueTenants.push(tenant);
                     }

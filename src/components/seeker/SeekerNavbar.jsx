@@ -13,6 +13,8 @@ import {
 // Helper function to format time ago
 const getTimeAgo = (dateString) => {
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'Recently';
+
   const now = new Date();
   const seconds = Math.floor((now - date) / 1000);
 
@@ -327,7 +329,10 @@ const SeekerNavbar = ({ onMenuToggle }) => {
                             <div className="flex items-start space-x-3">
                               <div className={`w-2 h-2 rounded-full mt-2 ${notification.type === 'booking_approved' ? 'bg-green-500' :
                                 notification.type === 'booking_rejected' ? 'bg-red-500' :
-                                  notification.type === 'booking_request' ? 'bg-blue-500' : 'bg-yellow-500'
+                                  notification.type === 'booking_request' ? 'bg-blue-500' :
+                                    notification.type === 'expense_reminder' ? 'bg-orange-500' :
+                                      notification.type === 'expense_added' ? 'bg-rose-500' :
+                                        notification.type === 'expense_settled' ? 'bg-emerald-500' : 'bg-yellow-500'
                                 }`} />
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-gray-900">
@@ -337,7 +342,7 @@ const SeekerNavbar = ({ onMenuToggle }) => {
                                   {notification.message}
                                 </p>
                                 <p className="text-xs text-gray-400 mt-2">
-                                  {getTimeAgo(notification.created_at)}
+                                  {getTimeAgo(notification.createdAt || notification.created_at)}
                                 </p>
                               </div>
                               <div className="flex items-center space-x-2">
