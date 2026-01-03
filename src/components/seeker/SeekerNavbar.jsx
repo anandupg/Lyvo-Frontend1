@@ -62,7 +62,10 @@ const SeekerNavbar = ({ onMenuToggle }) => {
   const fetchNotifications = async () => {
     try {
       setNotificationsLoading(true);
-      const userId = user._id || user.id;
+      // Get fresh user data from localStorage to avoid stale closures in event listeners
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = userData._id || userData.id || user._id || user.id;
+
       if (!userId) {
         return;
       }
