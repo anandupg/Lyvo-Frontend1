@@ -61,16 +61,11 @@ const OwnerNavbar = ({ onMenuToggle }) => {
 
   // Fetch notifications
   const fetchNotifications = async (force = false) => {
-    // Prevent multiple simultaneous requests unless forced
-    if (notificationsLoading && !force) {
-      console.log('Skipping fetch: already loading');
-      return;
-    }
-
     try {
       if (!force) setNotificationsLoading(true);
+
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      const userId = userData._id || userData.id;
+      const userId = userData._id || userData.id || user._id || user.id;
 
       if (!userId) {
         console.log('Skipping fetch: Not authenticated');
@@ -87,16 +82,13 @@ const OwnerNavbar = ({ onMenuToggle }) => {
 
       if (response.status === 200) {
         const data = response.data;
-        if (data.success && isMountedRef.current) {
-          console.log('Notifications fetched:', data.data.length);
+        if (data.success) {
+          // Use functional state update to prevent race conditions if needed, 
+          // but here we just replace or merge. 
+          // For simplicity, just set fresh data like SeekerNavbar
           setNotifications(data.data || []);
           setUnreadCount(data.unreadCount || 0);
-
-          // Debugging log
-          console.log('Unread count set to:', data.unreadCount);
         }
-      } else {
-        console.error('Fetch failed:', response.status);
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
