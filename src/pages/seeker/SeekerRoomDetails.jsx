@@ -696,6 +696,44 @@ const SeekerRoomDetails = () => {
                                             <p className="text-xs text-gray-500 leading-relaxed">
                                                 {compatibility.notes}
                                             </p>
+                                            {/* Detailed Attribute Breakdown - Collapsible Compact */}
+                                            {compatibility.scoreBreakdown?.attributeScores && (
+                                                <details className="mt-6 group">
+                                                    <summary className="flex items-center justify-between cursor-pointer list-none py-2 border-b border-gray-100">
+                                                        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Detailed Breakdown</h4>
+                                                        <div className="text-gray-400 group-open:rotate-180 transition-transform">
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                                                        </div>
+                                                    </summary>
+                                                    <div className="pt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                                                        {compatibility.scoreBreakdown.attributeScores.map((attr, idx) => {
+                                                            const colorClass = attr.score >= 1.5 ? 'bg-green-500' : attr.score >= 0.8 ? 'bg-yellow-500' : 'bg-red-500';
+                                                            const widthPct = (attr.score / 2) * 100;
+                                                            return (
+                                                                <div key={idx} className="space-y-1.5">
+                                                                    {/* Label Row */}
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-0.5">{attr.attribute}</span>
+                                                                        <div className="flex items-center justify-between text-xs">
+                                                                            <span className="text-gray-600 font-medium">{attr.seekerValue}</span>
+                                                                            <span className="text-gray-300 text-[10px] px-1">↔</span>
+                                                                            <span className="text-gray-900 font-bold truncate max-w-[100px] text-right" title={attr.tenantValue}>{attr.tenantValue}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    {/* Bar */}
+                                                                    <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                                                                        <div
+                                                                            className={`h-full rounded-full ${colorClass}`}
+                                                                            style={{ width: `${widthPct}%` }}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </details>
+                                            )}
+
                                             {/* Deterministic Insights Mobile */}
                                             {compatibility.scoreBreakdown && (
                                                 <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
@@ -706,8 +744,7 @@ const SeekerRoomDetails = () => {
                                                         {compatibility.scoreBreakdown.pros.length > 0 ? (
                                                             <ul className="text-xs text-gray-600 space-y-1">
                                                                 {compatibility.scoreBreakdown.pros.map((attr, i) => (
-                                                                    <li key={i} className="flex items-center gap-1.5">
-                                                                        <span className="w-1 h-1 bg-green-400 rounded-full"></span>
+                                                                    <li key={i} className="flex items-center gap-1.5 list-disc list-inside">
                                                                         {attr}
                                                                     </li>
                                                                 ))}
@@ -718,13 +755,12 @@ const SeekerRoomDetails = () => {
                                                     </div>
                                                     <div>
                                                         <h4 className="text-xs font-bold text-red-700 uppercase tracking-wide mb-2 flex items-center gap-1">
-                                                            <AlertCircle className="w-3 h-3" /> Potential Friction
+                                                            <AlertCircle className="w-3 h-3" /> Top Conflicts
                                                         </h4>
                                                         {compatibility.scoreBreakdown.cons.length > 0 ? (
                                                             <ul className="text-xs text-gray-600 space-y-1">
                                                                 {compatibility.scoreBreakdown.cons.map((attr, i) => (
-                                                                    <li key={i} className="flex items-center gap-1.5">
-                                                                        <span className="w-1 h-1 bg-red-400 rounded-full"></span>
+                                                                    <li key={i} className="flex items-center gap-1.5 list-disc list-inside">
                                                                         {attr}
                                                                     </li>
                                                                 ))}
@@ -1013,6 +1049,46 @@ const SeekerRoomDetails = () => {
                                                 {compatibility.notes || <span>Based on your preferences for <span className="text-gray-900 font-semibold">Quiet Evenings</span> and <span className="text-gray-900 font-semibold">Shared Kitchen</span> usage.</span>}
                                             </p>
 
+                                            {/* Detailed Attribute Breakdown - Collapsible Compact */}
+                                            {compatibility.scoreBreakdown?.attributeScores && (
+                                                <details className="mt-6 group">
+                                                    <summary className="flex items-center justify-between cursor-pointer list-none py-2 border-b border-gray-100">
+                                                        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Detailed Breakdown</h4>
+                                                        <div className="text-gray-400 group-open:rotate-180 transition-transform">
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                                                        </div>
+                                                    </summary>
+                                                    <div className="pt-4 grid grid-cols-2 gap-x-4 gap-y-4">
+                                                        {compatibility.scoreBreakdown.attributeScores.map((attr, idx) => {
+                                                            const colorClass = attr.score >= 1.5 ? 'bg-green-500' : attr.score >= 0.8 ? 'bg-yellow-500' : 'bg-red-500';
+                                                            const widthPct = (attr.score / 2) * 100;
+                                                            return (
+                                                                <div key={idx} className="space-y-1.5">
+                                                                    {/* Label Row */}
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-0.5">{attr.attribute}</span>
+                                                                        <div className="flex items-center justify-between text-xs">
+                                                                            <span className="text-gray-600 font-medium">{attr.seekerValue}</span>
+                                                                            <span className="text-gray-300 text-[10px] px-1">↔</span>
+                                                                            <span className="text-gray-900 font-bold truncate max-w-[120px] text-right" title={`Residents: ${attr.tenantValue}`}>{attr.tenantValue}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    {/* Bar */}
+                                                                    <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden shadow-inner">
+                                                                        <motion.div
+                                                                            initial={{ width: 0 }}
+                                                                            animate={{ width: `${widthPct}%` }}
+                                                                            transition={{ duration: 0.8, ease: "easeOut" }}
+                                                                            className={`h-full rounded-full ${colorClass}`}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </details>
+                                            )}
+
                                             {/* Deterministic Insights */}
                                             {compatibility.scoreBreakdown && (
                                                 <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
@@ -1023,8 +1099,7 @@ const SeekerRoomDetails = () => {
                                                         {compatibility.scoreBreakdown.pros.length > 0 ? (
                                                             <ul className="text-xs text-gray-600 space-y-1">
                                                                 {compatibility.scoreBreakdown.pros.map((attr, i) => (
-                                                                    <li key={i} className="flex items-center gap-1.5">
-                                                                        <span className="w-1 h-1 bg-green-400 rounded-full"></span>
+                                                                    <li key={i} className="flex items-center gap-1.5 list-disc list-inside">
                                                                         {attr}
                                                                     </li>
                                                                 ))}
@@ -1035,13 +1110,12 @@ const SeekerRoomDetails = () => {
                                                     </div>
                                                     <div>
                                                         <h4 className="text-xs font-bold text-red-700 uppercase tracking-wide mb-2 flex items-center gap-1">
-                                                            <AlertCircle className="w-3 h-3" /> Potential Friction
+                                                            <AlertCircle className="w-3 h-3" /> Top Conflicts
                                                         </h4>
                                                         {compatibility.scoreBreakdown.cons.length > 0 ? (
                                                             <ul className="text-xs text-gray-600 space-y-1">
                                                                 {compatibility.scoreBreakdown.cons.map((attr, i) => (
-                                                                    <li key={i} className="flex items-center gap-1.5">
-                                                                        <span className="w-1 h-1 bg-red-400 rounded-full"></span>
+                                                                    <li key={i} className="flex items-center gap-1.5 list-disc list-inside">
                                                                         {attr}
                                                                     </li>
                                                                 ))}

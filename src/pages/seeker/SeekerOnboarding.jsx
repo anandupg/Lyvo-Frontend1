@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sun, Moon, Coffee, MoonStar, Users, Smile, Meh, Frown, Salad, Drumstick, Leaf, Soup, Volume2, VolumeX, DoorOpen, Shield, Wallet } from "lucide-react";
-import SeekerNavbar from "../../components/seeker/SeekerNavbar";
 
-const RAW_BASE = import.meta.env.VITE_USER_SERVICE_URL || import.meta.env.VITE_API_URL || "http://localhost:4002";
+import SeekerNavbar from "../../components/seeker/SeekerNavbar";
+import { Calendar } from "../../components/ui/calendar";
+
+const RAW_BASE = import.meta.env.VITE_USER_SERVICE_URL || import.meta.env.VITE_API_URL || "http://localhost:5000";
 const BASE_TRIM = String(RAW_BASE || '').replace(/\/$/, '');
 const API_BASE = BASE_TRIM.endsWith('/api') ? BASE_TRIM : `${BASE_TRIM}/api`;
 const QUESTIONS_API = `${API_BASE}/behaviour`;
@@ -14,7 +16,7 @@ const SeekerOnboarding = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState([]);
-  const [answers, setAnswers] = useState({ budget: 8000 });
+  const [answers, setAnswers] = useState({});
   const [error, setError] = useState(null);
   const [step, setStep] = useState(0);
 
@@ -29,7 +31,7 @@ const SeekerOnboarding = () => {
         navigate('/seeker-dashboard', { replace: true });
         return;
       }
-    } catch {}
+    } catch { }
 
     if (!token || !userRaw) {
       navigate("/login", { replace: true });
@@ -47,7 +49,7 @@ const SeekerOnboarding = () => {
             navigate('/seeker-dashboard', { replace: true });
             return;
           }
-        } catch {}
+        } catch { }
 
         const res = await axios.get(`${QUESTIONS_API}/questions`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -72,12 +74,34 @@ const SeekerOnboarding = () => {
 
   const handleChange = (id, value) => {
     setAnswers((prev) => ({ ...prev, [id]: value }));
+    if (error) setError(null);
   };
 
-  const goNext = () => setStep((s) => Math.min(s + 1, (questions?.length || 1) - 1));
-  const goPrev = () => setStep((s) => Math.max(s - 1, 0));
+  // Determine validity for the current step
+  const currentQuestion = questions[step];
+  const currentAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
+  // Valid if answer is not undefined, null, or empty string. 0 is valid (though unlikely here)
+  const isStepValid = currentAnswer !== undefined && currentAnswer !== null && currentAnswer !== '';
+
+  const goNext = () => {
+    if (!isStepValid) {
+      setError("Please select an option to continue.");
+      return;
+    }
+    setError(null);
+    setStep((s) => Math.min(s + 1, (questions?.length || 1) - 1));
+  };
+
+  const goPrev = () => {
+    setError(null);
+    setStep((s) => Math.max(s - 1, 0));
+  };
 
   const handleSubmit = async () => {
+    if (!isStepValid) {
+      setError("Please select an option to continue.");
+      return;
+    }
     try {
       setError(null);
       await axios.post(`${QUESTIONS_API}/answers`, { answers }, { headers: { Authorization: `Bearer ${token}` } });
@@ -103,7 +127,7 @@ const SeekerOnboarding = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-stone-100">
-      <SeekerNavbar onMenuToggle={() => {}} />
+      <SeekerNavbar onMenuToggle={() => { }} />
       <div className="pt-20" />
       <div className="max-w-3xl mx-auto bg-white shadow-sm border border-gray-200 rounded-xl p-6">
         <div className="mb-6 text-center">
@@ -138,7 +162,7 @@ const SeekerOnboarding = () => {
             >
               <div className="flex items-start justify-between gap-4">
                 <label className="block text-base sm:text-lg font-semibold text-gray-900">
-                  {questions[step].text}
+                  {questions[step].text} <span className="text-red-500">*</span>
                 </label>
                 <span className="text-xs text-gray-500 mt-1">{step + 1}/{questions.length}</span>
               </div>
@@ -153,9 +177,8 @@ const SeekerOnboarding = () => {
                       whileTap={{ scale: 0.98 }}
                       type="button"
                       onClick={() => handleChange(questions[step].id, opt)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition shadow-sm ${
-                        answers[questions[step].id] === opt ? 'bg-red-600 text-white border-red-600 shadow' : 'bg-white text-gray-800 border-gray-300 hover:border-red-400'
-                      }`}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition shadow-sm ${answers[questions[step].id] === opt ? 'bg-red-600 text-white border-red-600 shadow' : 'bg-white text-gray-800 border-gray-300 hover:border-red-400'
+                        }`}
                     >
                       <span className="text-lg">{getEmoji(opt)}</span>
                       <span className="truncate">{opt}</span>
@@ -164,52 +187,68 @@ const SeekerOnboarding = () => {
                 </div>
               )}
 
-              {/* Range */}
-              {questions[step].type === 'range' && (
-                <div className="mt-2">
+              {/* Date Input - Segmented (DD / MM / YYYY) */}
+              {/* Date Input - Native */}
+              {questions[step].type === 'date' && (
+                <div className="mt-4">
                   <input
-                    type="range"
-                    min={questions[step].min}
-                    max={questions[step].max}
-                    value={answers[questions[step].id] ?? questions[step].min}
-                    onChange={(e) => handleChange(questions[step].id, Number(e.target.value))}
-                    className="w-full"
+                    type="date"
+                    value={answers[questions[step].id] || ''}
+                    onChange={(e) => handleChange(questions[step].id, e.target.value)}
+                    className="w-full p-4 border border-gray-300 rounded-xl text-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all shadow-sm"
                   />
-                  <div className="flex items-center justify-between mt-2 text-sm text-gray-700">
-                    <span>₹ {answers[questions[step].id] ?? questions[step].min}</span>
-                    <div className="flex gap-2">
-                      {[4000, 8000, 12000].map((preset) => (
-                        <button
-                          key={preset}
-                          onClick={() => handleChange(questions[step].id, preset)}
-                          className="px-2 py-1 rounded-lg border border-gray-300 hover:border-red-400 hover:text-red-600"
-                        >₹ {preset}</button>
-                      ))}
-                    </div>
-                  </div>
+                  <p className="mt-2 text-sm text-gray-500">Please enter your date of birth.</p>
                 </div>
               )}
 
+              {/* Helper Text */}
+              {!isStepValid && (
+                <p className="text-sm text-gray-400 mt-2">
+                  Please select one option to continue
+                </p>
+              )}
+
               {/* Nav buttons */}
-              <div className="pt-2 flex items-center justify-between">
-                <button onClick={goPrev} disabled={step === 0} className="px-4 py-2 rounded-lg border text-sm disabled:opacity-40">
-                  Back
-                </button>
-                {step < questions.length - 1 ? (
-                  <button onClick={goNext} className="px-5 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700">
-                    Next
-                  </button>
-                ) : (
-                  <button onClick={handleSubmit} className="px-5 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700">
-                    Finish
-                  </button>
-                )}
-              </div>
+              {/* Nav buttons */}
+              {(() => {
+                const isValid = isStepValid;
+
+                return (
+                  <div className="pt-2 flex items-center justify-between mt-8">
+                    <button onClick={goPrev} disabled={step === 0} className="px-4 py-2 rounded-lg border text-sm disabled:opacity-40 hover:bg-gray-50 transition-colors">
+                      Back
+                    </button>
+                    {step < questions.length - 1 ? (
+                      <button
+                        onClick={goNext}
+                        disabled={!isValid}
+                        className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${isValid
+                          ? 'bg-red-600 text-white hover:bg-red-700'
+                          : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          }`}
+                      >
+                        Next
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleSubmit}
+                        disabled={!isValid}
+                        className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${isValid
+                          ? 'bg-red-600 text-white hover:bg-red-700'
+                          : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          }`}
+                      >
+                        Finish
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </div >
   );
 };
 
@@ -236,8 +275,10 @@ function getEmoji(opt) {
   if (s.includes('quiet')) return '🔇';
   if (s.includes('noise')) return '🔊';
   if (s.includes('privacy')) return '🔒';
-  if (s.includes('match')) return '🤝';
+  if (s.includes('match') && s.includes('male') === false && s.includes('female') === false) return '🤝';
+  // Gender specific
+  if (s === 'male') return '👨';
+  if (s === 'female') return '👩';
+
   return '✨';
 }
-
-
