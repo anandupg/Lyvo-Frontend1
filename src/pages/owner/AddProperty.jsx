@@ -21,7 +21,8 @@ import {
   ArrowLeft,
   Save,
   FileText,
-  Eye
+  Eye,
+  Sparkles // Import Sparkles
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -62,6 +63,8 @@ const AddProperty = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [needsKyc, setNeedsKyc] = useState(false);
+  const [warningModalOpen, setWarningModalOpen] = useState(false);
+  const [warningMessage, setWarningMessage] = useState('');
   const [formData, setFormData] = useState({
     // Basic Information
     propertyName: '',
@@ -132,6 +135,8 @@ const AddProperty = () => {
         bedType: '',
         occupancy: 1, // Default to 1, will be updated when room type is selected
         rent: '',
+        predictedRent: null, // Store prediction
+        rentRange: null, // Store range
         amenities: {
           ac: false,
           wifi: false,
@@ -566,22 +571,57 @@ const AddProperty = () => {
     }));
   };
 
-  // Document upload functions (only Land Tax Receipt is supported)
+  // Document upload functions
   const handleLandTaxReceiptUpload = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const entry = {
-      file,
-      preview: URL.createObjectURL(file),
-      name: file.name,
-      type: file.type
-    };
-    setFormData(prev => ({
-      ...prev,
-      landTaxReceipt: entry
-    }));
-    if (errors['landTaxReceipt']) {
-      setErrors(prev => ({ ...prev, landTaxReceipt: '' }));
+    // ... existing ... 
+  }; // Don't modify this block, just anchoring for insertion before it 
+
+  // Rent Prediction Handler
+  const handlePredictRent = async (index) => {
+    const room = formData.rooms[index];
+
+    // Validate required fields for prediction
+    // Validate required fields for prediction
+    if (!room.roomSize || !formData.address.city) {
+      setWarningMessage("Please enter Location (City) and Room Size first to get an accurate suggestion.");
+      setWarningModalOpen(true);
+      return;
+    }
+
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/predict-rent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          location: formData.address.city, // Use City as location proxy
+          roomType: room.roomType,
+          roomSize: room.roomSize,
+          amenities: room.amenities,
+          propertyAmenities: formData.amenities
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Update state with prediction result to show in UI
+        setFormData(prev => ({
+          ...prev,
+          rooms: prev.rooms.map((r, i) => i === index ? {
+            ...r,
+            predictedRent: data.predicted_rent,
+            rentRange: data.range
+          } : r)
+        }));
+      } else {
+        alert("Could not predict rent: " + (data.message || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Prediction Error:", error);
+      alert("Failed to get rent suggestion. Ensure backend is running.");
     }
   };
   // Deprecated: generic documents list removed
@@ -867,6 +907,97 @@ const AddProperty = () => {
                 )}
               </div>
 
+              {/* Map Search & Pinning Moved to Basic Info */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Search PG/Property via Google Maps
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={placeSearch}
+                    onChange={(e) => setPlaceSearch(e.target.value)}
+                    onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                    onKeyDown={onKeyDownPlace}
+                    placeholder="Start typing address, area, landmark..."
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                  {showSuggestions && (
+                    <div ref={listRef} className="absolute z-40 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-80 overflow-auto">
+                      {suggestions.length === 0 && (
+                        <div className="px-4 py-3 text-sm text-gray-500">No results</div>
+                      )}
+                      {suggestions.map((s, idx) => (
+                        <button
+                          key={`${s.place_id}-${idx}`}
+                          type="button"
+                          data-idx={idx}
+                          onMouseEnter={() => setActiveSuggestionIndex(idx)}
+                          onMouseLeave={() => setActiveSuggestionIndex(-1)}
+                          onClick={() => selectPlace(s)}
+                          className={`w-full text-left px-4 py-3 text-sm transition-colors ${idx === activeSuggestionIndex ? 'bg-red-50' : 'hover:bg-gray-50'}`}
+                        >
+                          <div className="text-gray-700 leading-snug line-clamp-2">{s.display_name || s.name || ''}</div>
+                          {s.type && (
+                            <div className="text-xs text-gray-500 mt-0.5 capitalize">{s.type}</div>
+                          )}
+                        </button>
+                      ))}
+                      <div className="px-4 py-2 border-t border-gray-100 text-[11px] text-gray-500">Powered by OpenStreetMap</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="md:col-span-2">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-gray-700">Pin Property Location</label>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={toggleSatellite} className="px-2 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 text-xs">
+                      {isSatellite ? 'Satellite' : 'Street'} view
+                    </button>
+                    <button type="button" onClick={copyCoords} className="px-2 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 text-xs">Copy Coords</button>
+                  </div>
+                </div>
+
+                <div className="border border-gray-300 rounded-lg overflow-hidden h-[350px] relative z-0">
+                  <MapContainer
+                    center={markerPosition}
+                    zoom={15}
+                    style={{ height: '100%', width: '100%' }}
+                    scrollWheelZoom={true}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url={isSatellite
+                        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                      }
+                      key={isSatellite ? 'satellite' : 'street'}
+                    />
+                    {markerPosition && markerPosition[0] && markerPosition[1] && (
+                      <Marker
+                        position={markerPosition}
+                        draggable={true}
+                        eventHandlers={{
+                          dragend: handleMarkerDragEnd
+                        }}
+                      />
+                    )}
+                    <MapUpdater center={markerPosition} />
+                    <MapClickHandler onLocationSelect={handleLocationSelect} />
+                  </MapContainer>
+
+                  {/* Overlay information */}
+                  <div className="absolute bottom-2 left-2 bg-white/90 px-3 py-1.5 rounded-md shadow-md text-xs font-medium z-[1000] border border-gray-200">
+                    Lat: {formData.address.latitude || '—'} | Lng: {formData.address.longitude || '—'}
+                  </div>
+                </div>
+                <p className="mt-1.5 text-xs text-gray-500 flex items-center gap-1">
+                  <MapPin className="w-3 h-3" /> Drag the marker or click on the map to set the exact property location.
+                </p>
+              </div>
+
               {/* Security Deposit moved to Basic Info */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1097,35 +1228,6 @@ const AddProperty = () => {
                         <p className="mt-1 text-xs text-gray-500">Automatically set based on room type</p>
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Monthly Rent (₹) *
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={room.rent}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (val === '' || (/^\d+$/.test(val) && parseInt(val) >= 0)) {
-                              handleRoomChange(index, 'rent', val);
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (['-', '+', 'e', 'E', '.'].includes(e.key)) {
-                              e.preventDefault();
-                            }
-                          }}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors[`room_${index}_rent`] ? 'border-red-500' : 'border-gray-300'
-                            }`}
-                          placeholder="Enter monthly rent"
-                        />
-                        {errors[`room_${index}_rent`] && (
-                          <p className="mt-1 text-sm text-red-600">{errors[`room_${index}_rent`]}</p>
-                        )}
-                      </div>
-
-                      {/* Attached Bathroom toggle moved here */}
                       <div className="md:mt-6">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Attached Bathroom
@@ -1146,6 +1248,8 @@ const AddProperty = () => {
                           </span>
                         </div>
                       </div>
+
+
 
                       {/* Description + Image (and Toilet Image if attached) in one row */}
                       <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
@@ -1231,6 +1335,72 @@ const AddProperty = () => {
                             ))}
                         </div>
                       </div>
+
+                      <div className="space-y-2 md:col-span-3"> {/* Added col-span-3 */}
+                        <label className="text-sm font-medium text-gray-700">Monthly Rent (₹) *</label>
+                        <div className="flex gap-2 items-start">
+                          <div className="flex-1">
+                            <input
+                              type="number"
+                              min="0"
+                              value={room.rent}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === '' || (/^\d+$/.test(val) && parseInt(val) >= 0)) {
+                                  handleRoomChange(index, 'rent', val);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (['-', '+', 'e', 'E', '.'].includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors[`room_${index}_rent`] ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                              placeholder="Enter monthly rent"
+                            />
+                            {errors[`room_${index}_rent`] && (
+                              <p className="mt-1 text-sm text-red-600">{errors[`room_${index}_rent`]}</p>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handlePredictRent(index)}
+                            className="bg-indigo-50 text-indigo-600 px-3 py-2 rounded-lg border border-indigo-200 hover:bg-indigo-100 flex items-center gap-1.5 transition-colors whitespace-nowrap h-[42px]"
+                            title="Get AI Rent Suggestion"
+                          >
+                            <Sparkles className="w-4 h-4" />
+                            <span className="text-sm font-medium">Suggest</span>
+                          </button>
+                        </div>
+
+                        {/* Prediction Result Display */}
+                        {room.predictedRent && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-lg p-3 text-sm mt-2"
+                          >
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-indigo-700 font-semibold flex items-center gap-1">
+                                <Sparkles className="w-3 h-3 text-indigo-500" /> Lyvo Estimate
+                              </span>
+                              <span className="font-bold text-gray-800">₹{room.predictedRent.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-500">
+                              <span>Range: ₹{room.rentRange?.min.toLocaleString()} - ₹{room.rentRange?.max.toLocaleString()}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRoomChange(index, 'rent', room.predictedRent)}
+                                className="text-indigo-600 hover:underline font-medium"
+                              >
+                                Apply
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1252,56 +1422,7 @@ const AddProperty = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {/* Google Maps place search */}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Search PG/Property via Google Maps
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={placeSearch}
-                    onChange={(e) => setPlaceSearch(e.target.value)}
-                    onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                    onKeyDown={onKeyDownPlace}
-                    placeholder="Start typing address, area, landmark..."
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                  {showSuggestions && (
-                    <div ref={listRef} className="absolute z-40 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-80 overflow-auto">
-                      {suggestions.length === 0 && (
-                        <div className="px-4 py-3 text-sm text-gray-500">No results</div>
-                      )}
-                      {suggestions.map((s, idx) => (
-                        <button
-                          key={`${s.place_id}-${idx}`}
-                          type="button"
-                          data-idx={idx}
-                          onMouseEnter={() => setActiveSuggestionIndex(idx)}
-                          onMouseLeave={() => setActiveSuggestionIndex(-1)}
-                          onClick={() => selectPlace(s)}
-                          className={`w-full text-left px-4 py-3 text-sm transition-colors ${idx === activeSuggestionIndex ? 'bg-red-50' : 'hover:bg-gray-50'}`}
-                        >
-                          <div className="text-gray-700 leading-snug line-clamp-2">{s.display_name || s.name || ''}</div>
-                          {s.type && (
-                            <div className="text-xs text-gray-500 mt-0.5 capitalize">{s.type}</div>
-                          )}
-                        </button>
-                      ))}
-                      <div className="px-4 py-2 border-t border-gray-100 text-[11px] text-gray-500">Powered by OpenStreetMap</div>
-                    </div>
-                  )}
-                </div>
-              </div>
 
-              {/* Map Launch */}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Pin PG Location</label>
-                <div className="flex items-center gap-3">
-                  <button type="button" onClick={() => setIsMapOpen(true)} className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Open Map</button>
-                  <div className="text-xs text-gray-600">Lat: {formData.address.latitude || '—'} | Lng: {formData.address.longitude || '—'}</div>
-                  <button type="button" onClick={copyCoords} className="px-2 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 text-xs">Copy Coords</button>
-                </div>
-              </div>
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1674,56 +1795,36 @@ const AddProperty = () => {
         </form>
       </div>
 
-      {/* Map Modal */}
-      {isMapOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-3xl overflow-hidden shadow-xl">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-              <div className="text-sm font-semibold text-gray-900">Select Location</div>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={toggleSatellite} className="px-2 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 text-xs">
-                  {isSatellite ? 'Satellite' : 'Street'} view
-                </button>
-                <button type="button" onClick={() => setIsMapOpen(false)} className="px-2 py-1 text-gray-500 hover:text-gray-700 text-sm">Close</button>
+
+
+      {/* Warning Modal */}
+      {warningModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-opacity">
+          <div className="bg-white rounded-xl w-full max-w-md shadow-2xl transform transition-all scale-100 p-6 relative">
+            <button
+              onClick={() => setWarningModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex flex-col items-center text-center">
+              <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mb-4">
+                <Sparkles className="w-6 h-6" />
               </div>
-            </div>
-            <div style={{ width: '100%', height: '420px' }}>
-              <MapContainer
-                center={markerPosition}
-                zoom={15}
-                style={{ height: '100%', width: '100%' }}
-                scrollWheelZoom={true}
+
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Missing Information</h3>
+              <p className="text-gray-600 mb-6 text-sm leading-relaxed">
+                {warningMessage}
+              </p>
+
+              <button
+                onClick={() => setWarningModalOpen(false)}
+                className="w-full bg-orange-600 text-white py-2.5 rounded-lg font-medium hover:bg-orange-700 transition-colors"
+                autoFocus
               >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url={isSatellite
-                    ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-                    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                  }
-                  key={isSatellite ? 'satellite' : 'street'}
-                />
-                {markerPosition && markerPosition[0] && markerPosition[1] && (
-                  <Marker
-                    position={markerPosition}
-                    draggable={true}
-                    eventHandlers={{
-                      dragend: handleMarkerDragEnd
-                    }}
-                  />
-                )}
-                <MapUpdater center={markerPosition} />
-                <MapClickHandler onLocationSelect={handleLocationSelect} />
-              </MapContainer>
-            </div>
-            <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-600 flex items-center justify-between">
-              <div>
-                Lat: {formData.address.latitude || '—'} | Lng: {formData.address.longitude || '—'}
-              </div>
-              <div className="flex items-center gap-3">
-                <button type="button" onClick={() => setIsMapOpen(false)} className="px-3 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 text-xs">Use This Location</button>
-                <button type="button" onClick={copyCoords} className="px-2 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100">Copy Coords</button>
-                <span className="text-gray-500 hidden sm:inline">Drag marker or click map to set exact point</span>
-              </div>
+                Got it
+              </button>
             </div>
           </div>
         </div>
