@@ -43,6 +43,7 @@
     "framer-motion": "^11.0.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.3",
+    "jwt-decode": "^4.0.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.469.0",
     "qrcode": "^1.5.4",

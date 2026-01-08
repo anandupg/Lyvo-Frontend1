@@ -1,5 +1,6 @@
 // Authentication utility functions
 import { autoRepairUserRole } from './roleRepair';
+import { jwtDecode } from "jwt-decode";
 
 /**
  * Get user role as a number, handling both string and number types
@@ -116,11 +117,38 @@ export const getUserFromStorageWithRepair = async () => {
 };
 
 /**
- * Get auth token from localStorage
- * @returns {string|null} - Auth token or null if not found
+ * Get auth token from localStorage, handling expiration
+ * @returns {string|null} - Auth token or null if not found or expired
  */
 export const getAuthToken = () => {
-  return localStorage.getItem('authToken');
+  const token = localStorage.getItem('authToken');
+  if (!token) return null;
+
+  if (isTokenExpired(token)) {
+    console.warn('Token expired, returning null from getAuthToken');
+    // Optional: Clear storage here to be cleaner, or let the logout handler do it
+    // localStorage.removeItem('authToken'); 
+    return null;
+  }
+
+  return token;
+};
+
+/**
+ * Check if token is expired
+ * @param {string} token - JWT token
+ * @returns {boolean} - True if expired
+ */
+export const isTokenExpired = (token) => {
+  if (!token) return true;
+  try {
+    const decoded = jwtDecode(token);
+    const currentTime = Date.now() / 1000;
+    return decoded.exp < currentTime;
+  } catch (error) {
+    console.error('Error decoding token:', error);
+    return true;
+  }
 };
 
 /**
@@ -130,7 +158,15 @@ export const getAuthToken = () => {
 export const isAuthenticated = () => {
   const token = getAuthToken();
   const user = getUserFromStorage();
-  return !!(token && user);
+
+  if (!token || !user) return false;
+
+  if (isTokenExpired(token)) {
+    console.warn('Token expired, local logout required');
+    return false;
+  }
+
+  return true;
 };
 
 /**
