@@ -24,7 +24,9 @@ import {
   Eye,
   Sparkles // Import Sparkles
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import apiClient from '../../utils/apiClient';
+import OwnerLayout from '../../components/owner/OwnerLayout';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -589,23 +591,15 @@ const AddProperty = () => {
     }
 
     try {
-      const authToken = localStorage.getItem('authToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/property/predict-rent`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
-        },
-        body: JSON.stringify({
-          location: formData.address.city, // Use City as location proxy
-          roomType: room.roomType,
-          roomSize: room.roomSize,
-          amenities: room.amenities,
-          propertyAmenities: formData.amenities
-        })
+      const response = await apiClient.post('/property/predict-rent', {
+        location: formData.address.city, // Use City as location proxy
+        roomType: room.roomType,
+        roomSize: room.roomSize,
+        amenities: room.amenities,
+        propertyAmenities: formData.amenities
       });
 
-      const data = await response.json();
+      const data = response.data;
       if (data.success) {
         // Update state with prediction result to show in UI
         setFormData(prev => ({
@@ -617,11 +611,13 @@ const AddProperty = () => {
           } : r)
         }));
       } else {
-        alert("Could not predict rent: " + (data.message || "Unknown error"));
+        setWarningMessage("Could not predict rent: " + (data.message || "Unknown error"));
+        setWarningModalOpen(true);
       }
     } catch (error) {
       console.error("Prediction Error:", error);
-      alert("Failed to get rent suggestion. Ensure backend is running.");
+      setWarningMessage("Failed to get rent suggestion. Ensure backend is running.");
+      setWarningModalOpen(true);
     }
   };
   // Deprecated: generic documents list removed
