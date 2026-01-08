@@ -26,7 +26,6 @@ import {
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import apiClient from '../../utils/apiClient';
-import OwnerLayout from '../../components/owner/OwnerLayout';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
