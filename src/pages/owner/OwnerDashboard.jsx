@@ -270,14 +270,14 @@ const OwnerDashboard = () => {
     let rentLabel = 'Revenue';
 
     if (propertyRevenue === 0 && rooms.length > 0) {
-      const rents = rooms.map(r => r.rent || 0).filter(r => r > 0);
+      const rents = rooms.map(r => r.perPersonRent || Math.ceil((r.rent || 0) / (r.occupancy || 1)) || 0).filter(r => r > 0);
       if (rents.length > 0) {
         const minRent = Math.min(...rents);
         const maxRent = Math.max(...rents);
         rentDisplay = minRent === maxRent
-          ? `₹${minRent.toLocaleString('en-IN')}/mo`
-          : `₹${minRent.toLocaleString('en-IN')} - ${maxRent.toLocaleString('en-IN')}/mo`;
-        rentLabel = 'Rent';
+          ? `₹${minRent.toLocaleString('en-IN')}/person/mo`
+          : `₹${minRent.toLocaleString('en-IN')} - ${maxRent.toLocaleString('en-IN')}/person/mo`;
+        rentLabel = 'Per Person Rent';
       }
     }
 

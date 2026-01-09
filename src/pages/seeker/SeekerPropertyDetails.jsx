@@ -80,7 +80,7 @@ const SeekerPropertyDetails = () => {
   // Helper: Get Min Price
   const getMinPrice = () => {
     if (!property?.rooms || property.rooms.length === 0) return 0;
-    const prices = property.rooms.map(r => r.rent || 0);
+    const prices = property.rooms.map(r => r.perPersonRent || Math.ceil((r.rent || 0) / (r.occupancy || 1)) || 0);
     return Math.min(...prices);
   }
 
@@ -343,7 +343,7 @@ const SeekerPropertyDetails = () => {
                       <p className="text-gray-500 text-sm font-medium mb-1">Rent starts from</p>
                       <div className="flex items-end gap-1">
                         <span className="text-3xl font-bold text-gray-900">₹{minPrice.toLocaleString()}</span>
-                        <span className="text-gray-500 mb-1">/ month</span>
+                        <span className="text-gray-500 mb-1">/ person/month</span>
                       </div>
                       <div className="flex flex-wrap gap-3 mt-4">
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-700 border border-red-100">
@@ -552,9 +552,9 @@ const SeekerPropertyDetails = () => {
                             </div>
                             <div className="text-right">
                               <div className="flex items-baseline justify-end gap-1">
-                                <span className="text-2xl font-bold text-blue-600">₹{room.rent?.toLocaleString()}</span>
+                                <span className="text-2xl font-bold text-blue-600">₹{(room.perPersonRent || Math.ceil(room.rent / room.occupancy))?.toLocaleString()}</span>
                               </div>
-                              <p className="text-xs text-gray-500 font-medium">per month</p>
+                              <p className="text-xs text-gray-500 font-medium">per person/month</p>
                             </div>
                           </div>
 

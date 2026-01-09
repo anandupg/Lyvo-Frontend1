@@ -368,6 +368,10 @@ const Tenants = () => {
                         <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider">Room</p>
                         <p className="text-sm font-semibold text-gray-900">Room {tenant.roomNumber}</p>
                       </div>
+                      <div className="text-center px-1">
+                        <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider">Rent</p>
+                        <p className="text-sm font-semibold text-green-600">{formatCurrency(tenant.monthlyRent)}</p>
+                      </div>
                     </div>
 
                     {/* Right: Checkout Button (Col Span 4) */}
@@ -411,7 +415,7 @@ const Tenants = () => {
                       <p className="font-semibold text-gray-900">Room {tenant.roomNumber}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 mb-0.5">Monthly Rent</p>
+                      <p className="text-xs text-gray-500 mb-0.5">Monthly Rent (Per Person)</p>
                       <p className="font-semibold text-green-600">{formatCurrency(tenant.monthlyRent)}</p>
                     </div>
                     <div>
@@ -462,7 +466,7 @@ const Tenants = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <p className="text-xs text-gray-500">Monthly Rent</p>
+                      <p className="text-xs text-gray-500">Monthly Rent (Per Person)</p>
                       <p className="text-sm font-semibold text-green-600">{formatCurrency(selectedTenant.monthlyRent)}</p>
                     </div>
                     <div>

@@ -229,7 +229,9 @@ const TenantAgreement = () => {
                                     </div>
                                     <div className="bg-blue-50 rounded-xl p-6">
                                         <p className="text-sm text-blue-700 font-medium mb-1">Security Deposit</p>
-                                        <p className="text-3xl font-bold text-blue-900">{formatCurrency(tenantData.securityDeposit)}</p>
+                                        <p className="text-3xl font-bold text-blue-900">
+                                            {formatCurrency(tenantData.security_deposit || tenantData.securityDeposit || property?.security_deposit)}
+                                        </p>
                                         <p className="text-xs text-blue-600 mt-2">Refundable at end of tenancy</p>
                                     </div>
                                 </div>

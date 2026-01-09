@@ -1256,8 +1256,11 @@ const PropertyDetails = () => {
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-2xl font-bold text-green-600">{formatPrice(room.rent)}</p>
-                              <p className="text-sm text-gray-500">per month</p>
+                              <p className="text-2xl font-bold text-green-600">{formatPrice(room.perPersonRent || Math.ceil(room.rent / room.occupancy))}</p>
+                              <div className="flex flex-col items-end">
+                                <span className="text-sm text-gray-500">per person/month</span>
+                                <span className="text-xs text-gray-400">Total Room Rent: {formatPrice(room.rent)}</span>
+                              </div>
                             </div>
                           </div>
 
@@ -1373,9 +1376,9 @@ const PropertyDetails = () => {
                       <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-2" />
                       <p className="text-sm text-gray-600 mb-1">Starting from</p>
                       <p className="text-2xl font-bold text-green-600">
-                        {formatPrice(Math.min(...property.rooms.map(room => room.rent)))}
+                        {formatPrice(Math.min(...property.rooms.map(room => room.perPersonRent || Math.ceil(room.rent / room.occupancy) || room.rent)))}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">per room/month</p>
+                      <p className="text-xs text-gray-500 mt-1">per person/month</p>
                     </div>
                   )}
 
@@ -1917,8 +1920,11 @@ const PropertyDetails = () => {
                     {/* Pricing */}
                     <div className="bg-green-50 rounded-lg p-4">
                       <h4 className="text-lg font-semibold text-gray-900 mb-2">Pricing</h4>
-                      <div className="text-3xl font-bold text-green-600">{formatPrice(selectedRoom.rent)}</div>
-                      <p className="text-sm text-gray-500">per month</p>
+                      <div className="text-3xl font-bold text-green-600">{formatPrice(selectedRoom.perPersonRent || Math.ceil(selectedRoom.rent / selectedRoom.occupancy) || selectedRoom.rent)}</div>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-500">per person/month</span>
+                        <span className="text-xs text-gray-400">Total Room Rent: {formatPrice(selectedRoom.rent)}</span>
+                      </div>
                     </div>
 
                     {/* Room Specifications */}
@@ -2189,7 +2195,7 @@ const PropertyDetails = () => {
                           <p className="text-xs text-gray-500 mt-1">Auto-set based on room type</p>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Monthly Rent (&#8377;)</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Total Monthly Rent (&#8377;)</label>
                           <input
                             type="number"
                             value={editRoomData.rent}

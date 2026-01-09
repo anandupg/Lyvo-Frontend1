@@ -788,7 +788,7 @@ const SeekerDashboard = () => {
                               <div key={i} className="bg-white px-2 py-1 rounded-lg shadow-sm border border-red-100 flex items-center gap-1.5">
                                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
                                 <span className="text-[10px] font-bold text-gray-800">R{room.room_number}: {room.room_type}</span>
-                                <span className="text-[10px] font-black text-red-600 ml-0.5">₹{room.rent?.toLocaleString()}</span>
+                                <span className="text-[10px] font-black text-red-600 ml-0.5">₹{room.perPersonRent?.toLocaleString()}/p</span>
                               </div>
                             ))
                           ) : (

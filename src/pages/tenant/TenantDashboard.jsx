@@ -137,7 +137,7 @@ const TenantDashboard = () => {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-gray-500 text-sm font-medium">Monthly Rent</p>
-                                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(room?.rent || tenantData.monthlyRent)}</p>
+                                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(room?.perPersonRent || tenantData.monthlyRent)}</p>
                                 </div>
                                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
                                     <DollarSign className="w-6 h-6 text-red-500" />
@@ -236,7 +236,7 @@ const TenantDashboard = () => {
                                                 </div>
                                                 <div>
                                                     <p className="text-sm text-gray-500 font-medium">Monthly Rent</p>
-                                                    <p className="text-lg font-semibold text-green-600">{formatCurrency(room?.rent || tenantData.monthlyRent)}</p>
+                                                    <p className="text-lg font-semibold text-green-600">{formatCurrency(room?.perPersonRent || tenantData.monthlyRent)}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-sm text-gray-500 font-medium">Check-in Date</p>
@@ -302,7 +302,7 @@ const TenantDashboard = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="bg-green-50 rounded-xl p-4">
                                             <p className="text-sm text-green-700 font-medium mb-1">Monthly Rent</p>
-                                            <p className="text-2xl font-bold text-green-900">{formatCurrency(room?.rent || tenantData.monthlyRent)}</p>
+                                            <p className="text-2xl font-bold text-green-900">{formatCurrency(room?.perPersonRent || tenantData.monthlyRent)}</p>
                                         </div>
                                         <div className="bg-red-50 rounded-xl p-4">
                                             <p className="text-sm text-red-700 font-medium mb-1">Security Deposit</p>

@@ -181,7 +181,17 @@ const Properties = () => {
       status: property.status === 'active' ? 'Active' : 'Inactive',
       tenants: property.rooms ? property.rooms.filter(room => !room.is_available).length : 0, // Count of occupied rooms
       maxTenants: property.rooms ? property.rooms.length : 0, // Total rooms available
-      monthlyRent: property.pricing?.monthly_rent || property.rooms?.reduce((sum, room) => sum + (room.rent || 0), 0) || 0, // Sum of all room rents or property rent
+      monthlyRent: property.rooms?.reduce((sum, room) => sum + (room.rent || 0), 0) || 0, // Keeping total for calculation but will use display logic below
+      rentRange: (() => {
+        if (!property.rooms || property.rooms.length === 0) return 'N/A';
+        const rents = property.rooms.map(r => r.perPersonRent || Math.ceil((r.rent || 0) / (r.occupancy || 1)) || 0).filter(r => r > 0);
+        if (rents.length === 0) return 'N/A';
+        const minRent = Math.min(...rents);
+        const maxRent = Math.max(...rents);
+        return minRent === maxRent
+          ? `₹${minRent.toLocaleString('en-IN')}/person`
+          : `₹${minRent.toLocaleString('en-IN')} - ${maxRent.toLocaleString('en-IN')}/person`;
+      })(),
       totalRooms: property.rooms ? property.rooms.length : 0, // Total number of rooms
       lastUpdated: property.updated_at ? new Date(property.updated_at).toISOString().split('T')[0] : (property.created_at ? new Date(property.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
       images: allImages,
@@ -379,17 +389,14 @@ const Properties = () => {
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-3 sm:mb-4 text-center">
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-4 mb-3 text-center">
                   <div>
-                    <div className="text-sm sm:text-lg font-semibold text-gray-900">{property.totalRooms}</div>
-                    <div className="text-xs text-gray-500">Rooms</div>
+                    <div className="text-sm font-bold text-gray-900 truncate" title={property.rentRange}>{property.rentRange}</div>
+                    <div className="text-xs text-gray-500">Rent</div>
                   </div>
                   <div>
-                    <div className="text-sm sm:text-lg font-semibold text-gray-900">{property.type || 'N/A'}</div>
-                    <div className="text-xs text-gray-500">Type</div>
-                  </div>
-                  <div>
-                    <div className="text-sm sm:text-lg font-semibold text-gray-900">{property.status}</div>
+                    <div className="text-sm font-semibold text-gray-900">{property.status}</div>
                     <div className="text-xs text-gray-500">Status</div>
                   </div>
                 </div>

@@ -310,7 +310,7 @@ const TenantPayments = () => {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-gray-500 text-sm font-medium">Monthly Rent</p>
-                                    <p className="text-3xl font-bold text-gray-900 mt-1">{formatCurrency(tenantData?.monthlyRent || tenantData?.room?.rent)}</p>
+                                    <p className="text-3xl font-bold text-gray-900 mt-1">{formatCurrency(tenantData?.monthlyRent || tenantData?.room?.perPersonRent || Math.ceil((tenantData?.room?.rent || 0) / (tenantData?.room?.occupancy || 1)))}</p>
                                 </div>
                                 <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                                     <TrendingUp className="w-6 h-6 text-blue-600" />

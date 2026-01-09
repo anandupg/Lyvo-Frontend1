@@ -251,30 +251,35 @@ const OwnerTenantDetails = () => {
                                         Room {tenant.roomId?.roomNumber || tenant.roomNumber}
                                     </p>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <p className="text-xs text-gray-500 mb-1">Monthly Rent</p>
-                                        <p className="text-sm font-bold text-green-600 ml-6">
-                                            {formatCurrency(tenant.roomId?.rent || tenant.monthlyRent)}
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Rent per Person</p>
+                                    <div className="ml-6">
+                                        <p className="text-sm font-bold text-green-600">
+                                            {formatCurrency(tenant.monthlyRent || tenant.roomId?.perPersonRent || Math.ceil((tenant.roomId?.rent || 0) / (tenant.roomId?.occupancy || 1)))}
+                                            <span className="text-xs font-normal text-gray-500">/month</span>
                                         </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 mb-1">Deposit</p>
-                                        <p className="text-sm font-bold text-blue-600 ml-6">
-                                            {formatCurrency(tenant.propertyId?.security_deposit || tenant.security_deposit || tenant.securityDeposit)}
+                                        <p className="text-xs text-gray-400 mt-0.5">
+                                            Total Room: {formatCurrency(tenant.roomId?.rent)}
                                         </p>
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-gray-500 mb-1">Check-in Date</p>
-                                    <div className="flex items-center">
-                                        <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                                        <p className="text-sm font-medium text-gray-900">{formatDate(tenant.actualCheckInDate)}</p>
-                                    </div>
+                                    <p className="text-xs text-gray-500 mb-1">Deposit</p>
+                                    <p className="text-sm font-bold text-blue-600 ml-6">
+                                        {formatCurrency(tenant.security_deposit || tenant.securityDeposit || tenant.propertyId?.security_deposit)}
+                                    </p>
+                                </div>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Check-in Date</p>
+                                <div className="flex items-center">
+                                    <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+                                    <p className="text-sm font-medium text-gray-900">{formatDate(tenant.actualCheckInDate)}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
+
 
                     {/* Right Column: KYC & Documents */}
                     <div className="lg:col-span-2 space-y-6">
@@ -410,80 +415,82 @@ const OwnerTenantDetails = () => {
             </div>
 
             {/* Checkout Confirmation Modal */}
-            {showCheckoutModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
-                    >
-                        {/* Modal Header */}
-                        <div className="bg-gradient-to-r from-red-600 to-red-700 p-6 text-white">
-                            <h2 className="text-2xl font-bold mb-2">Confirm Checkout</h2>
-                            <p className="text-red-100">Are you sure you want to check out this tenant?</p>
-                        </div>
+            {
+                showCheckoutModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+                        >
+                            {/* Modal Header */}
+                            <div className="bg-gradient-to-r from-red-600 to-red-700 p-6 text-white">
+                                <h2 className="text-2xl font-bold mb-2">Confirm Checkout</h2>
+                                <p className="text-red-100">Are you sure you want to check out this tenant?</p>
+                            </div>
 
-                        {/* Modal Body */}
-                        <div className="p-6 space-y-4">
-                            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                                <div>
-                                    <p className="text-xs text-gray-500">Tenant Name</p>
-                                    <p className="text-base font-semibold text-gray-900">{tenant.userName}</p>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
+                            {/* Modal Body */}
+                            <div className="p-6 space-y-4">
+                                <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                                     <div>
-                                        <p className="text-xs text-gray-500">Monthly Rent</p>
-                                        <p className="text-sm font-semibold text-green-600">{formatCurrency(tenant.monthlyRent)}</p>
+                                        <p className="text-xs text-gray-500">Tenant Name</p>
+                                        <p className="text-base font-semibold text-gray-900">{tenant.userName}</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <p className="text-xs text-gray-500">Rent per Person</p>
+                                            <p className="text-sm font-semibold text-green-600">{formatCurrency(tenant.monthlyRent || tenant.roomId?.perPersonRent)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500">Deposit</p>
+                                            <p className="text-sm font-semibold text-blue-600">{formatCurrency(tenant.securityDeposit)}</p>
+                                        </div>
                                     </div>
                                     <div>
-                                        <p className="text-xs text-gray-500">Deposit</p>
-                                        <p className="text-sm font-semibold text-blue-600">{formatCurrency(tenant.securityDeposit)}</p>
+                                        <p className="text-xs text-gray-500">Check-in Date</p>
+                                        <p className="text-sm font-semibold text-gray-900">{formatDate(tenant.actualCheckInDate)}</p>
                                     </div>
                                 </div>
-                                <div>
-                                    <p className="text-xs text-gray-500">Check-in Date</p>
-                                    <p className="text-sm font-semibold text-gray-900">{formatDate(tenant.actualCheckInDate)}</p>
+
+                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                    <p className="text-sm text-yellow-800">
+                                        <strong>Note:</strong> This action will mark the tenant as checked out. The security deposit will need to be processed separately.
+                                    </p>
                                 </div>
                             </div>
 
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                                <p className="text-sm text-yellow-800">
-                                    <strong>Note:</strong> This action will mark the tenant as checked out. The security deposit will need to be processed separately.
-                                </p>
+                            {/* Modal Footer */}
+                            <div className="bg-gray-50 px-6 py-4 flex gap-3">
+                                <button
+                                    onClick={() => setShowCheckoutModal(false)}
+                                    disabled={checkingOut}
+                                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition-colors disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleCheckoutConfirm}
+                                    disabled={checkingOut}
+                                    className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {checkingOut ? (
+                                        <>
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                            Checking Out...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <XCircle className="w-5 h-5" />
+                                            Confirm Checkout
+                                        </>
+                                    )}
+                                </button>
                             </div>
-                        </div>
-
-                        {/* Modal Footer */}
-                        <div className="bg-gray-50 px-6 py-4 flex gap-3">
-                            <button
-                                onClick={() => setShowCheckoutModal(false)}
-                                disabled={checkingOut}
-                                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition-colors disabled:opacity-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleCheckoutConfirm}
-                                disabled={checkingOut}
-                                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                            >
-                                {checkingOut ? (
-                                    <>
-                                        <RefreshCw className="w-4 h-4 animate-spin" />
-                                        Checking Out...
-                                    </>
-                                ) : (
-                                    <>
-                                        <XCircle className="w-5 h-5" />
-                                        Confirm Checkout
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
-        </OwnerLayout>
+                        </motion.div>
+                    </div>
+                )
+            }
+        </OwnerLayout >
     );
 };
 

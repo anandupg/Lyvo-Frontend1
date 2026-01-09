@@ -167,8 +167,18 @@ const OwnerPayments = () => {
                     {/* Middle: Payment Info */}
                     <div className="hidden lg:flex items-center gap-6 xl:gap-8 min-w-max">
                         <div className="text-center">
-                            <p className="text-xs text-gray-500 mb-1">Amount</p>
-                            <p className="text-base font-bold text-green-600">{formatCurrency(payment.amount)}</p>
+                            <p className="text-xs text-gray-500 mb-1">
+                                {payment.type === 'rent' ? 'Rent Amount (Per Person)' : 'Amount'}
+                            </p>
+                            <div className="flex flex-col items-center">
+                                <p className="text-base font-bold text-green-600">{formatCurrency(payment.amount)}</p>
+                                {payment.type === 'rent' && payment.roomId && (
+                                    <p className="text-[10px] text-gray-400">
+                                        Total: {formatCurrency(payment.roomId.rent)}
+                                        {payment.roomId.occupancy > 1 && ` (${payment.roomId.occupancy} ppl)`}
+                                    </p>
+                                )}
+                            </div>
                         </div>
                         <div className="text-center">
                             <p className="text-xs text-gray-500 mb-1">Due Date</p>
@@ -222,7 +232,9 @@ const OwnerPayments = () => {
                 {/* Mobile View Items */}
                 <div className="lg:hidden mt-4 pt-4 border-t border-gray-200 grid grid-cols-2 gap-3 text-sm">
                     <div>
-                        <p className="text-xs text-gray-500 mb-0.5">Amount</p>
+                        <p className="text-xs text-gray-500 mb-0.5">
+                            {payment.type === 'rent' ? 'Rent Amount (Per Person)' : 'Amount'}
+                        </p>
                         <p className="font-bold text-green-600">{formatCurrency(payment.amount)}</p>
                     </div>
                     <div>
@@ -597,7 +609,7 @@ const OwnerPayments = () => {
                                                     <div className="mt-2 text-xs text-gray-500 space-y-1">
                                                         {selectedTenant.userEmail && <p className="flex items-center gap-1">📧 {selectedTenant.userEmail}</p>}
                                                         {selectedTenant.userPhone && <p className="flex items-center gap-1">📱 {selectedTenant.userPhone}</p>}
-                                                        <p className="flex items-center gap-1 font-medium text-green-700">💰 Rent: {formatCurrency(selectedTenant.monthlyRent)}/mo</p>
+                                                        <p className="flex items-center gap-1 font-medium text-green-700">💰 Rent: {formatCurrency(selectedTenant.roomId?.perPersonRent || selectedTenant.monthlyRent)}/mo (Per Person)</p>
                                                     </div>
                                                 </div>
                                             </div>

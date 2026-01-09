@@ -596,7 +596,7 @@ const AdminPropertyDetails = () => {
                       <h3 className="text-sm font-medium text-gray-700 mb-2">Monthly Rent</h3>
                       <p className="text-2xl font-bold text-gray-900">
                         {property.rooms && property.rooms.length > 0
-                          ? `₹${Math.min(...property.rooms.map(r => r.rent || 0)).toLocaleString()} - ₹${Math.max(...property.rooms.map(r => r.rent || 0)).toLocaleString()}`
+                          ? `₹${Math.min(...property.rooms.map(r => r.perPersonRent || Math.ceil((r.rent || 0) / (r.occupancy || 1)) || 0)).toLocaleString()} - ₹${Math.max(...property.rooms.map(r => r.perPersonRent || Math.ceil((r.rent || 0) / (r.occupancy || 1)) || 0)).toLocaleString()}`
                           : property.monthly_rent
                             ? `₹${property.monthly_rent.toLocaleString()}`
                             : '₹0'}
@@ -754,8 +754,12 @@ const AdminPropertyDetails = () => {
 
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                              <span className="text-sm text-gray-600">Rent</span>
-                              <span className="font-semibold text-gray-900">₹{room.rent?.toLocaleString() || '0'}</span>
+                              <span className="text-sm text-gray-600">Per Person Rent</span>
+                              <span className="font-semibold text-gray-900">₹{(room.perPersonRent || Math.ceil((room.rent || 0) / (room.occupancy || 1)))?.toLocaleString() || '0'}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-400">Total Rent</span>
+                              <span className="text-xs text-gray-500">₹{room.rent?.toLocaleString() || '0'}</span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-sm text-gray-600">Occupancy</span>
