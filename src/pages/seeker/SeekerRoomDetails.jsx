@@ -5,7 +5,8 @@ import {
     ArrowLeft, Heart, Share2, User, Mail, Phone, MapPin,
     Bed, Square, Users, CheckCircle, Wifi, Car, Tv, Utensils,
     Shield, Calendar, Clock, DollarSign, Star, Info, X,
-    Wind, Dog, Ban, Camera, AlertCircle
+    Wind, Dog, Ban, Camera, AlertCircle, Dumbbell, Droplets,
+    ArrowUp, Zap, Trees, Music, Shirt, Sparkles
 } from 'lucide-react';
 import SeekerLayout from '../../components/seeker/SeekerLayout';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -71,22 +72,27 @@ const SeekerRoomDetails = () => {
     const [loadingTenants, setLoadingTenants] = useState(false);
 
     // Derived state for images
-    const getPropertyImages = (prop) => {
-        if (!prop?.images) return [];
-        // Handle if images is an array (legacy?) or object
-        if (Array.isArray(prop.images)) return prop.images;
+    const getRoomImages = () => {
+        const imgs = [];
+        if (room?.room_image) imgs.push(room.room_image);
+        if (room?.toilet_image) imgs.push(room.toilet_image);
 
-        const { gallery, ...singleImages } = prop.images;
-        const distinctImages = Object.values(singleImages).filter(img => typeof img === 'string' && img.length > 0);
-        const galleryImages = Array.isArray(gallery) ? gallery : [];
-        return [...distinctImages, ...galleryImages];
+        if (property?.images) {
+            if (Array.isArray(property.images)) {
+                imgs.push(...property.images);
+            } else {
+                const { gallery, ...singleImages } = property.images;
+                const distinctImages = Object.values(singleImages).filter(img => typeof img === 'string' && img.length > 0);
+                const galleryImages = Array.isArray(gallery) ? gallery : [];
+                imgs.push(...distinctImages, ...galleryImages);
+            }
+        }
+        // Deduplicate
+        return [...new Set(imgs)];
     };
 
-    const images = [
-        ...(room?.room_image ? [room.room_image] : []),
-        ...(room?.toilet_image ? [room.toilet_image] : []),
-        ...getPropertyImages(property)
-    ];
+    const images = room && property ? getRoomImages() : [];
+
 
 
 
@@ -120,7 +126,11 @@ const SeekerRoomDetails = () => {
                 setCompatibility(data.data.compatibility);
 
                 if (data.data.property?.latitude && data.data.property?.longitude) {
-                    setMapCenter([parseFloat(data.data.property.latitude), parseFloat(data.data.property.longitude)]);
+                    const lat = parseFloat(data.data.property.latitude);
+                    const lng = parseFloat(data.data.property.longitude);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        setMapCenter([lat, lng]);
+                    }
                 }
             } else {
                 console.error('Room data missing or invalid structure:', data);
@@ -310,7 +320,7 @@ const SeekerRoomDetails = () => {
     const initiatePayment = async () => {
         const userId = getUserId();
         const token = localStorage.getItem('authToken');
-        const rent = parseFloat(room.rent);
+        const rent = parseFloat(room.perPersonRent || Math.ceil(room.rent / room.occupancy));
         const deposit = parseFloat(property.security_deposit || 0);
         const total = rent + deposit;
         const bookingFee = total * 0.10; // 10% of total
@@ -534,47 +544,70 @@ const SeekerRoomDetails = () => {
 
 
 
-                            {/* Key Metrics - Advanced Card Grid */}
+                            <h3 className="text-xl font-bold text-gray-900 mb-6">Room Highlights</h3>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                                {/* Occupancy */}
                                 <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-300 group">
-                                    <Users className="w-8 h-8 mb-3 text-gray-400 group-hover:text-blue-500 transition-colors stroke-[1.5]" />
-                                    <p className="font-bold text-xl text-gray-900 leading-none mb-1">{tenants?.length || 0} / {room.occupancy}</p>
-                                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Occupied</p>
+                                    <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                        <Users className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-xl text-gray-900 leading-none mb-1">{tenants?.length || 0} / {room.occupancy}</p>
+                                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Occupancy</p>
+                                    </div>
                                 </div>
+
+                                {/* Room Size */}
                                 <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-300 group">
-                                    <Square className="w-8 h-8 mb-3 text-gray-400 group-hover:text-blue-500 transition-colors stroke-[1.5]" />
-                                    <p className="font-bold text-xl text-gray-900 leading-none mb-1">{room.room_size || room.dimension || 'N/A'}</p>
-                                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">sq ft</p>
+                                    <div className="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                        <Square className="w-5 h-5 text-orange-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-xl text-gray-900 leading-none mb-1">{room.room_size || room.dimension || 'N/A'}</p>
+                                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Sq. Ft.</p>
+                                    </div>
                                 </div>
+
+                                {/* Bed Type */}
                                 <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-300 group">
-                                    <Bed className="w-8 h-8 mb-3 text-gray-400 group-hover:text-blue-500 transition-colors stroke-[1.5]" />
-                                    <p className="font-bold text-xl text-gray-900 leading-none mb-1 capitalize truncate">{room.bed_type || 'N/A'}</p>
-                                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Bed Type</p>
+                                    <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                        <Bed className="w-5 h-5 text-purple-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-xl text-gray-900 leading-none mb-1 capitalize truncate">{room.bed_type || 'N/A'}</p>
+                                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Bed Type</p>
+                                    </div>
                                 </div>
+
+                                {/* Availability Status */}
                                 <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-300 group">
-                                    <Calendar className="w-8 h-8 mb-3 text-gray-400 group-hover:text-blue-500 transition-colors stroke-[1.5]" />
-                                    <p className={`font-bold text-xl leading-none mb-1 capitalize truncate ${room.is_available ? 'text-green-600' : 'text-red-500'}`}>
-                                        {room.is_available ? 'Available' : 'Room is Full'}
-                                    </p>
-                                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Status</p>
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform ${room.is_available ? 'bg-green-50' : 'bg-red-50'}`}>
+                                        <Calendar className={`w-5 h-5 ${room.is_available ? 'text-green-600' : 'text-red-600'}`} />
+                                    </div>
+                                    <div>
+                                        <p className={`font-bold text-xl leading-none mb-1 capitalize truncate ${room.is_available ? 'text-green-600' : 'text-red-500'}`}>
+                                            {room.is_available ? 'Available' : 'Full'}
+                                        </p>
+                                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Status</p>
+                                    </div>
                                 </div>
                             </div>
 
                             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow duration-300 mt-6">
-                                <h2 className="text-2xl font-bold text-gray-900 mb-4">About this place</h2>
+                                <h2 className="text-2xl font-bold text-gray-900 mb-4">About this room</h2>
                                 <p className="text-gray-600 leading-relaxed text-lg">
-                                    {property.description || "A beautiful property located in a prime area, offering comfortable living spaces and modern amenities for a hassle-free stay."}
+                                    {room.description ? room.description : (property.description || "A beautiful property located in a prime area, offering comfortable living spaces and modern amenities for a hassle-free stay.")}
                                 </p>
                             </div>
 
                             {/* Living With Section (Main Content) */}
-                            {tenants && tenants.length > 0 && (
-                                <div className="mt-8">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div>
-                                            <h2 className="text-2xl font-bold text-gray-900">Living With</h2>
-                                            <p className="text-gray-500 mt-1">Get to know your potential future housemates</p>
-                                        </div>
+                            <div className="mt-8">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-gray-900">Living With</h2>
+                                        <p className="text-gray-500 mt-1">Get to know your potential future housemates</p>
+                                    </div>
+                                    {tenants && tenants.length > 0 && (
                                         <div className="flex items-center gap-3 bg-blue-50 px-4 py-2 rounded-full">
                                             <div className="flex -space-x-3">
                                                 {tenants.slice(0, 3).map((t, i) => (
@@ -588,8 +621,10 @@ const SeekerRoomDetails = () => {
                                             </div>
                                             <span className="text-sm font-bold text-blue-700">{tenants.length} Residents</span>
                                         </div>
-                                    </div>
+                                    )}
+                                </div>
 
+                                {tenants && tenants.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         {tenants.map((t, i) => (
                                             <div key={i} className="flex gap-4 p-5 bg-white border border-gray-100 rounded-2xl hover:shadow-lg hover:border-blue-100 transition-all duration-300 items-center">
@@ -637,8 +672,16 @@ const SeekerRoomDetails = () => {
                                             </div>
                                         ))}
                                     </div>
-                                </div>
-                            )}
+                                ) : (
+                                    <div className="p-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200 text-center">
+                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-gray-400">
+                                            <Users className="w-6 h-6" />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-gray-900 mb-1">Be the first to join!</h3>
+                                        <p className="text-gray-500 text-sm">This room is currently empty. Book now and start the community.</p>
+                                    </div>
+                                )}
+                            </div>
 
                             <hr className="border-gray-100" />
 
@@ -647,637 +690,705 @@ const SeekerRoomDetails = () => {
                                 <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
                                     <div className="flex justify-between items-center mb-6">
                                         <div>
-                                            <span className="text-3xl font-bold text-gray-900">₹{room.rent?.toLocaleString()}</span>
-                                            <span className="text-gray-500">/month</span>
+                                            <div>
+                                                <span className="text-3xl font-bold text-gray-900">₹{(room.perPersonRent || Math.ceil(room.rent / room.occupancy))?.toLocaleString()}</span>
+                                                <span className="text-gray-500">/person/month</span>
+                                                <div className="text-xs text-gray-400">Total Room Rent: ₹{room.rent?.toLocaleString()}</div>
+                                                <div className="text-[10px] text-green-600 font-medium mt-1">Per-person rent is fixed and does not increase with fewer occupants.</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <button
-                                        onClick={handleBookNow}
-                                        disabled={bookingLoading || bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved' || bookingStatus?.status === 'pending_approval' || !room.is_available}
-                                        className={`w-full py-4 text-white font-bold text-lg rounded-xl shadow-lg transition-all font-outfit uppercase tracking-tight
+                                        <button
+                                            onClick={handleBookNow}
+                                            disabled={bookingLoading || bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved' || bookingStatus?.status === 'pending_approval' || !room.is_available}
+                                            className={`w-full py-4 text-white font-bold text-lg rounded-xl shadow-lg transition-all font-outfit uppercase tracking-tight
                                           ${!room.is_available && !(bookingStatus && ['confirmed', 'approved', 'pending_approval'].includes(bookingStatus.status))
-                                                ? 'bg-gray-400 cursor-not-allowed'
-                                                : 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 shadow-red-100'
-                                            }`}
-                                    >
-                                        {!room.is_available && !(bookingStatus && ['confirmed', 'approved', 'pending_approval'].includes(bookingStatus.status)) ? "Room is Full" : "Book Now"}
-                                    </button>
+                                                    ? 'bg-gray-400 cursor-not-allowed'
+                                                    : 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 shadow-red-100'
+                                                }`}
+                                        >
+                                            {!room.is_available && !(bookingStatus && ['confirmed', 'approved', 'pending_approval'].includes(bookingStatus.status)) ? "Room is Full" : "Book Now"}
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* Mobile-only Compatibility Card */}
-                            {compatibility && (
-                                <div className="lg:hidden">
-                                    <div className="bg-white rounded-2xl shadow-sm p-6 overflow-hidden relative">
-                                        <div className="absolute top-0 right-0 p-3">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${compatibility.overallScore >= 80 ? 'bg-green-50' : compatibility.overallScore >= 60 ? 'bg-blue-50' : 'bg-red-50'}`}>
-                                                <Star className={`w-4 h-4 ${compatibility.overallScore >= 80 ? 'text-green-600' : compatibility.overallScore >= 60 ? 'text-blue-600' : 'text-red-600'}`} />
-                                            </div>
-                                        </div>
-                                        <h3 className="text-lg font-bold text-gray-900 mb-4 font-outfit">Compatibility</h3>
-                                        <div className="space-y-4">
-                                            <div className="flex items-end justify-between">
-                                                <div>
-                                                    <p className={`text-3xl font-black ${compatibility.overallScore >= 80 ? 'text-green-600' : compatibility.overallScore >= 60 ? 'text-blue-600' : 'text-red-600'}`}>{compatibility.overallScore}%</p>
-                                                    <p className="text-xs text-gray-500 font-medium">Lifestyle Match</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className={`text-sm font-bold px-2 py-0.5 rounded ${compatibility.overallScore >= 80 ? 'text-green-600 bg-green-50' : compatibility.overallScore >= 60 ? 'text-blue-600 bg-blue-50' : 'text-red-600 bg-red-50'}`}>{compatibility.label}</p>
+                                {/* Mobile-only Compatibility Card */}
+                                {compatibility && (
+                                    <div className="lg:hidden">
+                                        <div className="bg-white rounded-2xl shadow-sm p-6 overflow-hidden relative">
+                                            <div className="absolute top-0 right-0 p-3">
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${compatibility.overallScore >= 80 ? 'bg-green-50' : compatibility.overallScore >= 60 ? 'bg-blue-50' : 'bg-red-50'}`}>
+                                                    <Star className={`w-4 h-4 ${compatibility.overallScore >= 80 ? 'text-green-600' : compatibility.overallScore >= 60 ? 'text-blue-600' : 'text-red-600'}`} />
                                                 </div>
                                             </div>
-                                            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                                                <motion.div
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${compatibility.overallScore}%` }}
-                                                    transition={{ duration: 1, ease: 'easeOut' }}
-                                                    className={`h-full bg-gradient-to-r ${compatibility.overallScore >= 80 ? 'from-green-500 to-emerald-600' : compatibility.overallScore >= 60 ? 'from-blue-500 to-indigo-600' : 'from-red-500 to-pink-600'}`}
-                                                />
-                                            </div>
-                                            <p className="text-xs text-gray-500 leading-relaxed">
-                                                {compatibility.notes}
-                                            </p>
-                                            {/* Detailed Attribute Breakdown - Collapsible Compact */}
-                                            {compatibility.scoreBreakdown?.attributeScores && (
-                                                <details className="mt-6 group">
-                                                    <summary className="flex items-center justify-between cursor-pointer list-none py-2 border-b border-gray-100">
-                                                        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Detailed Breakdown</h4>
-                                                        <div className="text-gray-400 group-open:rotate-180 transition-transform">
-                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
-                                                        </div>
-                                                    </summary>
-                                                    <div className="pt-4 grid grid-cols-2 gap-x-4 gap-y-3">
-                                                        {compatibility.scoreBreakdown.attributeScores.map((attr, idx) => {
-                                                            const colorClass = attr.score >= 1.5 ? 'bg-green-500' : attr.score >= 0.8 ? 'bg-yellow-500' : 'bg-red-500';
-                                                            const widthPct = (attr.score / 2) * 100;
-                                                            return (
-                                                                <div key={idx} className="space-y-1.5">
-                                                                    {/* Label Row */}
-                                                                    <div className="flex flex-col">
-                                                                        <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-0.5">{attr.attribute}</span>
-                                                                        <div className="flex items-center justify-between text-xs">
-                                                                            <span className="text-gray-600 font-medium">{attr.seekerValue}</span>
-                                                                            <span className="text-gray-300 text-[10px] px-1">↔</span>
-                                                                            <span className="text-gray-900 font-bold truncate max-w-[100px] text-right" title={attr.tenantValue}>{attr.tenantValue}</span>
+                                            <h3 className="text-lg font-bold text-gray-900 mb-4 font-outfit">Compatibility</h3>
+                                            <div className="space-y-4">
+                                                <div className="flex items-end justify-between">
+                                                    <div>
+                                                        <p className={`text-3xl font-black ${compatibility.overallScore >= 80 ? 'text-green-600' : compatibility.overallScore >= 60 ? 'text-blue-600' : 'text-red-600'}`}>{compatibility.overallScore}%</p>
+                                                        <p className="text-xs text-gray-500 font-medium">Lifestyle Match</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className={`text-sm font-bold px-2 py-0.5 rounded ${compatibility.overallScore >= 80 ? 'text-green-600 bg-green-50' : compatibility.overallScore >= 60 ? 'text-blue-600 bg-blue-50' : 'text-red-600 bg-red-50'}`}>{compatibility.label}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${compatibility.overallScore}%` }}
+                                                        transition={{ duration: 1, ease: 'easeOut' }}
+                                                        className={`h-full bg-gradient-to-r ${compatibility.overallScore >= 80 ? 'from-green-500 to-emerald-600' : compatibility.overallScore >= 60 ? 'from-blue-500 to-indigo-600' : 'from-red-500 to-pink-600'}`}
+                                                    />
+                                                </div>
+                                                <p className="text-xs text-gray-500 leading-relaxed">
+                                                    {compatibility.notes}
+                                                </p>
+                                                {/* Detailed Attribute Breakdown - Collapsible Compact */}
+                                                {compatibility.scoreBreakdown?.attributeScores && (
+                                                    <details className="mt-6 group">
+                                                        <summary className="flex items-center justify-between cursor-pointer list-none py-2 border-b border-gray-100">
+                                                            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Detailed Breakdown</h4>
+                                                            <div className="text-gray-400 group-open:rotate-180 transition-transform">
+                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                                                            </div>
+                                                        </summary>
+                                                        <div className="pt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                                                            {compatibility.scoreBreakdown.attributeScores.map((attr, idx) => {
+                                                                const colorClass = attr.score >= 1.5 ? 'bg-green-500' : attr.score >= 0.8 ? 'bg-yellow-500' : 'bg-red-500';
+                                                                const widthPct = (attr.score / 2) * 100;
+                                                                return (
+                                                                    <div key={idx} className="space-y-1.5">
+                                                                        {/* Label Row */}
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-0.5">{attr.attribute}</span>
+                                                                            <div className="flex items-center justify-between text-xs">
+                                                                                <span className="text-gray-600 font-medium">{attr.seekerValue}</span>
+                                                                                <span className="text-gray-300 text-[10px] px-1">↔</span>
+                                                                                <span className="text-gray-900 font-bold truncate max-w-[100px] text-right" title={attr.tenantValue}>{attr.tenantValue}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        {/* Bar */}
+                                                                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                                                                            <div
+                                                                                className={`h-full rounded-full ${colorClass}`}
+                                                                                style={{ width: `${widthPct}%` }}
+                                                                            />
                                                                         </div>
                                                                     </div>
-                                                                    {/* Bar */}
-                                                                    <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                                                                        <div
-                                                                            className={`h-full rounded-full ${colorClass}`}
-                                                                            style={{ width: `${widthPct}%` }}
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </details>
-                                            )}
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </details>
+                                                )}
 
-                                            {/* Deterministic Insights Mobile */}
-                                            {compatibility.scoreBreakdown && (
-                                                <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <h4 className="text-xs font-bold text-green-700 uppercase tracking-wide mb-2 flex items-center gap-1">
-                                                            <CheckCircle className="w-3 h-3" /> Strong Matches
-                                                        </h4>
-                                                        {compatibility.scoreBreakdown.pros.length > 0 ? (
-                                                            <ul className="text-xs text-gray-600 space-y-1">
-                                                                {compatibility.scoreBreakdown.pros.map((attr, i) => (
-                                                                    <li key={i} className="flex items-center gap-1.5 list-disc list-inside">
-                                                                        {attr}
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        ) : (
-                                                            <p className="text-[10px] text-gray-400 italic">No specific strong matches.</p>
-                                                        )}
+                                                {/* Deterministic Insights Mobile */}
+                                                {compatibility.scoreBreakdown && (
+                                                    <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
+                                                        <div>
+                                                            <h4 className="text-xs font-bold text-green-700 uppercase tracking-wide mb-2 flex items-center gap-1">
+                                                                <CheckCircle className="w-3 h-3" /> Strong Matches
+                                                            </h4>
+                                                            {compatibility.scoreBreakdown.pros.length > 0 ? (
+                                                                <ul className="text-xs text-gray-600 space-y-1">
+                                                                    {compatibility.scoreBreakdown.pros.map((attr, i) => (
+                                                                        <li key={i} className="flex items-center gap-1.5 list-disc list-inside">
+                                                                            {attr}
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            ) : (
+                                                                <p className="text-[10px] text-gray-400 italic">No specific strong matches.</p>
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="text-xs font-bold text-red-700 uppercase tracking-wide mb-2 flex items-center gap-1">
+                                                                <AlertCircle className="w-3 h-3" /> Top Conflicts
+                                                            </h4>
+                                                            {compatibility.scoreBreakdown.cons.length > 0 ? (
+                                                                <ul className="text-xs text-gray-600 space-y-1">
+                                                                    {compatibility.scoreBreakdown.cons.map((attr, i) => (
+                                                                        <li key={i} className="flex items-center gap-1.5 list-disc list-inside">
+                                                                            {attr}
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            ) : (
+                                                                <p className="text-[10px] text-gray-400 italic">No major friction points.</p>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <h4 className="text-xs font-bold text-red-700 uppercase tracking-wide mb-2 flex items-center gap-1">
-                                                            <AlertCircle className="w-3 h-3" /> Top Conflicts
-                                                        </h4>
-                                                        {compatibility.scoreBreakdown.cons.length > 0 ? (
-                                                            <ul className="text-xs text-gray-600 space-y-1">
-                                                                {compatibility.scoreBreakdown.cons.map((attr, i) => (
-                                                                    <li key={i} className="flex items-center gap-1.5 list-disc list-inside">
-                                                                        {attr}
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        ) : (
-                                                            <p className="text-[10px] text-gray-400 italic">No major friction points.</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {/* Room Features - Card Grid */}
-                            <div>
-                                <h2 className="text-2xl font-bold text-gray-900 mb-6">Room Features</h2>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {room.amenities && Object.entries(room.amenities).map(([key, value]) => {
-                                        if (!value) return null;
-                                        const iconMap = {
-                                            ac: <Wind className="w-6 h-6" />,
-                                            wifi: <Wifi className="w-6 h-6" />,
-                                            tv: <Tv className="w-6 h-6" />,
-                                            fridge: <Utensils className="w-6 h-6" />,
-                                            wardrobe: <Square className="w-6 h-6" />,
-                                            studyTable: <Square className="w-6 h-6" />,
-                                            balcony: <Square className="w-6 h-6" />,
-                                            attachedBathroom: <Shield className="w-6 h-6" />
-                                        };
-                                        return (
-                                            <div key={key} className="flex flex-col items-center justify-center p-4 bg-white border border-gray-100 rounded-2xl hover:border-blue-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group cursor-default">
-                                                <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-50 transition-colors">
-                                                    <span className="text-gray-500 group-hover:text-blue-600 transition-colors">
-                                                        {iconMap[key] || <CheckCircle className="w-6 h-6" />}
+                                {/* Room Features - Card Grid */}
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Room Features</h2>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        {room.amenities && Object.entries(room.amenities).map(([key, value]) => {
+                                            if (!value) return null;
+                                            const iconMap = {
+                                                ac: <Wind className="w-6 h-6" />,
+                                                wifi: <Wifi className="w-6 h-6" />,
+                                                tv: <Tv className="w-6 h-6" />,
+                                                fridge: <Utensils className="w-6 h-6" />,
+                                                wardrobe: <Square className="w-6 h-6" />,
+                                                studyTable: <Square className="w-6 h-6" />,
+                                                balcony: <Square className="w-6 h-6" />,
+                                                attachedBathroom: <Shield className="w-6 h-6" />
+                                            };
+                                            return (
+                                                <div key={key} className="flex flex-col items-center justify-center p-4 bg-white border border-gray-100 rounded-2xl hover:border-blue-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group cursor-default">
+                                                    <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-50 transition-colors">
+                                                        <span className="text-gray-500 group-hover:text-blue-600 transition-colors">
+                                                            {iconMap[key] || <CheckCircle className="w-6 h-6" />}
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-sm font-bold text-gray-700 capitalize text-center leading-tight group-hover:text-gray-900">
+                                                        {key.replace(/([A-Z])/g, ' $1').trim()}
                                                     </span>
                                                 </div>
-                                                <span className="text-sm font-bold text-gray-700 capitalize text-center leading-tight group-hover:text-gray-900">
-                                                    {key.replace(/([A-Z])/g, ' $1').trim()}
-                                                </span>
+                                            );
+                                        })}
+                                        {(!room.amenities || Object.values(room.amenities).every(v => !v)) && (
+                                            <div className="col-span-full p-6 bg-gray-50 rounded-2xl text-center border border-dashed border-gray-200">
+                                                <p className="text-gray-500 font-medium">No specific room features listed.</p>
                                             </div>
-                                        );
-                                    })}
-                                    {(!room.amenities || Object.values(room.amenities).every(v => !v)) && (
-                                        <div className="col-span-full p-6 bg-gray-50 rounded-2xl text-center border border-dashed border-gray-200">
-                                            <p className="text-gray-500 font-medium">No specific room features listed.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Property Amenities - Shadowed Card */}
-                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow duration-300">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-2xl font-bold text-gray-900">Property Amenities</h2>
-                                    <span className="text-xs font-bold bg-gray-100 text-gray-600 px-3 py-1 rounded-full uppercase tracking-wider">Common Areas</span>
-                                </div>
-
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {property.amenities && Object.entries(property.amenities)
-                                        .filter(([_, v]) => v)
-                                        .map(([key]) => (
-                                            <div key={key} className="flex flex-col items-center justify-center p-4 rounded-2xl hover:bg-gray-50 transition-colors group cursor-default">
-                                                <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-indigo-100 transition-colors">
-                                                    <CheckCircle className="w-6 h-6 text-indigo-500 group-hover:scale-110 transition-transform" />
-                                                </div>
-                                                <span className="text-sm font-bold text-gray-700 capitalize text-center leading-tight group-hover:text-gray-900">
-                                                    {key.replace(/([A-Z])/g, ' $1').trim()}
-                                                </span>
-                                            </div>
-                                        ))
-                                    }
-                                </div>
-                            </div>
-
-                            <hr className="border-gray-100" />
-
-                            {/* House Rules - Shadowed Card */}
-                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow duration-300">
-                                <h2 className="text-2xl font-bold text-gray-900 mb-6">House Rules</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {property.rules && Object.entries(property.rules).map(([key, value]) => {
-                                        return (
-                                            <div key={key} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl">
-                                                <span className="text-gray-700 capitalize font-medium">{key.replace(/([A-Z])/g, ' $1').replace('Allowed', '').trim()}</span>
-                                                {value ? (
-                                                    <span className="text-green-700 text-sm font-bold bg-green-50 px-3 py-1 rounded-full">Allowed</span>
-                                                ) : (
-                                                    <span className="text-red-700 text-sm font-bold bg-red-50 px-3 py-1 rounded-full">No</span>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <hr className="border-gray-100" />
-
-                            {/* Current Tenants Section - Detailed Cards */}
-
-
-                            {/* Location */}
-                            <div className="space-y-4">
-                                <h2 className="text-2xl font-bold text-gray-900">Location Details</h2>
-                                <p className="text-gray-600 flex items-start gap-2">
-                                    <MapPin className="w-5 h-5 text-gray-400 mt-1 shrink-0" />
-                                    <span>
-                                        {property.address?.street}, {property.address?.city}, {property.address?.state}, {property.address?.pincode}
-                                        {property.address?.landmark && <span className="block text-sm text-gray-500 mt-1">Landmark: {property.address.landmark}</span>}
-                                    </span>
-                                </p>
-
-                                {/* Leaflet Map */}
-                                {mapCenter[0] !== 0 && (
-                                    <div className="mt-4 h-[250px] w-full rounded-2xl overflow-hidden relative z-0 border border-gray-200">
-                                        <MapContainer
-                                            center={mapCenter}
-                                            zoom={15}
-                                            style={{ height: '100%', width: '100%' }}
-                                            scrollWheelZoom={false}
-                                        >
-                                            <TileLayer
-                                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                            />
-                                            <Marker position={mapCenter}>
-                                                <Popup>
-                                                    <div className="p-2">
-                                                        <p className="font-bold text-gray-900">{property.property_name}</p>
-                                                    </div>
-                                                </Popup>
-                                            </Marker>
-                                        </MapContainer>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Right Column: Pricing & Owner (Sticky on Desktop) */}
-                        <div className="md:col-span-1">
-                            <div className="sticky top-24 space-y-6 mt-6">
-
-                                {/* Booking Card (Desktop) */}
-                                <div className="hidden md:block bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-                                    <div className="flex justify-between items-start mb-6">
-                                        <div className="flex flex-col">
-                                            <span className="text-3xl font-bold text-gray-900 tracking-tight">₹{room.rent?.toLocaleString()}</span>
-                                            <span className="text-gray-500 text-sm font-medium">/month</span>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">Deposit</p>
-                                            <p className="font-bold text-lg text-gray-900">₹{property.security_deposit?.toLocaleString()}</p>
-                                        </div>
-                                    </div>
-
-                                    <hr className="border-gray-100 my-4" />
-
-                                    <div className="space-y-3 mb-6">
-                                        <div className="flex justify-between text-base">
-                                            <span className="text-gray-600">Service Fee</span>
-                                            <span className="font-medium text-gray-900">₹0</span>
-                                        </div>
-                                        {/* Additional rows can be added here */}
-                                    </div>
-
-                                    <button
-                                        onClick={handleBookNow}
-                                        disabled={bookingLoading || bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved' || bookingStatus?.status === 'pending_approval' || (!room.is_available && !bookingStatus)}
-                                        className={`w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all transform active:scale-95 ${bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved'
-                                            ? 'bg-green-600 cursor-default'
-                                            : bookingStatus?.status === 'pending_approval'
-                                                ? 'bg-amber-500 cursor-default'
-                                                : !room.is_available
-                                                    ? 'bg-gray-400 cursor-not-allowed'
-                                                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
-                                            }`}
-                                    >
-                                        {bookingLoading ? (
-                                            <span className="flex items-center justify-center gap-2">
-                                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                Processing...
-                                            </span>
-                                        ) : bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved' ? (
-                                            <span className="flex items-center justify-center gap-2">
-                                                <CheckCircle className="w-5 h-5" /> Booked
-                                            </span>
-                                        ) : bookingStatus?.status === 'pending_approval' ? (
-                                            <span className="flex items-center justify-center gap-2">
-                                                <Clock className="w-5 h-5" /> Waiting for Approval
-                                            </span>
-                                        ) : bookingStatus?.status === 'pending_payment' ? (
-                                            "Complete Payment"
-                                        ) : !room.is_available ? (
-                                            "Room is Full"
-                                        ) : (
-                                            "Book Now"
                                         )}
-                                    </button>
-
-                                    {(bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved' || bookingStatus?.status === 'pending_approval') && (
-                                        <button
-                                            onClick={handleCancelBooking}
-                                            disabled={bookingLoading}
-                                            className="w-full mt-3 py-3 rounded-xl border border-red-200 text-red-600 font-semibold hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            <X className="w-4 h-4" /> Cancel Booking
-                                        </button>
-                                    )}
-
-                                    <p className="text-xs text-center text-gray-400 mt-4">
-                                        {bookingStatus?.status === 'pending_approval'
-                                            ? "Your request is being reviewed by the owner."
-                                            : "You'll pay a 10% booking fee to reserve."}
-                                    </p>
+                                    </div>
                                 </div>
 
-                                {/* Owner Card */}
-                                {owner && (
-                                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow duration-300">
-                                        <div className="flex items-center gap-4 mb-4">
-                                            <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden">
-                                                {owner.profilePicture ? (
-                                                    <img src={owner.profilePicture} alt={owner.name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
-                                                        <User className="w-8 h-8" />
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-gray-900">{owner.name}</h3>
-                                                <p className="text-sm text-gray-500">Property Owner</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex gap-3">
-                                            <button
-                                                onClick={handleMessage}
-                                                className="flex-1 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-                                            >
-                                                <Mail className="w-4 h-4" /> Message
-                                            </button>
-                                            <button
-                                                onClick={handleCall}
-                                                className="flex-1 py-2 border border-blue-200 bg-blue-50 rounded-lg text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
-                                            >
-                                                <Phone className="w-4 h-4" /> Call
-                                            </button>
-                                        </div>
+                                {/* Property Amenities - Shadowed Card */}
+                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow duration-300">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h2 className="text-2xl font-bold text-gray-900">Property Amenities</h2>
+                                        <span className="text-xs font-bold bg-gray-100 text-gray-600 px-3 py-1 rounded-full uppercase tracking-wider">Common Areas</span>
                                     </div>
-                                )}
+
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        {property.amenities && Object.entries(property.amenities)
+                                            .filter(([_, v]) => v)
+                                            .map(([key]) => {
+                                                const propIconMap = {
+                                                    gym: <Dumbbell className="w-6 h-6" />,
+                                                    pool: <Droplets className="w-6 h-6" />, /* fallback if Waves not avail */
+                                                    swimmingPool: <Droplets className="w-6 h-6" />,
+                                                    parking: <Car className="w-6 h-6" />,
+                                                    elevator: <ArrowUp className="w-6 h-6" />,
+                                                    lift: <ArrowUp className="w-6 h-6" />,
+                                                    security: <Shield className="w-6 h-6" />,
+                                                    cctv: <Camera className="w-6 h-6" />,
+                                                    powerBackup: <Zap className="w-6 h-6" />,
+                                                    wifi: <Wifi className="w-6 h-6" />,
+                                                    garden: <Trees className="w-6 h-6" />,
+                                                    clubhouse: <Music className="w-6 h-6" />,
+                                                    laundry: <Shirt className="w-6 h-6" />,
+                                                    housekeeping: <Sparkles className="w-6 h-6" />
+                                                };
+
+                                                return (
+                                                    <div key={key} className="flex flex-col items-center justify-center p-4 rounded-2xl bg-gray-50 border border-gray-100 hover:bg-indigo-50 hover:border-indigo-100 hover:shadow-sm transition-all duration-300 group cursor-default">
+                                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform">
+                                                            <span className="text-gray-400 group-hover:text-indigo-600 transition-colors">
+                                                                {propIconMap[key] || <CheckCircle className="w-6 h-6" />}
+                                                            </span>
+                                                        </div>
+                                                        <span className="text-sm font-bold text-gray-700 capitalize text-center leading-tight group-hover:text-indigo-900">
+                                                            {key.replace(/([A-Z])/g, ' $1').trim()}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })
+                                        }
+                                    </div>
+                                </div>
+
+                                <hr className="border-gray-100" />
+
+                                {/* House Rules - Shadowed Card */}
+                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow duration-300">
+                                    <h2 className="text-2xl font-bold text-gray-900 mb-6">House Rules</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {property.rules && Object.entries(property.rules).map(([key, value]) => {
+                                            return (
+                                                <div key={key} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl">
+                                                    <span className="text-gray-700 capitalize font-medium">{key.replace(/([A-Z])/g, ' $1').replace('Allowed', '').trim()}</span>
+                                                    {value ? (
+                                                        <span className="text-green-700 text-sm font-bold bg-green-50 px-3 py-1 rounded-full">Allowed</span>
+                                                    ) : (
+                                                        <span className="text-red-700 text-sm font-bold bg-red-50 px-3 py-1 rounded-full">No</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <hr className="border-gray-100" />
+
+                                {/* Current Tenants Section - Detailed Cards */}
 
 
-                                {/* Living With (Desktop) */}
+                                {/* Location */}
+                                {/* Location - Airbnb Style */}
+                                <div className="space-y-6 py-6">
+                                    <h2 className="text-2xl font-bold text-gray-900">Where you'll be</h2>
+                                    <p className="text-gray-600 flex items-start gap-2 text-lg">
+                                        <MapPin className="w-5 h-5 text-gray-900 mt-1 shrink-0" />
+                                        <span>
+                                            {property.address?.city}, {property.address?.state}, {property.address?.pincode}
+                                        </span>
+                                    </p>
 
+                                    {/* Leaflet Map */}
+                                    {mapCenter[0] && mapCenter[1] && !isNaN(mapCenter[0]) && !isNaN(mapCenter[1]) && mapCenter[0] !== 0 ? (
+                                        <div className="mt-6 h-[400px] md:h-[480px] w-full rounded-xl overflow-hidden relative z-0 border border-gray-200 shadow-sm">
+                                            <MapContainer
+                                                center={mapCenter}
+                                                zoom={13}
+                                                style={{ height: '100%', width: '100%' }}
+                                                scrollWheelZoom={false}
+                                            >
+                                                <TileLayer
+                                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                                />
+                                                <Marker position={mapCenter}>
+                                                    <Popup>
+                                                        <div className="p-2 font-sans">
+                                                            <p className="font-bold text-gray-900 text-sm mb-1">Exact location provided after booking</p>
+                                                        </div>
+                                                    </Popup>
+                                                </Marker>
+                                            </MapContainer>
+                                        </div>
+                                    ) : (
+                                        <div className="mt-6 h-[200px] w-full bg-gray-100 rounded-xl flex flex-col items-center justify-center text-gray-400 border border-gray-200">
+                                            <MapPin className="w-8 h-8 mb-2 opacity-50" />
+                                            <p className="text-sm font-medium">Map view unavailable</p>
+                                            <p className="text-xs">Location coordinates not provided</p>
+                                        </div>
+                                    )}
+                                    <div className="text-gray-500 text-sm mt-2">
+                                        <p>{property.address?.street}</p>
+                                        {property.address?.landmark && <p>Near {property.address.landmark}</p>}
+                                    </div>
+                                </div>
+                            </div>
 
-                                {/* Behavioral Match (Desktop) */}
-                                {compatibility && (
-                                    <div className="hidden md:block bg-white rounded-2xl shadow-lg border border-gray-100 p-6 overflow-hidden relative hover:shadow-xl transition-shadow duration-300">
-                                        <div className="absolute top-0 right-0 p-3">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${compatibility.overallScore >= 80 ? 'bg-green-50' : compatibility.overallScore >= 60 ? 'bg-blue-50' : 'bg-red-50'}`}>
-                                                <Star className={`w-4 h-4 ${compatibility.overallScore >= 80 ? 'text-green-600' : compatibility.overallScore >= 60 ? 'text-blue-600' : 'text-red-600'}`} />
+                            {/* Right Column: Pricing & Owner (Sticky on Desktop) */}
+                            <div className="md:col-span-1">
+                                <div className="sticky top-24 space-y-6 mt-6">
+
+                                    {/* Booking Card (Desktop) */}
+                                    <div className="hidden md:block bg-white rounded-xl shadow-xl border border-gray-200 p-6">
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div className="flex flex-col">
+                                                <span className="text-3xl font-bold text-gray-900 tracking-tight">₹{(room.perPersonRent || Math.ceil(room.rent / room.occupancy))?.toLocaleString()}</span>
+                                                <span className="text-gray-500 text-sm font-medium">/month</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">Deposit</p>
+                                                <p className="font-bold text-lg text-gray-900">₹{property.security_deposit?.toLocaleString()}</p>
                                             </div>
                                         </div>
-                                        <h3 className="text-lg font-bold text-gray-900 mb-4">Compatibility</h3>
-                                        <div className="space-y-4">
-                                            <div className="flex items-end justify-between">
-                                                <div>
-                                                    <p className={`text-3xl font-black ${compatibility.overallScore >= 80 ? 'text-green-600' : compatibility.overallScore >= 60 ? 'text-blue-600' : 'text-red-600'}`}>{compatibility.overallScore}%</p>
-                                                    <p className="text-xs text-gray-500 font-medium">Lifestyle Match</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className={`text-sm font-bold px-2 py-0.5 rounded ${compatibility.overallScore >= 80 ? 'text-green-600 bg-green-50' : compatibility.overallScore >= 60 ? 'text-blue-600 bg-blue-50' : 'text-red-600 bg-red-50'}`}>{compatibility.label}</p>
-                                                </div>
-                                            </div>
-                                            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                                                <motion.div
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${compatibility.overallScore}%` }}
-                                                    transition={{ duration: 1, ease: 'easeOut' }}
-                                                    className={`h-full bg-gradient-to-r ${compatibility.overallScore >= 80 ? 'from-green-500 to-emerald-600' : compatibility.overallScore >= 60 ? 'from-blue-500 to-indigo-600' : 'from-red-500 to-pink-600'}`}
-                                                />
-                                            </div>
-                                            <p className="text-xs text-gray-500 leading-relaxed">
-                                                {compatibility.notes || <span>Based on your preferences for <span className="text-gray-900 font-semibold">Quiet Evenings</span> and <span className="text-gray-900 font-semibold">Shared Kitchen</span> usage.</span>}
-                                            </p>
 
-                                            {/* Detailed Attribute Breakdown - Collapsible Compact */}
-                                            {compatibility.scoreBreakdown?.attributeScores && (
-                                                <details className="mt-6 group">
-                                                    <summary className="flex items-center justify-between cursor-pointer list-none py-2 border-b border-gray-100">
-                                                        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Detailed Breakdown</h4>
-                                                        <div className="text-gray-400 group-open:rotate-180 transition-transform">
-                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                                        <hr className="border-gray-100 my-4" />
+
+                                        <div className="space-y-3 mb-6">
+                                            <div className="flex justify-between text-base">
+                                                <span className="text-gray-600">Service Fee</span>
+                                                <span className="font-medium text-gray-900">₹0</span>
+                                            </div>
+                                            {/* Additional rows can be added here */}
+                                        </div>
+
+                                        <button
+                                            onClick={handleBookNow}
+                                            disabled={bookingLoading || bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved' || bookingStatus?.status === 'pending_approval' || (!room.is_available && !bookingStatus)}
+                                            className={`w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all transform active:scale-95 ${bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved'
+                                                ? 'bg-green-600 cursor-default'
+                                                : bookingStatus?.status === 'pending_approval'
+                                                    ? 'bg-amber-500 cursor-default'
+                                                    : !room.is_available
+                                                        ? 'bg-gray-400 cursor-not-allowed'
+                                                        : 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 shadow-red-100'
+                                                }`}
+                                        >
+                                            {bookingLoading ? (
+                                                <span className="flex items-center justify-center gap-2">
+                                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                    Processing...
+                                                </span>
+                                            ) : bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved' ? (
+                                                <span className="flex items-center justify-center gap-2">
+                                                    <CheckCircle className="w-5 h-5" /> Booked
+                                                </span>
+                                            ) : bookingStatus?.status === 'pending_approval' ? (
+                                                <span className="flex items-center justify-center gap-2">
+                                                    <Clock className="w-5 h-5" /> Waiting for Approval
+                                                </span>
+                                            ) : bookingStatus?.status === 'pending_payment' ? (
+                                                "Complete Payment"
+                                            ) : !room.is_available ? (
+                                                "Room is Full"
+                                            ) : (
+                                                "Book Now"
+                                            )}
+                                        </button>
+
+                                        {(bookingStatus?.status === 'confirmed' || bookingStatus?.status === 'approved' || bookingStatus?.status === 'pending_approval') && (
+                                            <button
+                                                onClick={handleCancelBooking}
+                                                disabled={bookingLoading}
+                                                className="w-full mt-3 py-3 rounded-xl border border-red-200 text-red-600 font-semibold hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+                                            >
+                                                <X className="w-4 h-4" /> Cancel Booking
+                                            </button>
+                                        )}
+
+                                        <p className="text-xs text-center text-gray-400 mt-4">
+                                            {bookingStatus?.status === 'pending_approval'
+                                                ? "Your request is being reviewed by the owner."
+                                                : "You'll pay a 10% booking fee to reserve."}
+                                        </p>
+                                    </div>
+
+                                    {/* Owner Card */}
+                                    {owner && (
+                                        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow duration-300">
+                                            <div className="flex items-center gap-4 mb-4">
+                                                <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden">
+                                                    {owner.profilePicture ? (
+                                                        <img src={owner.profilePicture} alt={owner.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
+                                                            <User className="w-8 h-8" />
                                                         </div>
-                                                    </summary>
-                                                    <div className="pt-4 grid grid-cols-2 gap-x-4 gap-y-4">
-                                                        {compatibility.scoreBreakdown.attributeScores.map((attr, idx) => {
-                                                            const colorClass = attr.score >= 1.5 ? 'bg-green-500' : attr.score >= 0.8 ? 'bg-yellow-500' : 'bg-red-500';
-                                                            const widthPct = (attr.score / 2) * 100;
-                                                            return (
-                                                                <div key={idx} className="space-y-1.5">
-                                                                    {/* Label Row */}
-                                                                    <div className="flex flex-col">
-                                                                        <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-0.5">{attr.attribute}</span>
-                                                                        <div className="flex items-center justify-between text-xs">
-                                                                            <span className="text-gray-600 font-medium">{attr.seekerValue}</span>
-                                                                            <span className="text-gray-300 text-[10px] px-1">↔</span>
-                                                                            <span className="text-gray-900 font-bold truncate max-w-[120px] text-right" title={`Residents: ${attr.tenantValue}`}>{attr.tenantValue}</span>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <h3 className="font-bold text-gray-900 text-lg">{owner.name}</h3>
+                                                        <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide flex items-center gap-0.5">
+                                                            <CheckCircle className="w-3 h-3" /> Verified Owner
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-500">Joined {new Date(owner.createdAt || Date.now()).getFullYear()}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-3">
+                                                <button
+                                                    onClick={handleMessage}
+                                                    className="flex-1 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <Mail className="w-4 h-4" /> Message
+                                                </button>
+                                                <button
+                                                    onClick={handleCall}
+                                                    className="flex-1 py-2 border border-blue-200 bg-blue-50 rounded-lg text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <Phone className="w-4 h-4" /> Call
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+
+                                    {/* Living With (Desktop) */}
+
+
+                                    {/* Behavioral Match (Desktop) */}
+                                    {compatibility ? (
+                                        <div className="hidden md:block bg-white rounded-2xl shadow-lg border border-gray-100 p-6 overflow-hidden relative hover:shadow-xl transition-shadow duration-300">
+                                            <div className="absolute top-0 right-0 p-3">
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${compatibility.overallScore >= 80 ? 'bg-green-50' : compatibility.overallScore >= 60 ? 'bg-blue-50' : 'bg-red-50'}`}>
+                                                    <Star className={`w-4 h-4 ${compatibility.overallScore >= 80 ? 'text-green-600' : compatibility.overallScore >= 60 ? 'text-blue-600' : 'text-red-600'}`} />
+                                                </div>
+                                            </div>
+                                            <h3 className="text-lg font-bold text-gray-900 mb-4">Compatibility</h3>
+                                            <div className="space-y-4">
+                                                <div className="flex items-end justify-between">
+                                                    <div>
+                                                        <p className={`text-3xl font-black ${compatibility.overallScore >= 80 ? 'text-green-600' : compatibility.overallScore >= 60 ? 'text-blue-600' : 'text-red-600'}`}>{compatibility.overallScore}%</p>
+                                                        <p className="text-xs text-gray-500 font-medium">Lifestyle Match</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className={`text-sm font-bold px-2 py-0.5 rounded ${compatibility.overallScore >= 80 ? 'text-green-600 bg-green-50' : compatibility.overallScore >= 60 ? 'text-blue-600 bg-blue-50' : 'text-red-600 bg-red-50'}`}>{compatibility.label}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${compatibility.overallScore}%` }}
+                                                        transition={{ duration: 1, ease: 'easeOut' }}
+                                                        className={`h-full bg-gradient-to-r ${compatibility.overallScore >= 80 ? 'from-green-500 to-emerald-600' : compatibility.overallScore >= 60 ? 'from-blue-500 to-indigo-600' : 'from-red-500 to-pink-600'}`}
+                                                    />
+                                                </div>
+                                                <p className="text-xs text-gray-500 leading-relaxed">
+                                                    {compatibility.notes || <span>Based on your preferences for <span className="text-gray-900 font-semibold">Quiet Evenings</span> and <span className="text-gray-900 font-semibold">Shared Kitchen</span> usage.</span>}
+                                                </p>
+
+                                                {/* Detailed Attribute Breakdown - Collapsible Compact */}
+                                                {compatibility.scoreBreakdown?.attributeScores && (
+                                                    <details className="mt-6 group">
+                                                        <summary className="flex items-center justify-between cursor-pointer list-none py-2 border-b border-gray-100">
+                                                            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Detailed Breakdown</h4>
+                                                            <div className="text-gray-400 group-open:rotate-180 transition-transform">
+                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                                                            </div>
+                                                        </summary>
+                                                        <div className="pt-4 grid grid-cols-2 gap-x-4 gap-y-4">
+                                                            {compatibility.scoreBreakdown.attributeScores.map((attr, idx) => {
+                                                                const colorClass = attr.score >= 1.5 ? 'bg-green-500' : attr.score >= 0.8 ? 'bg-yellow-500' : 'bg-red-500';
+                                                                const widthPct = (attr.score / 2) * 100;
+                                                                return (
+                                                                    <div key={idx} className="space-y-1.5">
+                                                                        {/* Label Row */}
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-0.5">{attr.attribute}</span>
+                                                                            <div className="flex items-center justify-between text-xs">
+                                                                                <span className="text-gray-600 font-medium">{attr.seekerValue}</span>
+                                                                                <span className="text-gray-300 text-[10px] px-1">↔</span>
+                                                                                <span className="text-gray-900 font-bold truncate max-w-[120px] text-right" title={`Residents: ${attr.tenantValue}`}>{attr.tenantValue}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        {/* Bar */}
+                                                                        <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden shadow-inner">
+                                                                            <motion.div
+                                                                                initial={{ width: 0 }}
+                                                                                animate={{ width: `${widthPct}%` }}
+                                                                                transition={{ duration: 0.8, ease: "easeOut" }}
+                                                                                className={`h-full rounded-full ${colorClass}`}
+                                                                            />
                                                                         </div>
                                                                     </div>
-                                                                    {/* Bar */}
-                                                                    <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden shadow-inner">
-                                                                        <motion.div
-                                                                            initial={{ width: 0 }}
-                                                                            animate={{ width: `${widthPct}%` }}
-                                                                            transition={{ duration: 0.8, ease: "easeOut" }}
-                                                                            className={`h-full rounded-full ${colorClass}`}
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </details>
-                                            )}
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </details>
+                                                )}
 
-                                            {/* Deterministic Insights */}
-                                            {compatibility.scoreBreakdown && (
-                                                <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <h4 className="text-xs font-bold text-green-700 uppercase tracking-wide mb-2 flex items-center gap-1">
-                                                            <CheckCircle className="w-3 h-3" /> Strong Matches
-                                                        </h4>
-                                                        {compatibility.scoreBreakdown.pros.length > 0 ? (
-                                                            <ul className="text-xs text-gray-600 space-y-1">
-                                                                {compatibility.scoreBreakdown.pros.map((attr, i) => (
-                                                                    <li key={i} className="flex items-center gap-1.5 list-disc list-inside">
-                                                                        {attr}
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        ) : (
-                                                            <p className="text-[10px] text-gray-400 italic">No specific strong matches.</p>
-                                                        )}
+                                                {/* Deterministic Insights */}
+                                                {compatibility.scoreBreakdown && (
+                                                    <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
+                                                        <div>
+                                                            <h4 className="text-xs font-bold text-green-700 uppercase tracking-wide mb-2 flex items-center gap-1">
+                                                                <CheckCircle className="w-3 h-3" /> Strong Matches
+                                                            </h4>
+                                                            {compatibility.scoreBreakdown.pros.length > 0 ? (
+                                                                <ul className="text-xs text-gray-600 space-y-1">
+                                                                    {compatibility.scoreBreakdown.pros.map((attr, i) => (
+                                                                        <li key={i} className="flex items-center gap-1.5 list-disc list-inside">
+                                                                            {attr}
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            ) : (
+                                                                <p className="text-[10px] text-gray-400 italic">No specific strong matches.</p>
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="text-xs font-bold text-red-700 uppercase tracking-wide mb-2 flex items-center gap-1">
+                                                                <AlertCircle className="w-3 h-3" /> Top Conflicts
+                                                            </h4>
+                                                            {compatibility.scoreBreakdown.cons.length > 0 ? (
+                                                                <ul className="text-xs text-gray-600 space-y-1">
+                                                                    {compatibility.scoreBreakdown.cons.map((attr, i) => (
+                                                                        <li key={i} className="flex items-center gap-1.5 list-disc list-inside">
+                                                                            {attr}
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            ) : (
+                                                                <p className="text-[10px] text-gray-400 italic">No major friction points.</p>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <h4 className="text-xs font-bold text-red-700 uppercase tracking-wide mb-2 flex items-center gap-1">
-                                                            <AlertCircle className="w-3 h-3" /> Top Conflicts
-                                                        </h4>
-                                                        {compatibility.scoreBreakdown.cons.length > 0 ? (
-                                                            <ul className="text-xs text-gray-600 space-y-1">
-                                                                {compatibility.scoreBreakdown.cons.map((attr, i) => (
-                                                                    <li key={i} className="flex items-center gap-1.5 list-disc list-inside">
-                                                                        {attr}
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        ) : (
-                                                            <p className="text-[10px] text-gray-400 italic">No major friction points.</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    ) : (
+                                        <div className="hidden md:block bg-white rounded-2xl shadow-lg border border-gray-100 p-6 relative h-fit">
+                                            <h3 className="text-lg font-bold text-gray-900 mb-4">Compatibility</h3>
+                                            <div className="p-4 bg-gray-50 rounded-xl text-center border border-dashed border-gray-200">
+                                                <Star className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                                                <p className="text-sm font-medium text-gray-600">Login to see match</p>
+                                                <p className="text-xs text-gray-400 mt-1">We calculate compatibility based on your lifestyle.</p>
+                                            </div>
+                                        </div>
+                                    )}
 
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Booking Confirmation Modal */}
-                <AnimatePresence>
-                    {showConfirmationModal && (
-                        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                                className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative"
-                            >
-                                <button
-                                    onClick={() => setShowConfirmationModal(false)}
-                                    className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
+                    {/* Booking Confirmation Modal */}
+                    <AnimatePresence>
+                        {showConfirmationModal && (
+                            <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                    className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative"
                                 >
-                                    <X className="w-5 h-5" />
-                                </button>
-
-                                <div className="p-8">
-                                    <h2 className="text-2xl font-black text-gray-900 mb-2 font-outfit uppercase tracking-tight">Booking Summary</h2>
-                                    <p className="text-gray-500 mb-6 text-sm">Please review the costs before proceeding</p>
-
-                                    {/* Room Preview in Modal */}
-                                    <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl mb-6">
-                                        <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 shadow-sm border border-white">
-                                            <img
-                                                src={room.room_image || room.roomImage || (Array.isArray(property.images) ? property.images[0] : property.image)}
-                                                alt="Room"
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-gray-900">Room {room.room_number || room.roomNumber}</h4>
-                                            <p className="text-xs text-gray-500">{room.room_type} • {room.bed_type}</p>
-                                            <p className="text-[10px] text-red-600 font-semibold mt-0.5">{property.property_name}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4 mb-8">
-                                        <div className="flex justify-between items-center text-gray-600">
-                                            <span>Monthly Rent</span>
-                                            <span className="font-semibold text-gray-900">₹{room.rent}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-gray-600">
-                                            <span>Security Deposit</span>
-                                            <span className="font-semibold text-gray-900">₹{property.security_deposit || 0}</span>
-                                        </div>
-                                        <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
-                                            <span className="text-gray-900 font-bold">Total Amount</span>
-                                            <span className="text-xl font-bold text-red-600">₹{parseFloat(room.rent) + parseFloat(property.security_deposit || 0)}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-red-50 rounded-xl p-5 mb-8">
-                                        <div className="flex gap-3">
-                                            <Info className="w-6 h-6 text-red-600 shrink-0" />
-                                            <div>
-                                                <p className="text-sm font-bold text-red-900">Booking Fee: 10%</p>
-                                                <p className="text-sm text-red-700 mt-1 leading-relaxed">
-                                                    You need to pay ₹{((parseFloat(room.rent) + parseFloat(property.security_deposit || 0)) * 0.10).toFixed(2)} to reserve this room. This amount will be adjusted in your first month's payment.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
                                     <button
-                                        onClick={initiatePayment}
-                                        disabled={bookingLoading}
-                                        className="w-full py-4 bg-gradient-to-r from-red-600 to-red-500 text-white rounded-xl font-bold text-lg hover:from-red-700 hover:to-red-600 transition-all shadow-lg shadow-red-100 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02]"
+                                        onClick={() => setShowConfirmationModal(false)}
+                                        className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
                                     >
-                                        {bookingLoading ? (
-                                            <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        ) : (
-                                            <>Pay ₹{((parseFloat(room.rent) + parseFloat(property.security_deposit || 0)) * 0.10).toFixed(2)} & Book Now</>
-                                        )}
+                                        <X className="w-5 h-5" />
                                     </button>
-                                    <p className="text-center text-xs text-gray-400 mt-5">
-                                        By proceeding, you agree to Lyvo's Terms and Conditions
-                                    </p>
-                                </div>
-                            </motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>
 
-                {/* All Photos Gallery Modal */}
-                <AnimatePresence>
-                    {showAllPhotosModal && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[3000] bg-white overflow-y-auto"
-                        >
-                            {/* Modal Header */}
-                            <div className="sticky top-0 bg-white/80 backdrop-blur-md z-10 px-4 py-4 md:px-8 border-b border-gray-100 flex items-center justify-between">
-                                <button
-                                    onClick={() => setShowAllPhotosModal(false)}
-                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center gap-2 text-gray-600 font-semibold"
-                                >
-                                    <ArrowLeft className="w-5 h-5" />
-                                    <span>Back</span>
-                                </button>
-                                <h2 className="font-outfit font-black text-xl uppercase tracking-tight text-red-600">Property Gallery</h2>
-                                <div className="w-10" /> {/* Spacer */}
-                            </div>
+                                    <div className="p-8">
+                                        <h2 className="text-2xl font-black text-gray-900 mb-2 font-outfit uppercase tracking-tight">Booking Summary</h2>
+                                        <p className="text-gray-500 mb-6 text-sm">Please review the costs before proceeding</p>
 
-                            {/* Gallery Content */}
-                            <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
-                                <div className="grid grid-cols-1 gap-8">
-                                    {images.map((img, idx) => (
-                                        <div key={idx} className="space-y-4">
-                                            <div className="rounded-2xl overflow-hidden bg-gray-50 shadow-sm border border-gray-100">
+                                        {/* Room Preview in Modal */}
+                                        <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl mb-6">
+                                            <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 shadow-sm border border-white">
                                                 <img
-                                                    src={img}
-                                                    alt={`Photo ${idx + 1}`}
-                                                    className="w-full h-auto object-contain max-h-[90vh] mx-auto"
-                                                    loading="lazy"
+                                                    src={room.room_image || room.roomImage || (Array.isArray(property.images) ? property.images[0] : property.image)}
+                                                    alt="Room"
+                                                    className="w-full h-full object-cover"
                                                 />
                                             </div>
-                                            <div className="flex justify-between items-center px-2">
-                                                <span className="text-gray-400 text-sm font-medium">Photo {idx + 1} of {images.length}</span>
+                                            <div>
+                                                <h4 className="font-bold text-gray-900">Room {room.room_number || room.roomNumber}</h4>
+                                                <p className="text-xs text-gray-500">{room.room_type} • {room.bed_type}</p>
+                                                <p className="text-[10px] text-red-600 font-semibold mt-0.5">{property.property_name}</p>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
 
-                            {/* Back to top hint */}
-                            <div className="text-center py-12 bg-gray-50 border-t border-gray-100 mt-8">
-                                <p className="text-gray-400 text-sm mb-4 italic">End of gallery</p>
-                                <button
-                                    onClick={() => {
-                                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                                        setShowAllPhotosModal(false);
-                                    }}
-                                    className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-100"
-                                >
-                                    Back to Room
-                                </button>
+                                        <div className="space-y-4 mb-8">
+                                            <div className="flex justify-between items-center text-gray-600">
+                                                <span>Monthly Rent (Per Person)</span>
+                                                <span className="font-semibold text-gray-900">₹{room.perPersonRent || Math.ceil(room.rent / room.occupancy)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-gray-600">
+                                                <span>Security Deposit</span>
+                                                <span className="font-semibold text-gray-900">₹{property.security_deposit || 0}</span>
+                                            </div>
+                                            <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
+                                                <span className="text-gray-900 font-bold">Total Amount</span>
+                                                <span className="text-xl font-bold text-red-600">₹{parseFloat(room.perPersonRent || Math.ceil(room.rent / room.occupancy)) + parseFloat(property.security_deposit || 0)}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-red-50 rounded-xl p-5 mb-8">
+                                            <div className="flex gap-3">
+                                                <Info className="w-6 h-6 text-red-600 shrink-0" />
+                                                <div>
+                                                    <p className="text-sm font-bold text-red-900">Booking Fee: 10%</p>
+                                                    <p className="text-sm text-red-700 mt-1 leading-relaxed">
+                                                        You need to pay ₹{((parseFloat(room.perPersonRent || Math.ceil(room.rent / room.occupancy)) + parseFloat(property.security_deposit || 0)) * 0.10).toFixed(2)} to reserve this room. This amount will be adjusted in your first month's payment.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={initiatePayment}
+                                            disabled={bookingLoading}
+                                            className="w-full py-4 bg-gradient-to-r from-red-600 to-red-500 text-white rounded-xl font-bold text-lg hover:from-red-700 hover:to-red-600 transition-all shadow-lg shadow-red-100 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02]"
+                                        >
+                                            {bookingLoading ? (
+                                                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            ) : (
+                                                <>Pay ₹{((parseFloat(room.perPersonRent || Math.ceil(room.rent / room.occupancy)) + parseFloat(property.security_deposit || 0)) * 0.10).toFixed(2)} & Book Now</>
+                                            )}
+                                        </button>
+                                        <p className="text-center text-xs text-gray-400 mt-5">
+                                            By proceeding, you agree to Lyvo's Terms and Conditions
+                                        </p>
+                                    </div>
+                                </motion.div>
                             </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                        )}
+                    </AnimatePresence>
+
+                    {/* All Photos Gallery Modal */}
+                    <AnimatePresence>
+                        {showAllPhotosModal && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="fixed inset-0 z-[3000] bg-white overflow-y-auto"
+                            >
+                                {/* Modal Header */}
+                                <div className="sticky top-0 bg-white/80 backdrop-blur-md z-10 px-4 py-4 md:px-8 border-b border-gray-100 flex items-center justify-between">
+                                    <button
+                                        onClick={() => setShowAllPhotosModal(false)}
+                                        className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center gap-2 text-gray-600 font-semibold"
+                                    >
+                                        <ArrowLeft className="w-5 h-5" />
+                                        <span>Back</span>
+                                    </button>
+                                    <h2 className="font-outfit font-black text-xl uppercase tracking-tight text-red-600">Property Gallery</h2>
+                                    <div className="w-10" /> {/* Spacer */}
+                                </div>
+
+                                {/* Gallery Content */}
+                                <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
+                                    <div className="grid grid-cols-1 gap-8">
+                                        {images.map((img, idx) => (
+                                            <div key={idx} className="space-y-4">
+                                                <div className="rounded-2xl overflow-hidden bg-gray-50 shadow-sm border border-gray-100">
+                                                    <img
+                                                        src={img}
+                                                        alt={`Photo ${idx + 1}`}
+                                                        className="w-full h-auto object-contain max-h-[90vh] mx-auto"
+                                                        loading="lazy"
+                                                    />
+                                                </div>
+                                                <div className="flex justify-between items-center px-2">
+                                                    <span className="text-gray-400 text-sm font-medium">Photo {idx + 1} of {images.length}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Back to top hint */}
+                                <div className="text-center py-12 bg-gray-50 border-t border-gray-100 mt-8">
+                                    <p className="text-gray-400 text-sm mb-4 italic">End of gallery</p>
+                                    <button
+                                        onClick={() => {
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                            setShowAllPhotosModal(false);
+                                        }}
+                                        className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-100"
+                                    >
+                                        Back to Room
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+                {/* Mobile Floating Booking Bar */}
+                <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Rent per person</p>
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-xl font-bold text-gray-900">₹{(room.perPersonRent || Math.ceil(room.rent / room.occupancy))?.toLocaleString()}</span>
+                                <span className="text-xs text-gray-500 font-medium">/month</span>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setShowConfirmationModal(true)}
+                            className="flex-1 max-w-[200px] py-3 bg-gradient-to-r from-red-600 to-red-500 text-white rounded-xl font-bold shadow-lg shadow-red-100 active:scale-95 transition-transform"
+                        >
+                            Book Now
+                        </button>
+                    </div>
+                </div>
             </div>
         </SeekerLayout>
     );
