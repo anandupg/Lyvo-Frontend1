@@ -648,6 +648,11 @@ const ExpenseSplit = () => {
                                                 type="number"
                                                 required
                                                 min="1"
+                                                onKeyDown={(e) => {
+                                                    if (e.key === '-' || e.key === 'e') {
+                                                        e.preventDefault();
+                                                    }
+                                                }}
                                                 value={formData.totalAmount}
                                                 onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
                                                 className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
