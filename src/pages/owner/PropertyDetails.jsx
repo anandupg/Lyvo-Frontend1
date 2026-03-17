@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import OwnerLayout from '../../components/owner/OwnerLayout';
@@ -139,6 +139,7 @@ const PropertyDetails = () => {
       bed_type: room.bed_type,
       occupancy: room.occupancy,
       rent: room.rent,
+      approval_status: room.approval_status,
       description: room.description || '',
       amenities: {
         ac: false,
@@ -518,7 +519,7 @@ const PropertyDetails = () => {
   const removeRoomImage = () => {
     setEditRoomData(prev => ({
       ...prev,
-      room_image: null,
+      room_image: '',
       room_image_file: null
     }));
   };
@@ -526,7 +527,7 @@ const PropertyDetails = () => {
   const removeToiletImage = () => {
     setEditRoomData(prev => ({
       ...prev,
-      toilet_image: null,
+      toilet_image: '',
       toilet_image_file: null
     }));
   };
@@ -582,8 +583,10 @@ const PropertyDetails = () => {
       const roomDataToSend = { ...editRoomData };
       delete roomDataToSend.room_image_file;
       delete roomDataToSend.toilet_image_file;
-      delete roomDataToSend.room_image;
-      delete roomDataToSend.toilet_image;
+      
+      // If there is a new image file, we don't send the URL field to avoid conflicts
+      if (editRoomData.room_image_file) delete roomDataToSend.room_image;
+      if (editRoomData.toilet_image_file) delete roomDataToSend.toilet_image;
 
       // Append roomData JSON for backends that expect it
       formData.append('roomData', JSON.stringify(roomDataToSend));
@@ -1844,38 +1847,40 @@ const PropertyDetails = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
             <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-xl">
               {/* Modal Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-200 gap-4">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
                     <span className="text-red-600 font-bold text-lg">{selectedRoom.room_number}</span>
                   </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">Room {selectedRoom.room_number}</h2>
-                    <p className="text-sm text-gray-500">{selectedRoom.room_type} â€¢ {selectedRoom.room_size} sq ft</p>
+                  <div className="min-w-0">
+                    <h2 className="text-xl font-semibold text-gray-900 truncate">Room {selectedRoom.room_number}</h2>
+                    <p className="text-sm text-gray-500 truncate">{selectedRoom.room_type} • {selectedRoom.room_size} sq ft</p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedRoom.status || 'active')}`}>
+                <div className="flex flex-wrap items-center gap-2 sm:space-x-3">
+                  <div className={`flex items-center space-x-1 px-2 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-medium ${getStatusColor(selectedRoom.status || 'active')}`}>
                     {(() => {
                       const StatusIcon = getStatusIcon(selectedRoom.status || 'active');
-                      return <StatusIcon className="w-4 h-4" />;
+                      return <StatusIcon className="w-3 h-3 sm:w-4 sm:h-4" />;
                     })()}
                     <span className="capitalize">{selectedRoom.status || 'Active'}</span>
                   </div>
                   {renderApprovalBadge(selectedRoom.approval_status || 'pending')}
-                  <button
-                    onClick={() => openEditRoom(selectedRoom)}
-                    className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
-                    title="Edit Room"
-                  >
-                    <Edit className="w-5 h-5 text-blue-600" />
-                  </button>
-                  <button
-                    onClick={() => setIsRoomModalOpen(false)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    <XCircle className="w-5 h-5 text-gray-500" />
-                  </button>
+                  <div className="flex items-center ml-auto sm:ml-0">
+                    <button
+                      onClick={() => openEditRoom(selectedRoom)}
+                      className="p-1.5 sm:p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                      title="Edit Room"
+                    >
+                      <Edit className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                    </button>
+                    <button
+                      onClick={() => setIsRoomModalOpen(false)}
+                      className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -2042,14 +2047,14 @@ const PropertyDetails = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
             <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-xl">
               {/* Modal Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center space-x-4">
-                  <h2 className="text-xl font-semibold text-gray-900">Edit Room {editRoomData.room_number}</h2>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-200 gap-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 truncate min-w-0">Edit Room {editRoomData.room_number}</h2>
                   {renderApprovalBadge(editRoomData.approval_status || 'pending')}
                 </div>
                 <button
                   onClick={() => setIsEditRoomModalOpen(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors self-end sm:self-auto -mt-10 sm:mt-0"
                 >
                   <XCircle className="w-5 h-5 text-gray-500" />
                 </button>

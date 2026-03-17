@@ -342,13 +342,27 @@ const EditProperty = () => {
 
   // Remove required image
   const removeRequiredImage = (type) => {
-    setFormData(prev => ({
-      ...prev,
-      requiredImages: {
-        ...prev.requiredImages,
-        [type]: null
+    setFormData(prev => {
+      const newState = {
+        ...prev,
+        requiredImages: {
+          ...prev.requiredImages,
+          [type]: null
+        }
+      };
+
+      // Explicitly clear the existing URL so the backend knows to delete it
+      if (type === 'outside_toilet') {
+        newState.outside_toilet_image = '';
+      } else {
+        newState.images = {
+          ...prev.images,
+          [type]: ''
+        };
       }
-    }));
+      
+      return newState;
+    });
   };
 
   const handleImageUpload = (field, file) => {
@@ -399,7 +413,7 @@ const EditProperty = () => {
         ...prev,
         images: {
           ...prev.images,
-          [field]: null
+          [field]: ''
         }
       }));
     }
@@ -1023,7 +1037,7 @@ const EditProperty = () => {
                                 <button
                                   type="button"
                                   onClick={() => removeRequiredImage(key)}
-                                  className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                  className="absolute top-1.5 right-1.5 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full shadow border border-white transition-colors"
                                 >
                                   <X className="w-3 h-3" />
                                 </button>
@@ -1075,7 +1089,7 @@ const EditProperty = () => {
                               <button
                                 type="button"
                                 onClick={() => removeImage('gallery', index)}
-                                className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                className="absolute top-1.5 right-1.5 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full shadow border border-white transition-colors"
                               >
                                 <X className="w-3 h-3" />
                               </button>

@@ -427,7 +427,10 @@ const AddProperty = () => {
     // Extract address components from Nominatim data
     const addr = place.address || {};
     const street = [addr.road, addr.suburb, addr.neighbourhood].filter(Boolean).join(', ');
-    const city = addr.city || addr.town || addr.village || addr.municipality || '';
+    
+    // Nominatim returns different keys depending on the location type
+    const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || addr.state_district || '';
+    
     const state = addr.state || '';
     const pincode = addr.postcode || '';
     const landmark = place.name || addr.amenity || '';
@@ -595,8 +598,9 @@ const AddProperty = () => {
       setPredictLoading(prev => ({ ...prev, [index]: true })); // Start loading
 
       const response = await apiClient.post('/property/predict-rent', {
-        location: formData.address.city, // Use City as location proxy
+        location: formData.address.city,
         roomType: room.roomType,
+        bedType: room.bedType,        // ← pass bed type to ML
         roomSize: room.roomSize,
         amenities: room.amenities,
         propertyAmenities: formData.amenities
@@ -625,6 +629,9 @@ const AddProperty = () => {
       setPredictLoading(prev => ({ ...prev, [index]: false })); // Stop loading
     }
   };
+
+
+
   // Deprecated: generic documents list removed
 
   const removeLandTaxReceipt = () => {
