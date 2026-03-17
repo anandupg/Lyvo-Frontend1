@@ -319,7 +319,7 @@ const AddProperty = () => {
   }, [formData.address.latitude, formData.address.longitude]);
 
   // Handle location selection from map click or marker drag
-  const handleLocationSelect = (lat, lng) => {
+  const handleLocationSelect = async (lat, lng) => {
     setMarkerPosition([lat, lng]);
     setFormData(prev => ({
       ...prev,
@@ -329,6 +329,44 @@ const AddProperty = () => {
         longitude: String(lng),
       }
     }));
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'LyvoPropertyApp/1.0'
+          }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const addr = data.address || {};
+        
+        const street = [addr.road, addr.suburb, addr.neighbourhood].filter(Boolean).join(', ');
+        const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || addr.state_district || '';
+        const state = addr.state || '';
+        const pincode = addr.postcode || '';
+        const landmark = addr.amenity || data.name || '';
+
+        setFormData(prev => ({
+          ...prev,
+          address: {
+            ...prev.address,
+            street: street || prev.address.street,
+            city: city || prev.address.city,
+            state: state || prev.address.state,
+            pincode: pincode || prev.address.pincode,
+            landmark: landmark || prev.address.landmark,
+          }
+        }));
+        setPlaceSearch(data.display_name || '');
+      }
+    } catch (err) {
+      console.error('Error fetching reverse geocoding data:', err);
+    }
   };
 
   // Handle marker drag end
