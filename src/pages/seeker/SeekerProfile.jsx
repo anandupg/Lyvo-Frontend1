@@ -668,21 +668,7 @@ const SeekerProfile = () => {
               </div>
 
               <div className="space-y-6">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.3 }}
-                >
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Trust Score</h3>
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <span className="text-xl font-bold text-white">{profileData.trustScore}</span>
-                      </div>
-                      <p className="text-sm text-gray-600">Excellent Profile</p>
-                    </div>
-                  </div>
-                </motion.div>
+
 
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -692,13 +678,24 @@ const SeekerProfile = () => {
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                     <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
                     <div className="space-y-3">
-                      <button
-                        onClick={() => setShowPasswordModal(true)}
-                        className="w-full px-4 py-3 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all duration-300 flex items-center justify-center space-x-2"
-                      >
-                        <Lock className="w-4 h-4" />
-                        <span>Change Password</span>
-                      </button>
+                      {(!user.authProvider || user.authProvider === 'local') && !user.googleId ? (
+                        <>
+                          <p className="text-sm text-gray-600 mb-2">
+                            Secure your account by keeping your password up to date.
+                          </p>
+                          <button
+                            onClick={() => setShowPasswordModal(true)}
+                            className="w-full px-4 py-3 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all duration-300 flex items-center justify-center space-x-2"
+                          >
+                            <Lock className="w-4 h-4" />
+                            <span>Change Password</span>
+                          </button>
+                        </>
+                      ) : (
+                        <p className="text-sm text-gray-600 italic">
+                          Authentication managed by Google.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </motion.div>
