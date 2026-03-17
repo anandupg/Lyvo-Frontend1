@@ -604,7 +604,7 @@ const AddProperty = () => {
         roomSize: room.roomSize,
         amenities: room.amenities,
         propertyAmenities: formData.amenities
-      });
+      }, { timeout: 60000 }); // 60s timeout for cold start
 
       const data = response.data;
       if (data.success) {
@@ -623,7 +623,10 @@ const AddProperty = () => {
       }
     } catch (error) {
       console.error("Prediction Error:", error);
-      setWarningMessage("Failed to get rent suggestion. Ensure backend is running.");
+      const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout');
+      setWarningMessage(isTimeout 
+        ? "The prediction is taking longer than expected due to server cold start. Please try again in a few seconds." 
+        : "Failed to get rent suggestion. Ensure backend is running.");
       setWarningModalOpen(true);
     } finally {
       setPredictLoading(prev => ({ ...prev, [index]: false })); // Stop loading
