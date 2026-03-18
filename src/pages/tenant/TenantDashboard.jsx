@@ -72,8 +72,19 @@ const TenantDashboard = () => {
 
     const { property, room } = tenantData;
     const daysAsTenant = Math.floor((new Date() - new Date(tenantData.actualCheckInDate)) / (1000 * 60 * 60 * 24));
-    const nextRentDue = new Date(tenantData.actualCheckInDate);
-    nextRentDue.setMonth(nextRentDue.getMonth() + 1);
+
+    // Use the same rent value for UI everywhere (prefer per-person room rent if available)
+    const monthlyRent = room?.perPersonRent || tenantData.monthlyRent || 0;
+
+    // Calculate next rent due based on last payment or check-in
+    let nextRentDue;
+    if (tenantData.lastRentPaidAt) {
+        nextRentDue = new Date(tenantData.lastRentPaidAt);
+        nextRentDue.setMonth(nextRentDue.getMonth() + 1);
+    } else {
+        nextRentDue = new Date(tenantData.actualCheckInDate);
+        nextRentDue.setMonth(nextRentDue.getMonth() + 1);
+    }
     const daysUntilRent = Math.ceil((nextRentDue - new Date()) / (1000 * 60 * 60 * 24));
 
     const formatCurrency = (amount) => {
@@ -137,7 +148,7 @@ const TenantDashboard = () => {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-gray-500 text-sm font-medium">Monthly Rent</p>
-                                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(room?.perPersonRent || tenantData.monthlyRent)}</p>
+                                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(monthlyRent)}</p>
                                 </div>
                                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
                                     <DollarSign className="w-6 h-6 text-red-500" />
@@ -236,7 +247,7 @@ const TenantDashboard = () => {
                                                 </div>
                                                 <div>
                                                     <p className="text-sm text-gray-500 font-medium">Monthly Rent</p>
-                                                    <p className="text-lg font-semibold text-green-600">{formatCurrency(room?.perPersonRent || tenantData.monthlyRent)}</p>
+                                                    <p className="text-lg font-semibold text-green-600">{formatCurrency(monthlyRent)}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-sm text-gray-500 font-medium">Check-in Date</p>
@@ -302,7 +313,7 @@ const TenantDashboard = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="bg-green-50 rounded-xl p-4">
                                             <p className="text-sm text-green-700 font-medium mb-1">Monthly Rent</p>
-                                            <p className="text-2xl font-bold text-green-900">{formatCurrency(room?.perPersonRent || tenantData.monthlyRent)}</p>
+                                            <p className="text-2xl font-bold text-green-900">{formatCurrency(monthlyRent)}</p>
                                         </div>
                                         <div className="bg-red-50 rounded-xl p-4">
                                             <p className="text-sm text-red-700 font-medium mb-1">Security Deposit</p>
@@ -418,7 +429,7 @@ const TenantDashboard = () => {
                                     <div>
                                         <h4 className="font-bold text-gray-900 mb-2">Reminder</h4>
                                         <p className="text-sm text-gray-700">
-                                            Your next rent payment of {formatCurrency(tenantData.monthlyRent)} is due on {formatDate(nextRentDue)}.
+                                            Your next rent payment of {formatCurrency(monthlyRent)} is due on {formatDate(nextRentDue)}.
                                         </p>
                                     </div>
                                 </div>
