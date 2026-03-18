@@ -1,14 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation, useNavigate } from 'react-router-dom';
 import SeekerNavbar from './SeekerNavbar';
 import SeekerSidebar from './SeekerSidebar';
 import SeekerFooter from './SeekerFooter';
 import NotificationListener from '../NotificationListener';
+import { useTenantStatus } from '../../hooks/useTenantStatus';
 
 const SeekerLayout = ({ children, hideFooter = false, hideNavbar = false }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfilePrompt, setShowProfilePrompt] = useState(false);
   const [blockBrowsing, setBlockBrowsing] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { isTenant, loading: tenantLoading } = useTenantStatus();
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -103,6 +108,22 @@ const SeekerLayout = ({ children, hideFooter = false, hideNavbar = false }) => {
       window.removeEventListener('lyvo-profile-update', handleProfileEvent);
     };
   }, []);
+
+  // If user becomes a tenant, route them to tenant portal
+  useEffect(() => {
+    if (tenantLoading) return;
+    if (!isTenant) return;
+
+    const path = location.pathname;
+    const isAlreadyOnTenantRoute = path.startsWith('/tenant');
+
+    // Keep post-booking page accessible if you want; otherwise it will redirect too.
+    const isPostBookingRoute = path.startsWith('/booking-dashboard/');
+
+    if (!isAlreadyOnTenantRoute && !isPostBookingRoute) {
+      navigate('/tenant-dashboard', { replace: true });
+    }
+  }, [isTenant, tenantLoading, location.pathname, navigate]);
 
   return (
     <div className="min-h-screen bg-gray-50">

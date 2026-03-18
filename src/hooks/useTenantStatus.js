@@ -17,8 +17,22 @@ export const useTenantStatus = () => {
             // Use apiClient for consistent base URL handling
             const response = await apiClient.get('/property/user/tenant-status');
 
-            setIsTenant(response.data.isTenant);
+            const nextIsTenant = !!response.data.isTenant;
+            setIsTenant(nextIsTenant);
             setTenantData(response.data.tenantData);
+
+            // Persist tenant flag for global redirects (RootAuthCheck / getRedirectUrl)
+            try {
+                const raw = localStorage.getItem('user');
+                if (raw) {
+                    const user = JSON.parse(raw);
+                    if (user && user.isTenant !== nextIsTenant) {
+                        localStorage.setItem('user', JSON.stringify({ ...user, isTenant: nextIsTenant }));
+                    }
+                }
+            } catch (storageErr) {
+                console.warn('Failed to persist isTenant flag:', storageErr);
+            }
         } catch (err) {
             console.error('Error fetching tenant status:', err);
             setError(err.message);
