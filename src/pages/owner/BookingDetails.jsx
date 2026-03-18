@@ -120,12 +120,13 @@ const BookingDetails = () => {
     try {
       if (!booking?._id) return;
       setUpdating(true);
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      // Use the same property service base URL that already includes `/api/property`
+      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:5000/api/property';
       const token = localStorage.getItem('authToken');
 
       const status = action === 'approve' ? 'approved' : 'rejected';
 
-      const resp = await fetch(`${baseUrl}/property/bookings/${booking._id}/status`, {
+      const resp = await fetch(`${baseUrl}/bookings/${booking._id}/status`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -158,10 +159,11 @@ const BookingDetails = () => {
     try {
       if (!booking?._id) return;
       setUpdating(true);
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      // Use property service base URL so path matches backend mount `/api/property`
+      const baseUrl = import.meta.env.VITE_PROPERTY_SERVICE_API_URL || 'http://localhost:5000/api/property';
       const token = localStorage.getItem('authToken');
 
-      const resp = await fetch(`${baseUrl}/property/bookings/${booking._id}/finalize-check-in`, {
+      const resp = await fetch(`${baseUrl}/bookings/${booking._id}/finalize-check-in`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
