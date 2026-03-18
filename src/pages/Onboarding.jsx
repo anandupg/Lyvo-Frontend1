@@ -133,6 +133,8 @@ const Onboarding = () => {
   const currentQuestion = questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
   const hasAnswer = answers[currentQuestion?.id] !== undefined;
+  const isDateQuestion = currentQuestion?.type === 'date' || String(currentQuestion?.id || '').toLowerCase() === 'dob';
+  const isAnswerEmpty = (v) => v === undefined || v === null || v === '';
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20 pb-12 px-4 sm:px-6">
@@ -192,6 +194,21 @@ const Onboarding = () => {
               </div>
             )}
 
+            {isDateQuestion && (
+              <div className="px-2 py-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date of Birth
+                </label>
+                <input
+                  type="date"
+                  value={answers[currentQuestion.id] ?? ''}
+                  onChange={(e) => handleChange(currentQuestion.id, e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all"
+                />
+                <p className="mt-2 text-xs text-gray-500">Please enter your date of birth.</p>
+              </div>
+            )}
+
             {currentQuestion?.type === 'range' && (
               <div className="px-4 py-8">
                 <input
@@ -233,7 +250,7 @@ const Onboarding = () => {
               )}
               <button
                 onClick={isLastQuestion ? handleSubmit : handleNext}
-                disabled={!hasAnswer && isLastQuestion}
+                disabled={(isLastQuestion && isAnswerEmpty(answers[currentQuestion?.id]))}
                 className="px-6 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLastQuestion ? (isSubmitting ? "Saving..." : "Finish") : "Continue"}

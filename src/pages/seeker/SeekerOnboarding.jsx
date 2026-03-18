@@ -54,7 +54,25 @@ const SeekerOnboarding = () => {
         const res = await axios.get(`${QUESTIONS_API}/questions`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setQuestions(res.data.questions || []);
+        const serverQuestions = res.data.questions || [];
+
+        // Safety net: some deployments may return an older question set missing DOB.
+        // Ensure we always ask for DOB so age can be computed server-side.
+        const hasDob = serverQuestions.some(q => q?.id === 'dob' || q?.type === 'date');
+        const questionsWithDob = hasDob
+          ? serverQuestions
+          : (() => {
+            const dobQuestion = { id: 'dob', text: 'What is your date of birth?', type: 'date' };
+            const genderIdx = serverQuestions.findIndex(q => q?.id === 'gender');
+            if (genderIdx >= 0) {
+              const next = [...serverQuestions];
+              next.splice(genderIdx + 1, 0, dobQuestion);
+              return next;
+            }
+            return [dobQuestion, ...serverQuestions];
+          })();
+
+        setQuestions(questionsWithDob);
       } catch (e) {
         const status = e?.response?.status;
         const msg = e?.response?.data?.message || e?.message || 'Failed to load questions. Please try again.';
