@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Wrench, AlertCircle, CheckCircle, Clock, Send,
-    MessageSquare, Calendar, X
+    MessageSquare, Calendar, X, Sparkles, Loader2
 } from 'lucide-react';
 import SeekerLayout from '../../components/seeker/SeekerLayout';
 import { useTenantStatus } from '../../hooks/useTenantStatus';
@@ -22,6 +22,10 @@ const TenantMaintenance = () => {
         description: '',
         images: []
     });
+    const [aiSuggestion, setAiSuggestion] = useState(null); // { priority, confidence }
+    const [aiLoading, setAiLoading] = useState(false);
+    const [priorityOverridden, setPriorityOverridden] = useState(false);
+    const debounceRef = useRef(null);
 
     const fetchRequests = async () => {
         try {
@@ -39,6 +43,42 @@ const TenantMaintenance = () => {
             setLoading(false);
         }
     }, [tenantData, statusLoading]);
+
+    // Debounced AI suggestion whenever title, description, or category changes
+    useEffect(() => {
+        const { title, description, category } = formData;
+        if (!title && !description) return;
+
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+
+        debounceRef.current = setTimeout(async () => {
+            setAiLoading(true);
+            try {
+                const response = await apiClient.post('/maintenance/suggest-priority', {
+                    title, description, category
+                });
+                if (response.data.success) {
+                    const suggested = response.data.priority;
+                    setAiSuggestion({ priority: suggested, confidence: response.data.confidence });
+                    // Always auto-select high (urgent) — user can still override after.
+                    // For medium/low, only auto-fill if the user hasn't manually touched the radio.
+                    if (suggested === 'high') {
+                        setFormData(prev => ({ ...prev, priority: 'high' }));
+                        setPriorityOverridden(false); // reset so the sparkle badge appears
+                    } else if (!priorityOverridden) {
+                        setFormData(prev => ({ ...prev, priority: suggested }));
+                    }
+                }
+            } catch (_) {
+                // Silently ignore — AI is a hint, not a blocker
+            } finally {
+                setAiLoading(false);
+            }
+        }, 700);
+
+        return () => clearTimeout(debounceRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData.title, formData.description, formData.category]);
 
     const categories = [
         'Plumbing',
@@ -63,6 +103,8 @@ const TenantMaintenance = () => {
                 description: '',
                 images: []
             });
+            setAiSuggestion(null);
+            setPriorityOverridden(false);
             setShowForm(false);
         } catch (error) {
             console.error('Error creating request:', error);
@@ -279,9 +321,24 @@ const TenantMaintenance = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Priority *
-                                    </label>
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Priority *
+                                        </label>
+                                        {aiLoading && (
+                                            <span className="flex items-center gap-1 text-xs text-orange-500">
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                Analysing…
+                                            </span>
+                                        )}
+                                        {!aiLoading && aiSuggestion && (
+                                            <span className="flex items-center gap-1 text-xs bg-orange-50 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full">
+                                                <Sparkles className="w-3 h-3" />
+                                                AI suggested: <strong className="ml-0.5 capitalize">{aiSuggestion.priority}</strong>
+                                                <span className="text-orange-400 ml-1">({Math.round(aiSuggestion.confidence * 100)}%)</span>
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="flex gap-4">
                                         {['low', 'medium', 'high'].map(priority => (
                                             <label key={priority} className="flex items-center cursor-pointer">
@@ -290,11 +347,17 @@ const TenantMaintenance = () => {
                                                     name="priority"
                                                     value={priority}
                                                     checked={formData.priority === priority}
-                                                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                                                    onChange={(e) => {
+                                                        setFormData({ ...formData, priority: e.target.value });
+                                                        setPriorityOverridden(true);
+                                                    }}
                                                     className="mr-2"
                                                 />
                                                 <span className={`px-3 py-1 rounded-full text-sm font-medium capitalize ${getPriorityColor(priority)}`}>
                                                     {priority}
+                                                    {aiSuggestion && aiSuggestion.priority === priority && !priorityOverridden && (
+                                                        <Sparkles className="inline w-3 h-3 ml-1 opacity-60" />
+                                                    )}
                                                 </span>
                                             </label>
                                         ))}
@@ -386,6 +449,9 @@ const TenantMaintenance = () => {
                                             </span>
                                             <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${getPriorityColor(request.priority)}`}>
                                                 {request.priority} Priority
+                                                {request.prioritySource === 'auto' && (
+                                                    <Sparkles className="inline w-3 h-3 ml-1 opacity-70" title="AI classified" />
+                                                )}
                                             </span>
                                             {request.status === 'pending' && (
                                                 <button
