@@ -158,6 +158,13 @@ const AddProperty = () => {
 
   const [predictLoading, setPredictLoading] = useState({}); // Track loading state per room index
 
+  const isRoomSizeInValidRange = (sizeStr) => {
+    if (!sizeStr) return false;
+    const size = parseInt(sizeStr);
+    if (Number.isNaN(size)) return false;
+    return size >= 100 && size <= 300;
+  };
+
   // Handle number of rooms change
   const handleRoomCountChange = (value) => {
     const raw = parseInt(value);
@@ -625,9 +632,15 @@ const AddProperty = () => {
     const room = formData.rooms[index];
 
     // Validate required fields for prediction
-    // Validate required fields for prediction
     if (!room.roomSize || !formData.address.city) {
       setWarningMessage("Please enter Location (City) and Room Size first to get an accurate suggestion.");
+      setWarningModalOpen(true);
+      return;
+    }
+
+    // Enforce room size range for suggestions
+    if (!isRoomSizeInValidRange(room.roomSize)) {
+      setWarningMessage("Room Size must be between 100 and 300 sq ft to get an AI rent suggestion.");
       setWarningModalOpen(true);
       return;
     }
@@ -707,7 +720,14 @@ const AddProperty = () => {
     if (formData.propertyMode === 'room' && formData.rooms.length > 0) {
       formData.rooms.forEach((room, index) => {
         if (!room.roomType) newErrors[`room_${index}_type`] = `Room ${index + 1} type is required`;
-        if (!room.roomSize || parseInt(room.roomSize) <= 0) newErrors[`room_${index}_size`] = `Room ${index + 1} size is required`;
+        if (!room.roomSize) {
+          newErrors[`room_${index}_size`] = `Room ${index + 1} size is required`;
+        } else {
+          const size = parseInt(room.roomSize);
+          if (isNaN(size) || size < 100 || size > 300) {
+            newErrors[`room_${index}_size`] = `Room ${index + 1} size must be between 100 and 300 sq ft`;
+          }
+        }
         if (!room.bedType) newErrors[`room_${index}_bed`] = `Room ${index + 1} bed type is required`;
         // Occupancy is automatically set based on room type, no validation needed
         if (!room.rent || parseInt(room.rent) <= 0) newErrors[`room_${index}_rent`] = `Room ${index + 1} rent is required`;
@@ -751,9 +771,29 @@ const AddProperty = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) {
-      return;
+    // Hard block submit if any room has invalid size (outside 100–300)
+    if (formData.propertyMode === 'room' && formData.rooms.length > 0) {
+      let hasInvalidRoomSize = false;
+      const newErrors = { ...errors };
+
+      formData.rooms.forEach((room, index) => {
+        const key = `room_${index}_size`;
+        if (!room.roomSize) {
+          hasInvalidRoomSize = true;
+          newErrors[key] = 'Room size is required';
+        } else if (!isRoomSizeInValidRange(room.roomSize)) {
+          hasInvalidRoomSize = true;
+          newErrors[key] = 'Room size must be between 100 and 300 sq ft';
+        }
+      });
+
+      if (hasInvalidRoomSize) {
+        setErrors(newErrors);
+        return;
+      }
     }
+
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
 
@@ -1213,12 +1253,22 @@ const AddProperty = () => {
                         </label>
                         <input
                           type="number"
-                          min="50"
+                          min="100"
+                          max="300"
                           value={room.roomSize}
                           onChange={(e) => {
                             const val = e.target.value;
                             if (val === '' || (/^\d+$/.test(val) && parseInt(val) >= 0)) {
                               handleRoomChange(index, 'roomSize', val);
+                              // live validation for room size range
+                              const key = `room_${index}_size`;
+                              if (val === '') {
+                                setErrors(prev => ({ ...prev, [key]: 'Room size is required' }));
+                              } else if (!isRoomSizeInValidRange(val)) {
+                                setErrors(prev => ({ ...prev, [key]: 'Room size must be between 100 and 300 sq ft' }));
+                              } else if (errors[key]) {
+                                setErrors(prev => ({ ...prev, [key]: '' }));
+                              }
                             }
                           }}
                           onKeyDown={(e) => {
@@ -1416,10 +1466,17 @@ const AddProperty = () => {
                           <button
                             type="button"
                             onClick={() => handlePredictRent(index)}
-                            disabled={predictLoading[index]}
+                            disabled={
+                              predictLoading[index] ||
+                              !room.roomSize ||
+                              !isRoomSizeInValidRange(room.roomSize) ||
+                              !formData.address.city
+                            }
                             className={`px-3 py-2 rounded-lg border flex items-center gap-1.5 transition-all whitespace-nowrap h-[42px] ${predictLoading[index]
                               ? 'bg-indigo-50 border-indigo-200 text-indigo-400 cursor-wait'
-                              : 'bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100'
+                              : (!room.roomSize || !isRoomSizeInValidRange(room.roomSize) || !formData.address.city)
+                                ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                                : 'bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100'
                               }`}
                             title="Get AI Rent Suggestion"
                           >
