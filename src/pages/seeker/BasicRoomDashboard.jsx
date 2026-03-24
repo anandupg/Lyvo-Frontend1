@@ -131,7 +131,9 @@ const BasicRoomDashboard = () => {
       // Fetch property details
       if (bookingData.booking.propertyId) {
         try {
-          const propertyResponse = await apiClient.get(`/property/public/properties/${bookingData.booking.propertyId}`);
+          const propertyResponse = await apiClient.get(`/property/public/properties/${bookingData.booking.propertyId}`, {
+            timeout: 45000,
+          });
           if (propertyResponse.status === 200) {
             const propertyData = propertyResponse.data;
             setProperty(propertyData.property);

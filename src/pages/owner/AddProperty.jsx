@@ -624,8 +624,36 @@ const AddProperty = () => {
 
   // Document upload functions
   const handleLandTaxReceiptUpload = (event) => {
-    // ... existing ... 
-  }; // Don't modify this block, just anchoring for insertion before it 
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const isPdfMime = file.type === 'application/pdf';
+    const isPdfByName = file.name?.toLowerCase().endsWith('.pdf');
+    if (!isPdfMime && !isPdfByName) {
+      setErrors(prev => ({
+        ...prev,
+        landTaxReceipt: 'Only PDF files are allowed'
+      }));
+      event.target.value = '';
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      landTaxReceipt: {
+        file,
+        name: file.name,
+        size: file.size,
+        type: file.type || 'application/pdf'
+      }
+    }));
+
+    setErrors(prev => {
+      const next = { ...prev };
+      delete next.landTaxReceipt;
+      return next;
+    });
+  };
 
   // Rent Prediction Handler
   const handlePredictRent = async (index) => {

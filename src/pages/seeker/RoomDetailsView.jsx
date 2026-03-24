@@ -276,15 +276,23 @@ const RoomDetailsView = () => {
         throw new Error('Backend service is not accessible. Please ensure the service is running on port 5000.');
       }
 
-      const response = await fetch(
-        `${baseUrl}/property/public/rooms/${roomId}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
+      let response;
+      try {
+        response = await fetch(
+          `${baseUrl}/property/public/rooms/${roomId}`,
+          {
+            method: 'GET',
+            signal: controller.signal,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       console.log('Room API Response Status:', response.status);
 

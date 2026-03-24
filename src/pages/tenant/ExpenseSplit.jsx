@@ -314,7 +314,8 @@ const ExpenseSplit = () => {
         // Show loading toast? Or just process in background?
         // Let's do optimistic UI or just process
         for (const split of pendingUsers) {
-            const splitUserId = split.user._id || split.user;
+            const splitUserId = getStrId(split.user);
+            if (!splitUserId) continue;
             const success = await handleRemind(expense._id, splitUserId);
             if (success) successCount++;
         }
@@ -373,19 +374,23 @@ const ExpenseSplit = () => {
     const moneyOwedToMeList = [];
     const historyList = [];
 
-    // Global reduce for total stats
-    const totalYouOwe = expenses.reduce((acc, exp) => {
-        const mySplit = exp.splits.find(s => getStrId(s.user) === getStrId(currentUserId) || getStrId(s.user._id) === getStrId(currentUserId));
-        if (mySplit && exp.paidBy._id !== currentUserId && mySplit.status === 'pending') {
+    const safeExpenses = Array.isArray(expenses) ? expenses : [];
+
+    // Global reduce for total stats (paidBy / split.user may be null from API)
+    const totalYouOwe = safeExpenses.reduce((acc, exp) => {
+        const splits = Array.isArray(exp.splits) ? exp.splits : [];
+        const mySplit = splits.find(s => getStrId(s.user) === getStrId(currentUserId));
+        if (mySplit && getStrId(exp.paidBy) !== getStrId(currentUserId) && mySplit.status === 'pending') {
             return acc + mySplit.amount;
         }
         return acc;
     }, 0);
 
-    const totalOwedToYou = expenses.reduce((acc, exp) => {
-        if (exp.paidBy._id === currentUserId) {
-            const pendingAmount = exp.splits.reduce((sum, split) => {
-                if (getStrId(split.user) !== getStrId(currentUserId) && getStrId(split.user._id) !== getStrId(currentUserId) && split.status === 'pending') {
+    const totalOwedToYou = safeExpenses.reduce((acc, exp) => {
+        if (getStrId(exp.paidBy) === getStrId(currentUserId)) {
+            const splits = Array.isArray(exp.splits) ? exp.splits : [];
+            const pendingAmount = splits.reduce((sum, split) => {
+                if (getStrId(split.user) !== getStrId(currentUserId) && split.status === 'pending') {
                     return sum + split.amount;
                 }
                 return sum;
@@ -396,18 +401,20 @@ const ExpenseSplit = () => {
     }, 0);
 
     // Calculate Lifetime Stats (Settled)
-    const totalSent = expenses.reduce((acc, exp) => {
-        const mySplit = exp.splits.find(s => getStrId(s.user) === getStrId(currentUserId) || getStrId(s.user._id) === getStrId(currentUserId));
-        if (mySplit && exp.paidBy._id !== currentUserId && mySplit.status === 'settled') {
+    const totalSent = safeExpenses.reduce((acc, exp) => {
+        const splits = Array.isArray(exp.splits) ? exp.splits : [];
+        const mySplit = splits.find(s => getStrId(s.user) === getStrId(currentUserId));
+        if (mySplit && getStrId(exp.paidBy) !== getStrId(currentUserId) && mySplit.status === 'settled') {
             return acc + mySplit.amount;
         }
         return acc;
     }, 0);
 
-    const totalReceived = expenses.reduce((acc, exp) => {
-        if (exp.paidBy._id === currentUserId) {
-            const settledAmount = exp.splits.reduce((sum, split) => {
-                if (getStrId(split.user) !== getStrId(currentUserId) && getStrId(split.user._id) !== getStrId(currentUserId) && split.status === 'settled') {
+    const totalReceived = safeExpenses.reduce((acc, exp) => {
+        if (getStrId(exp.paidBy) === getStrId(currentUserId)) {
+            const splits = Array.isArray(exp.splits) ? exp.splits : [];
+            const settledAmount = splits.reduce((sum, split) => {
+                if (getStrId(split.user) !== getStrId(currentUserId) && split.status === 'settled') {
                     return sum + split.amount;
                 }
                 return sum;
@@ -418,13 +425,14 @@ const ExpenseSplit = () => {
     }, 0);
 
     // Build Split Lists
-    expenses.forEach(expense => {
-        const isPayer = expense.paidBy._id === currentUserId;
+    safeExpenses.forEach(expense => {
+        const splits = Array.isArray(expense.splits) ? expense.splits : [];
+        const isPayer = getStrId(expense.paidBy) === getStrId(currentUserId);
 
         if (isPayer) {
             // 1. Pending Splits (Money Owed to Me)
-            const pendingSplits = expense.splits.filter(s =>
-                (getStrId(s.user) !== getStrId(currentUserId) && getStrId(s.user._id) !== getStrId(currentUserId)) &&
+            const pendingSplits = splits.filter(s =>
+                getStrId(s.user) !== getStrId(currentUserId) &&
                 s.status === 'pending'
             );
 
@@ -433,8 +441,8 @@ const ExpenseSplit = () => {
             }
 
             // 2. Settled Splits (History)
-            const settledSplits = expense.splits.filter(s =>
-                (getStrId(s.user) !== getStrId(currentUserId) && getStrId(s.user._id) !== getStrId(currentUserId)) &&
+            const settledSplits = splits.filter(s =>
+                getStrId(s.user) !== getStrId(currentUserId) &&
                 s.status === 'settled'
             );
 
@@ -446,7 +454,7 @@ const ExpenseSplit = () => {
 
         } else {
             // I am the debtor
-            const mySplit = expense.splits.find(s => getStrId(s.user) === getStrId(currentUserId) || getStrId(s.user._id) === getStrId(currentUserId));
+            const mySplit = splits.find(s => getStrId(s.user) === getStrId(currentUserId));
 
             if (mySplit) {
                 if (mySplit.status === 'pending') {
@@ -758,7 +766,7 @@ const ExpenseSplit = () => {
                                             <div>
                                                 <h3 className="font-bold text-gray-900">{expense.description}</h3>
                                                 <p className="text-xs text-gray-500">
-                                                    Owed to <span className="font-semibold text-gray-700">{expense.paidBy.name || 'Roommate'}</span>
+                                                    Owed to <span className="font-semibold text-gray-700">{expense.paidBy?.name || 'Roommate'}</span>
                                                 </p>
                                                 {expense.targetUpiId && (
                                                     <p className="text-[10px] text-gray-500 font-mono mt-0.5 bg-gray-100 inline-block px-1 rounded">
@@ -829,26 +837,29 @@ const ExpenseSplit = () => {
                                         <div className="space-y-2 mt-3">
                                             {expense.displaySplits.map(split => {
                                                 const splitUser = split.user?.name ? split.user : (roommates.find(r => getStrId(r.userId) === getStrId(split.user)) || { userName: 'Unknown User' });
-                                                const splitUserName = splitUser.name || splitUser.userName;
-                                                const splitUserId = split.user._id || split.user;
+                                                const splitUserName = splitUser.name || splitUser.userName || 'Unknown';
+                                                const splitUserId = getStrId(split.user);
 
                                                 return (
-                                                    <div key={split._id || splitUser.userId} className="flex items-center justify-between bg-white p-2 rounded-lg border border-green-100">
+                                                    <div key={split._id || splitUserId || splitUser.userId} className="flex items-center justify-between bg-white p-2 rounded-lg border border-green-100">
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-6 h-6 rounded-full bg-green-100 text-green-700 flex items-center justify-center text-xs font-bold">
-                                                                {splitUserName.charAt(0)}
+                                                                {(splitUserName || '?').charAt(0)}
                                                             </div>
                                                             <span className="text-sm text-gray-700">{splitUserName}</span>
                                                         </div>
                                                         <div className="flex items-center gap-3">
                                                             <span className="text-sm font-semibold text-gray-900">{formatCurrency(split.amount)}</span>
                                                             <button
+                                                                type="button"
+                                                                disabled={!splitUserId}
                                                                 onClick={async () => {
+                                                                    if (!splitUserId) return;
                                                                     const success = await handleRemind(expense._id, splitUserId);
                                                                     if (success) toast({ title: "Reminder Sent", description: `Reminded ${splitUserName}` });
                                                                 }}
-                                                                className="p-1.5 text-orange-500 hover:bg-orange-50 rounded-full transition-colors"
-                                                                title={`Remind ${splitUserName}`}
+                                                                className="p-1.5 text-orange-500 hover:bg-orange-50 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                                                title={splitUserId ? `Remind ${splitUserName}` : 'User id missing'}
                                                             >
                                                                 <BellRing className="w-4 h-4" />
                                                             </button>

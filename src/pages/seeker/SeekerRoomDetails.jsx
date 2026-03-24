@@ -115,7 +115,9 @@ const SeekerRoomDetails = () => {
     const fetchRoomDetails = async () => {
         try {
             setLoading(true);
-            const response = await apiClient.get(`/property/public/rooms/${roomId}`);
+            const response = await apiClient.get(`/property/public/rooms/${roomId}`, {
+                timeout: 45000,
+            });
             const data = response.data;
             if (data.success && data.data) {
                 console.log('Room Data Fetched Support:', data.data);
@@ -194,7 +196,9 @@ const SeekerRoomDetails = () => {
         if (!roomId) return;
         try {
             setLoadingTenants(true);
-            const response = await apiClient.get(`/property/public/rooms/${roomId}/tenants`);
+            const response = await apiClient.get(`/property/public/rooms/${roomId}/tenants`, {
+                timeout: 45000,
+            });
             if (response.status === 200) {
                 const data = response.data;
                 setTenants(data.tenants || []);

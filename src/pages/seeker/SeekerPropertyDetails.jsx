@@ -89,7 +89,9 @@ const SeekerPropertyDetails = () => {
     const fetchPropertyDetails = async () => {
       setLoading(true);
       try {
-        const response = await apiClient.get(`/property/public/properties/${id}`);
+        const response = await apiClient.get(`/property/public/properties/${id}`, {
+          timeout: 45000,
+        });
         // apiClient throws on non-2xx status code by default if using axios, but let's be safe if checking response.
         // wait, axios response structure is { data: ... }. fetch response is stream.
         // apiClient is axios instance.

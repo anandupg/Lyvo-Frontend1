@@ -156,7 +156,9 @@ const SeekerDashboardDetails = () => {
   const fetchPropertyDetails = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get(`/property/public/properties/${propertyId}`);
+      const response = await apiClient.get(`/property/public/properties/${propertyId}`, {
+        timeout: 45000,
+      });
 
       // Response check removed as apiClient throws on error
       const data = response.data;
