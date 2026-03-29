@@ -7,7 +7,6 @@ import {
   Users,
   DollarSign,
   TrendingUp,
-  Star,
   Calendar,
   Plus,
   Eye,
@@ -34,8 +33,9 @@ const OwnerDashboard = () => {
     totalProperties: 0,
     activeTenants: 0,
     monthlyRevenue: 0,
-    averageRating: 0,
     occupancyRate: 0,
+    totalRooms: 0,
+    occupiedRooms: 0,
     pendingApplications: 0
   });
   const [dataLoading, setDataLoading] = useState(false);
@@ -122,9 +122,7 @@ const OwnerDashboard = () => {
 
   // Calculate stats whenever data changes
   useEffect(() => {
-    if (properties.length > 0 || bookings.length > 0) {
-      calculateDashboardStats();
-    }
+    calculateDashboardStats();
   }, [properties, bookings, tenantCount]);
 
   // Retry function for failed tenant fetch
@@ -165,58 +163,54 @@ const OwnerDashboard = () => {
     }
   };
 
+  const isRoomOccupied = (room) =>
+    room && (room.is_available === false || room.room_status === 'full');
+
   // Calculate dashboard stats from real data
   const calculateDashboardStats = () => {
     try {
-      // Total Properties
       const totalProperties = properties.length;
 
-      // Active Tenants (already fetched)
-      // Note: activeTenants is set from fetchTenantCount which now filters for active status
-      const activeTenants = tenantCount;
+      const activePaidStatuses = [
+        'pending_approval',
+        'approved',
+        'checked_in',
+        'confirmed',
+        'payment_completed'
+      ];
 
-      // Monthly Revenue - sum of confirmed bookings' rent
-      const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
-      const monthlyRevenue = confirmedBookings.reduce((sum, booking) => {
-        return sum + (booking.rent || 0);
+      // Monthly revenue: sum of monthly rent from paid, active bookings (expected income this month)
+      const monthlyRevenue = bookings.reduce((sum, b) => {
+        if (b.isDeleted || b.status === 'cancelled' || b.status === 'rejected' || b.status === 'checked_out') {
+          return sum;
+        }
+        if (b.payment?.paymentStatus !== 'completed') return sum;
+        if (!activePaidStatuses.includes(b.status)) return sum;
+        const rent = Number(b.payment?.monthlyRent);
+        if (Number.isFinite(rent) && rent > 0) return sum + rent;
+        const snap = Number(b.roomSnapshot?.perPersonRent) || Number(b.roomSnapshot?.rent);
+        return Number.isFinite(snap) && snap > 0 ? sum + snap : sum;
       }, 0);
 
-      // Average Rating - average of all property ratings
-      const propertiesWithRatings = properties.filter(p => p.rating && p.rating > 0);
-      const averageRating = propertiesWithRatings.length > 0
-        ? (propertiesWithRatings.reduce((sum, p) => sum + p.rating, 0) / propertiesWithRatings.length)
-        : 0;
-
-      // Occupancy Rate - occupied rooms / total rooms
       let totalRooms = 0;
       let occupiedRooms = 0;
-      properties.forEach(property => {
+      properties.forEach((property) => {
         if (property.rooms && Array.isArray(property.rooms)) {
           totalRooms += property.rooms.length;
-          occupiedRooms += property.rooms.filter(room => !room.isAvailable).length;
+          occupiedRooms += property.rooms.filter(isRoomOccupied).length;
         }
       });
       const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
-      // Pending Applications
-      // Backend uses 'pending_approval' for new booking requests
       const pendingApplications = bookings.filter(b => b.status === 'pending_approval').length;
 
       setStats({
         totalProperties,
         activeTenants: tenantCount,
         monthlyRevenue,
-        averageRating: Math.round(averageRating * 10) / 10,
         occupancyRate,
-        pendingApplications
-      });
-
-      console.log('Dashboard stats calculated:', {
-        totalProperties,
-        activeTenants,
-        monthlyRevenue,
-        averageRating,
-        occupancyRate,
+        totalRooms,
+        occupiedRooms,
         pendingApplications
       });
     } catch (error) {
@@ -247,7 +241,7 @@ const OwnerDashboard = () => {
   const recentProperties = properties.slice(0, 3).map(property => {
     const rooms = property.rooms || [];
     const totalRooms = rooms.length;
-    const occupiedRooms = rooms.filter(room => !room.isAvailable).length;
+    const occupiedRooms = rooms.filter(isRoomOccupied).length;
     const occupancyPercentage = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
     // Calculate revenue from confirmed bookings for this property
@@ -547,8 +541,8 @@ const OwnerDashboard = () => {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Monthly Revenue</p>
-                <p className="text-xl sm:text-2xl font-bold text-gray-900">₹{stats.monthlyRevenue.toLocaleString()}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Monthly revenue</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">₹{stats.monthlyRevenue.toLocaleString('en-IN')}</p>
               </div>
               <div className="p-2 sm:p-3 bg-green-100 rounded-lg">
                 <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
@@ -565,26 +559,13 @@ const OwnerDashboard = () => {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Average Rating</p>
-                <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats.averageRating}</p>
-              </div>
-              <div className="p-2 sm:p-3 bg-yellow-100 rounded-lg">
-                <Star className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
-              </div>
-            </div>
-
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="bg-white p-4 sm:p-6 rounded-lg border border-gray-200"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Occupancy Rate</p>
-                <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats.occupancyRate}%</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Occupancy rate</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">{stats.occupancyRate}%</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {stats.totalRooms > 0
+                    ? `${stats.occupiedRooms} of ${stats.totalRooms} rooms`
+                    : 'Add rooms to see occupancy'}
+                </p>
               </div>
               <div className="p-2 sm:p-3 bg-purple-100 rounded-lg">
                 <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
@@ -596,7 +577,7 @@ const OwnerDashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.5 }}
             className="bg-white p-4 sm:p-6 rounded-lg border border-gray-200 sm:col-span-2 lg:col-span-1"
           >
             <div className="flex items-center justify-between">

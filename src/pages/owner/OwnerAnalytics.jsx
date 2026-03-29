@@ -6,19 +6,14 @@ import apiClient from '../../utils/apiClient';
 import {
   BarChart3,
   TrendingUp,
-  TrendingDown,
   DollarSign,
-  Users,
   Building,
   Calendar,
   Eye,
-  Star,
   Activity,
   ArrowUpRight,
   ArrowDownRight,
-  Clock,
   CheckCircle,
-  XCircle,
   AlertCircle,
   Loader2
 } from 'lucide-react';
@@ -34,11 +29,70 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   Area,
   AreaChart
 } from 'recharts';
+
+const BOOKING_STATUS_LABELS = {
+  pending: 'Pending',
+  confirmed: 'Confirmed',
+  cancelled: 'Cancelled',
+  payment_pending: 'Payment pending',
+  payment_completed: 'Payment completed',
+  pending_approval: 'Pending approval',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  checked_in: 'Checked in',
+  checked_out: 'Checked out'
+};
+
+const STATUS_COLORS = [
+  '#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#ef4444', '#6b7280', '#f97316', '#84cc16'
+];
+
+function isDeletedBooking(b) {
+  return b?.isDeleted === true;
+}
+
+/** Completed Razorpay payment; excludes cancelled / rejected / checked-out flows. */
+function isPaidBooking(b) {
+  if (isDeletedBooking(b)) return false;
+  if (['cancelled', 'rejected', 'checked_out'].includes(b?.status)) return false;
+  return b?.payment?.paymentStatus === 'completed';
+}
+
+function getBookingPaymentTotal(b) {
+  const p = b?.payment;
+  if (!p || p.paymentStatus !== 'completed') return 0;
+  const t = Number(p.totalAmount);
+  if (Number.isFinite(t) && t > 0) return t;
+  const rent = Number(p.monthlyRent) || 0;
+  const dep = Number(p.securityDeposit) || 0;
+  return rent + dep;
+}
+
+function getRevenueDate(b) {
+  const raw = b?.payment?.paidAt || b?.bookedAt || b?.createdAt;
+  return raw ? new Date(raw) : null;
+}
+
+function isRoomOccupied(r) {
+  if (!r) return false;
+  return r.is_available === false || r.room_status === 'full';
+}
+
+/** Listed room that can still accept a booking (active listing, not full). */
+function isRoomAvailableForBooking(r) {
+  if (!r) return false;
+  const listed =
+    !r.room_status || r.room_status === 'available';
+  return (
+    r.status === 'active' &&
+    r.is_available === true &&
+    listed
+  );
+}
 
 const OwnerAnalytics = () => {
   const navigate = useNavigate();
@@ -49,8 +103,6 @@ const OwnerAnalytics = () => {
   const [properties, setProperties] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [rooms, setRooms] = useState([]);
-
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   // Fetch data
   useEffect(() => {
@@ -85,7 +137,6 @@ const OwnerAnalytics = () => {
             ...room,
             rent: room.rent ?? room.price ?? 0,
             roomType: room.roomType ?? room.room_type ?? 'Unknown',
-            is_available: typeof room.is_available === 'boolean' ? room.is_available : (room.status === 'active'),
             property: prop
           }));
           return [...acc, ...normalized];
@@ -106,52 +157,53 @@ const OwnerAnalytics = () => {
   const stats = useMemo(() => {
     const totalProperties = properties.length;
     const totalRooms = rooms.length;
-    const activeRooms = rooms.filter(r => (r.status === 'active' || r.is_available)).length;
-    const occupiedRooms = rooms.filter(r => r.is_available === false).length;
+    const activeRooms = rooms.filter(isRoomAvailableForBooking).length;
+    const occupiedRooms = rooms.filter(isRoomOccupied).length;
 
-    // Revenue calculations
-    const confirmedBookings = bookings.filter(b => {
-      const paymentStatus = b.payment?.paymentStatus || b.paymentStatus;
-      const status = b.status || b.bookingStatus;
-      return status === 'confirmed' && paymentStatus === 'completed';
-    });
+    const paidBookings = bookings.filter(isPaidBooking);
 
-    const totalRevenue = confirmedBookings.reduce((sum, b) => sum + (b.payment?.amount || 0), 0);
+    const totalRevenue = paidBookings.reduce((sum, b) => sum + getBookingPaymentTotal(b), 0);
 
-    // Current month revenue
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
-    const monthlyRevenue = confirmedBookings
-      .filter(b => {
-        const bookingDate = new Date(b.createdAt);
-        return bookingDate.getMonth() === currentMonth && bookingDate.getFullYear() === currentYear;
-      })
-      .reduce((sum, b) => sum + (b.payment?.amount || 0), 0);
 
-    // Last month revenue for comparison
-    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-    const lastMonthRevenue = confirmedBookings
-      .filter(b => {
-        const bookingDate = new Date(b.createdAt);
-        return bookingDate.getMonth() === lastMonth && bookingDate.getFullYear() === lastMonthYear;
-      })
-      .reduce((sum, b) => sum + (b.payment?.amount || 0), 0);
+    const revenueInMonth = (month, year) =>
+      paidBookings.reduce((sum, b) => {
+        const d = getRevenueDate(b);
+        if (!d || isNaN(d.getTime())) return sum;
+        if (d.getMonth() !== month || d.getFullYear() !== year) return sum;
+        return sum + getBookingPaymentTotal(b);
+      }, 0);
 
-    const revenueChange = lastMonthRevenue > 0
-      ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(1)
-      : 0;
+    const monthlyRevenue = revenueInMonth(currentMonth, currentYear);
 
-    // Occupancy rate
-    const occupancyRate = totalRooms > 0 ? ((occupiedRooms / totalRooms) * 100).toFixed(1) : 0;
+    const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
+    const lastMonthRevenue = revenueInMonth(lastMonthDate.getMonth(), lastMonthDate.getFullYear());
 
-    // Average rent
+    let revenueChangeNum = 0;
+    if (lastMonthRevenue > 0) {
+      revenueChangeNum = ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
+    } else if (monthlyRevenue > 0) {
+      revenueChangeNum = 100;
+    }
+    const revenueChange = Number(revenueChangeNum.toFixed(1));
+
+    const occupancyRate = totalRooms > 0 ? Number(((occupiedRooms / totalRooms) * 100).toFixed(1)) : 0;
+
     const avgRent = rooms.length > 0
-      ? Math.round(rooms.reduce((sum, r) => sum + (r.rent || 0), 0) / rooms.length)
+      ? Math.round(
+          rooms.reduce((sum, r) => {
+            const per =
+              Number(r.perPersonRent) ||
+              Math.ceil((Number(r.rent) || 0) / (Number(r.occupancy) || 1));
+            return sum + per;
+          }, 0) / rooms.length
+        )
       : 0;
 
-    // Pending applications
-    const pendingBookings = bookings.filter(b => b.status === 'pending').length;
+    const pendingBookings = bookings.filter(
+      (b) => !isDeletedBooking(b) && b.status === 'pending_approval'
+    ).length;
 
     return {
       totalProperties,
@@ -164,39 +216,44 @@ const OwnerAnalytics = () => {
       occupancyRate,
       avgRent,
       pendingBookings,
-      totalBookings: bookings.length
+      totalBookings: bookings.filter((b) => !isDeletedBooking(b)).length
     };
   }, [properties, rooms, bookings]);
 
-  // Revenue data by month
+  // Revenue data by month (revenue by payment date; bookings count by created month)
   const revenueData = useMemo(() => {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const months = timeRange === '1month' ? 1 : timeRange === '3months' ? 3 : timeRange === '6months' ? 6 : 12;
     const data = [];
     const today = new Date();
 
+    const activeBookings = bookings.filter((b) => !isDeletedBooking(b));
+
     for (let i = months - 1; i >= 0; i--) {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
       const monthIndex = date.getMonth();
       const year = date.getFullYear();
 
-      const monthRevenue = bookings
-        .filter(b => {
-          const status = b.status || b.bookingStatus;
-          const paymentStatus = b.payment?.paymentStatus || b.paymentStatus;
-          if (status !== 'confirmed' || paymentStatus !== 'completed') return false;
-          const bookingDate = new Date(b.createdAt || b.updatedAt || b.date || Date.now());
-          return bookingDate.getMonth() === monthIndex && bookingDate.getFullYear() === year;
+      const monthRevenue = activeBookings
+        .filter((b) => {
+          if (!isPaidBooking(b)) return false;
+          const d = getRevenueDate(b);
+          if (!d || isNaN(d.getTime())) return false;
+          return d.getMonth() === monthIndex && d.getFullYear() === year;
         })
-        .reduce((sum, b) => sum + (b.payment?.amount || b.amount || b.totalAmount || 0), 0);
+        .reduce((sum, b) => sum + getBookingPaymentTotal(b), 0);
+
+      const bookingsInMonth = activeBookings.filter((b) => {
+        const raw = b.createdAt || b.bookedAt;
+        const bookingDate = raw ? new Date(raw) : null;
+        if (!bookingDate || isNaN(bookingDate.getTime())) return false;
+        return bookingDate.getMonth() === monthIndex && bookingDate.getFullYear() === year;
+      }).length;
 
       data.push({
         month: monthNames[monthIndex],
         revenue: monthRevenue,
-        bookings: bookings.filter(b => {
-          const bookingDate = new Date(b.createdAt || b.updatedAt || b.date || Date.now());
-          return bookingDate.getMonth() === monthIndex && bookingDate.getFullYear() === year;
-        }).length
+        bookings: bookingsInMonth
       });
     }
 
@@ -208,14 +265,15 @@ const OwnerAnalytics = () => {
     return properties.map(prop => {
       const propName = prop.propertyName || prop.property_name || 'Property';
       const propRooms = Array.isArray(prop.rooms) ? prop.rooms : [];
-      const propRoomIds = new Set(propRooms.map(r => (r._id || r.id || '').toString()));
-      const propBookings = bookings.filter(b => {
-        const roomId = (b.roomId || b.room_id || '').toString();
-        return roomId && propRoomIds.has(roomId);
+      const propId = (prop._id || prop.id || '').toString();
+      const propBookings = bookings.filter((b) => {
+        if (isDeletedBooking(b)) return false;
+        const bid = (b.propertyId || b.property_id || '').toString();
+        return bid && bid === propId;
       });
       const propRevenue = propBookings
-        .filter(b => (b.status || b.bookingStatus) === 'confirmed' && (b.payment?.paymentStatus || b.paymentStatus) === 'completed')
-        .reduce((sum, b) => sum + (b.payment?.amount || b.amount || b.totalAmount || 0), 0);
+        .filter(isPaidBooking)
+        .reduce((sum, b) => sum + getBookingPaymentTotal(b), 0);
 
       return {
         name: propName.length > 15 ? propName.substring(0, 15) + '...' : propName,
@@ -223,24 +281,27 @@ const OwnerAnalytics = () => {
         revenue: propRevenue,
         bookings: propBookings.length,
         rooms: propRooms.length,
-        occupiedRooms: propRooms.filter(r => r.is_available === false).length
+        occupiedRooms: propRooms.filter(isRoomOccupied).length
       };
     }).sort((a, b) => b.revenue - a.revenue);
   }, [properties, bookings]);
 
-  // Booking status distribution
+  // Booking status distribution (actual status values from API)
   const bookingStatusData = useMemo(() => {
-    const confirmed = bookings.filter(b => b.status === 'confirmed').length;
-    const pending = bookings.filter(b => b.status === 'pending').length;
-    const rejected = bookings.filter(b => b.status === 'rejected').length;
-    const cancelled = bookings.filter(b => b.status === 'cancelled').length;
-
-    return [
-      { name: 'Confirmed', value: confirmed, color: '#10b981' },
-      { name: 'Pending', value: pending, color: '#f59e0b' },
-      { name: 'Rejected', value: rejected, color: '#ef4444' },
-      { name: 'Cancelled', value: cancelled, color: '#6b7280' }
-    ].filter(item => item.value > 0);
+    const counts = {};
+    bookings.forEach((b) => {
+      if (isDeletedBooking(b)) return;
+      const s = b.status || 'unknown';
+      counts[s] = (counts[s] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([status, value], i) => ({
+        name: BOOKING_STATUS_LABELS[status] || status,
+        value,
+        color: STATUS_COLORS[i % STATUS_COLORS.length]
+      }))
+      .filter((item) => item.value > 0)
+      .sort((a, b) => b.value - a.value);
   }, [bookings]);
 
   // Room type distribution
@@ -262,10 +323,11 @@ const OwnerAnalytics = () => {
 
   // Format currency
   const formatCurrency = (amount) => {
-    if (amount >= 10000000) return `₹${(amount / 10000000).toFixed(1)}Cr`;
-    if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
-    if (amount >= 1000) return `₹${(amount / 1000).toFixed(1)}K`;
-    return `₹${amount}`;
+    const n = Number(amount) || 0;
+    if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)}Cr`;
+    if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
+    if (n >= 1000) return `₹${(n / 1000).toFixed(1)}K`;
+    return `₹${Math.round(n).toLocaleString('en-IN')}`;
   };
 
   if (loading) {
@@ -285,7 +347,7 @@ const OwnerAnalytics = () => {
     {
       title: 'Total Revenue',
       value: formatCurrency(stats.totalRevenue),
-      change: `${stats.revenueChange}%`,
+      change: `${stats.revenueChange >= 0 ? '+' : ''}${stats.revenueChange}%`,
       changeType: stats.revenueChange >= 0 ? 'positive' : 'negative',
       icon: DollarSign,
       color: 'bg-green-500',
@@ -294,7 +356,7 @@ const OwnerAnalytics = () => {
     {
       title: 'Monthly Revenue',
       value: formatCurrency(stats.monthlyRevenue),
-      change: `${stats.revenueChange}%`,
+      change: `${stats.revenueChange >= 0 ? '+' : ''}${stats.revenueChange}%`,
       changeType: stats.revenueChange >= 0 ? 'positive' : 'negative',
       icon: TrendingUp,
       color: 'bg-blue-500',
@@ -391,14 +453,21 @@ const OwnerAnalytics = () => {
                   <div className={`${stat.color} p-2 sm:p-3 rounded-lg`}>
                     <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
-                  {stat.changeType && (
-                    <div className={`flex items-center gap-1 text-sm font-medium ${stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                      }`}>
+                  {stat.change != null && stat.change !== '' && (
+                    <div
+                      className={`flex items-center gap-1 text-sm font-medium ${
+                        stat.changeType === 'positive'
+                          ? 'text-green-600'
+                          : stat.changeType === 'negative'
+                            ? 'text-red-600'
+                            : 'text-gray-500'
+                      }`}
+                    >
                       {stat.changeType === 'positive' ? (
                         <ArrowUpRight className="w-4 h-4" />
-                      ) : (
+                      ) : stat.changeType === 'negative' ? (
                         <ArrowDownRight className="w-4 h-4" />
-                      )}
+                      ) : null}
                       {stat.change}
                     </div>
                   )}

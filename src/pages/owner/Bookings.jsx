@@ -65,7 +65,7 @@ const OwnerBookings = () => {
     const q = query.trim().toLowerCase();
     return bookings
       .filter((b) => {
-        if (statusFilter === 'all') return b.status !== 'checked_in' && b.status !== 'checked_out';
+        if (statusFilter === 'all') return true;
         if (statusFilter === 'pending') {
           return ['pending_approval', 'payment_pending', 'pending'].includes(b.status);
         }
@@ -88,13 +88,12 @@ const OwnerBookings = () => {
   }, [bookings, query, statusFilter]);
 
   const stats = useMemo(() => {
-    const total = bookings.filter(b => b.status !== 'checked_in' && b.status !== 'checked_out').length;
     const confirmed = bookings.filter(b => ['confirmed', 'checked_in'].includes(b.status)).length;
     const pending = bookings.filter(b => ['pending_approval', 'payment_pending', 'pending'].includes(b.status)).length;
     const checkedOut = bookings.filter(b => b.status === 'checked_out').length;
     const cancelled = bookings.filter(b => b.status === 'cancelled').length;
     const rejected = bookings.filter(b => b.status === 'rejected').length;
-    return { total, confirmed, pending, checkedOut, cancelled, rejected };
+    return { confirmed, pending, checkedOut, cancelled, rejected };
   }, [bookings]);
 
   const refresh = async () => {
@@ -236,8 +235,8 @@ const OwnerBookings = () => {
           >
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm font-medium text-blue-600 mb-1">Active Bookings</div>
-                <div className="text-3xl font-bold text-blue-900">{stats.total}</div>
+                <div className="text-sm font-medium text-blue-600 mb-1">All bookings</div>
+                <div className="text-3xl font-bold text-blue-900">{bookings.length}</div>
               </div>
               <div className="w-12 h-12 bg-blue-200 rounded-lg flex items-center justify-center">
                 <Calendar className="w-6 h-6 text-blue-600" />
@@ -402,8 +401,8 @@ const OwnerBookings = () => {
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Calendar className="w-8 h-8 text-gray-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Bookings Yet</h3>
-            <p className="text-gray-600 mb-4">New bookings will appear here when tenants make reservations.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No bookings</h3>
+            <p className="text-gray-600 mb-4">When seekers book your rooms, they will show up here.</p>
             <button
               onClick={() => navigate('/owner-dashboard')}
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -411,6 +410,35 @@ const OwnerBookings = () => {
               <ArrowUpRight className="w-4 h-4" />
               Go to Dashboard
             </button>
+          </div>
+        ) : filteredBookings.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center shadow-sm">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-8 h-8 text-gray-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No bookings</h3>
+            <p className="text-gray-600 mb-4">
+              Nothing matches this filter or search. Try another status tab or clear the search.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter('all');
+                  setQuery('');
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-800 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Reset filters
+              </button>
+              <button
+                onClick={() => navigate('/owner-dashboard')}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <ArrowUpRight className="w-4 h-4" />
+                Dashboard
+              </button>
+            </div>
           </div>
         ) : (
           viewMode === 'table' ? (

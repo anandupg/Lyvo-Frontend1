@@ -26,13 +26,6 @@ const Dashboard = () => {
   const [users, setUsers] = useState([]);
   const [properties, setProperties] = useState([]);
   const [bookings, setBookings] = useState([]);
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    activeProperties: 0,
-    monthlyRevenue: 0,
-    pendingApprovals: 0
-  });
-
 
   // Helper function to format time ago (defined early to avoid hoisting issues)
   const getTimeAgo = (dateString) => {
@@ -49,10 +42,33 @@ const Dashboard = () => {
 
   // Format revenue helper
   const formatRevenue = (amount) => {
-    if (amount >= 10000000) return `₹${(amount / 10000000).toFixed(1)}Cr`;
-    if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
-    if (amount >= 1000) return `₹${(amount / 1000).toFixed(1)}K`;
-    return `₹${amount}`;
+    const n = Number(amount) || 0;
+    if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)}Cr`;
+    if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
+    if (n >= 1000) return `₹${(n / 1000).toFixed(1)}K`;
+    return `₹${Math.round(n).toLocaleString("en-IN")}`;
+  };
+
+  /** Paid booking: Razorpay completed; exclude cancelled. */
+  const isPaidBooking = (b) =>
+    !b?.isDeleted &&
+    b?.status !== "cancelled" &&
+    b?.payment?.paymentStatus === "completed";
+
+  /** Revenue attributed at payment time (matches Booking model: totalAmount). */
+  const getBookingRevenueAmount = (b) => {
+    const p = b?.payment;
+    if (!p || p.paymentStatus !== "completed") return 0;
+    const total = Number(p.totalAmount);
+    if (Number.isFinite(total) && total > 0) return total;
+    const rent = Number(p.monthlyRent) || 0;
+    const dep = Number(p.securityDeposit) || 0;
+    return rent + dep;
+  };
+
+  const getRevenueDate = (b) => {
+    const raw = b?.payment?.paidAt || b?.bookedAt || b?.createdAt;
+    return raw ? new Date(raw) : null;
   };
 
   // Fetch all data
@@ -70,7 +86,7 @@ const Dashboard = () => {
         const [usersRes, propertiesRes, bookingsRes] = await Promise.all([
           apiClient.get('/user/all'),
           apiClient.get('/property/admin/properties?limit=1000'), // Fetch all properties
-          apiClient.get('/property/debug/bookings')
+          apiClient.get("/property/debug/bookings?limit=5000")
         ]);
 
         const usersData = usersRes.data;
@@ -105,39 +121,42 @@ const Dashboard = () => {
 
     const pendingApprovals = properties.filter(p => p.approval_status === 'pending').length;
 
-    // Debug logging with detailed property info
-    console.log('Dashboard Stats:', {
-      totalProperties: properties.length,
-      activeProperties,
-      pendingApprovals,
-      propertiesBreakdown: properties.map(p => ({
-        name: p.property_name,
-        approval_status: p.approval_status,
-        status: p.status,
-        isActive: (p.approval_status === 'approved' || p.status === 'active') && p.status !== 'inactive'
-      }))
-    });
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const prevMonthDate = new Date(currentYear, currentMonth - 1, 1);
+    const prevMonth = prevMonthDate.getMonth();
+    const prevYear = prevMonthDate.getFullYear();
 
-    // Calculate monthly revenue from bookings
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const monthlyBookings = bookings.filter(b => {
-      const bookingDate = new Date(b.createdAt);
-      return bookingDate.getMonth() === currentMonth &&
-        bookingDate.getFullYear() === currentYear &&
-        b.status === 'confirmed' &&
-        b.payment?.paymentStatus === 'completed';
-    });
+    const revenueInMonth = (month, year) =>
+      bookings.reduce((sum, b) => {
+        if (!isPaidBooking(b)) return sum;
+        const d = getRevenueDate(b);
+        if (!d || isNaN(d.getTime())) return sum;
+        if (d.getMonth() !== month || d.getFullYear() !== year) return sum;
+        return sum + getBookingRevenueAmount(b);
+      }, 0);
 
-    const monthlyRevenue = monthlyBookings.reduce((sum, booking) => {
-      return sum + (booking.payment?.amount || 0);
-    }, 0);
+    const monthlyRevenue = revenueInMonth(currentMonth, currentYear);
+    const prevMonthlyRevenue = revenueInMonth(prevMonth, prevYear);
+    let monthlyRevenueChange = "0%";
+    let monthlyRevenueChangeType = "positive";
+    if (prevMonthlyRevenue > 0) {
+      const pct = ((monthlyRevenue - prevMonthlyRevenue) / prevMonthlyRevenue) * 100;
+      monthlyRevenueChange = `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
+      monthlyRevenueChangeType = pct >= 0 ? "positive" : "negative";
+    } else if (monthlyRevenue > 0) {
+      monthlyRevenueChange = "new";
+      monthlyRevenueChangeType = "positive";
+    }
 
     return {
       totalUsers,
       totalProperties,
       activeProperties,
       monthlyRevenue,
+      monthlyRevenueChange,
+      monthlyRevenueChangeType,
       pendingApprovals
     };
   }, [users, properties, bookings]);
@@ -177,7 +196,7 @@ const Dashboard = () => {
     });
   }, [users]);
 
-  // Calculate revenue and bookings data by month
+  // Calculate revenue and bookings data by month (by payment date)
   const revenueData = useMemo(() => {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const last6Months = [];
@@ -188,15 +207,14 @@ const Dashboard = () => {
       const monthIndex = date.getMonth();
       const year = date.getFullYear();
 
-      const monthBookings = bookings.filter(b => {
-        const bookingDate = new Date(b.createdAt);
-        return bookingDate.getMonth() === monthIndex &&
-          bookingDate.getFullYear() === year &&
-          b.status === 'confirmed' &&
-          b.payment?.paymentStatus === 'completed';
+      const monthBookings = bookings.filter((b) => {
+        if (!isPaidBooking(b)) return false;
+        const d = getRevenueDate(b);
+        if (!d || isNaN(d.getTime())) return false;
+        return d.getMonth() === monthIndex && d.getFullYear() === year;
       });
 
-      const revenue = monthBookings.reduce((sum, b) => sum + (b.payment?.amount || 0), 0);
+      const revenue = monthBookings.reduce((sum, b) => sum + getBookingRevenueAmount(b), 0);
 
       last6Months.push({
         month: monthNames[monthIndex],
@@ -208,52 +226,56 @@ const Dashboard = () => {
     return last6Months;
   }, [bookings]);
 
-  const statsCards = [
-    {
-      title: "Total Users",
-      value: calculatedStats.totalUsers.toLocaleString(),
-      change: "+0%",
-      changeType: "positive",
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-        </svg>
-      ),
-    },
-    {
-      title: "Total Properties",
-      value: calculatedStats.totalProperties.toString(),
-      change: "+0%",
-      changeType: "positive",
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-        </svg>
-      ),
-    },
-    {
-      title: "Monthly Revenue",
-      value: formatRevenue(calculatedStats.monthlyRevenue),
-      change: "+0%",
-      changeType: "positive",
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-        </svg>
-      ),
-    },
-    {
-      title: "Pending Approvals",
-      value: calculatedStats.pendingApprovals.toString(),
-      change: "0%",
-      changeType: calculatedStats.pendingApprovals > 0 ? "negative" : "positive",
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-    },
-  ];
+  const statsCards = useMemo(
+    () => [
+      {
+        title: "Total Users",
+        value: calculatedStats.totalUsers.toLocaleString(),
+        change: "+0%",
+        changeType: "positive",
+        icon: (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+          </svg>
+        ),
+      },
+      {
+        title: "Total Properties",
+        value: calculatedStats.totalProperties.toString(),
+        change: "+0%",
+        changeType: "positive",
+        icon: (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        ),
+      },
+      {
+        title: "Monthly Revenue",
+        subtitle: new Date().toLocaleString("en-IN", { month: "long", year: "numeric" }),
+        value: formatRevenue(calculatedStats.monthlyRevenue),
+        change: calculatedStats.monthlyRevenueChange,
+        changeType: calculatedStats.monthlyRevenueChangeType,
+        icon: (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+          </svg>
+        ),
+      },
+      {
+        title: "Pending Approvals",
+        value: calculatedStats.pendingApprovals.toString(),
+        change: "0%",
+        changeType: calculatedStats.pendingApprovals > 0 ? "negative" : "positive",
+        icon: (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        ),
+      },
+    ],
+    [calculatedStats]
+  );
 
   // Calculate recent activities from real data
   const recentActivities = useMemo(() => {
@@ -294,16 +316,21 @@ const Dashboard = () => {
 
     // Recent bookings (last 2)
     const recentBookings = bookings
-      .filter(b => b.status === 'confirmed' && b.payment?.paymentStatus === 'completed')
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .filter((b) => isPaidBooking(b))
+      .sort((a, b) => {
+        const ta = getRevenueDate(a)?.getTime() || 0;
+        const tb = getRevenueDate(b)?.getTime() || 0;
+        return tb - ta;
+      })
       .slice(0, 2);
 
-    recentBookings.forEach(booking => {
+    recentBookings.forEach((booking) => {
+      const paidAt = getRevenueDate(booking);
       activities.push({
         id: `booking-${booking._id}`,
         type: "payment_received",
-        message: `Payment received: ${formatRevenue(booking.payment?.amount || 0)}`,
-        time: getTimeAgo(booking.createdAt),
+        message: `Payment received: ${formatRevenue(getBookingRevenueAmount(booking))}`,
+        time: getTimeAgo((paidAt || new Date(booking.createdAt)).toISOString()),
         status: "success"
       });
     });
@@ -375,15 +402,24 @@ const Dashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs lg:text-sm font-medium text-gray-600">{card.title}</p>
+                  {card.subtitle && (
+                    <p className="text-xs text-gray-500 mt-0.5">{card.subtitle}</p>
+                  )}
                   <p className="text-xl lg:text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
-                  <div className="flex items-center mt-2">
+                  <div className="flex items-center mt-2 flex-wrap gap-x-1">
                     <span
                       className={`text-xs lg:text-sm font-medium ${card.changeType === "positive" ? "text-green-600" : "text-red-600"
                         }`}
                     >
                       {card.change}
                     </span>
-                    <span className="text-xs lg:text-sm text-gray-500 ml-1 hidden sm:inline">from last month</span>
+                    {card.title === "Monthly Revenue" ? (
+                      <span className="text-xs lg:text-sm text-gray-500 hidden sm:inline">
+                        {card.change === "new" ? "vs no revenue last month" : "vs last month"}
+                      </span>
+                    ) : (
+                      <span className="text-xs lg:text-sm text-gray-500 ml-1 hidden sm:inline">from last month</span>
+                    )}
                   </div>
                 </div>
                 <div className="p-2 lg:p-3 bg-red-50 rounded-lg text-red-600">
@@ -441,17 +477,23 @@ const Dashboard = () => {
 
                   {/* Revenue Chart */}
                   <div className="bg-gray-50 rounded-xl p-4 lg:p-6">
-                    <h3 className="text-base lg:text-lg font-semibold text-gray-900 mb-4">Revenue & Bookings</h3>
+                    <h3 className="text-base lg:text-lg font-semibold text-gray-900 mb-4">Revenue &amp; bookings</h3>
                     <ResponsiveContainer width="100%" height={250} className="lg:h-[300px]">
                       <BarChart data={revenueData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="month" />
-                        <YAxis yAxisId="left" />
-                        <YAxis yAxisId="right" orientation="right" />
-                        <Tooltip />
+                        <YAxis yAxisId="left" tickFormatter={(v) => (v >= 1000 ? `₹${(v / 1000).toFixed(0)}k` : `₹${v}`)} />
+                        <YAxis yAxisId="right" orientation="right" allowDecimals={false} />
+                        <Tooltip
+                          formatter={(value, name) =>
+                            name === "revenue"
+                              ? [formatRevenue(value), "Revenue"]
+                              : [value, "Paid bookings"]
+                          }
+                        />
                         <Legend />
-                        <Bar yAxisId="left" dataKey="revenue" fill="#ef4444" />
-                        <Bar yAxisId="right" dataKey="bookings" fill="#3b82f6" />
+                        <Bar yAxisId="left" dataKey="revenue" name="Revenue" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                        <Bar yAxisId="right" dataKey="bookings" name="Paid bookings" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
